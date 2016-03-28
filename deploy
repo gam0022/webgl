@@ -1,0 +1,6 @@
+#!/bin/sh
+dir=$(cd $(dirname ${BASH_SOURCE:-$0}); pwd)
+echo "dir: $dir"
+
+ssh_host="g22"
+rsync -avzc --delete --exclude-from=rsync-exclude-from ${dir}/ ${ssh_host}:/var/www/html/webgl

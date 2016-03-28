@@ -1,0 +1,3 @@
+.git/*
+deploy
+rsync-exclude-from
