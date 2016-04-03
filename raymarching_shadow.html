@@ -512,7 +512,7 @@ void main(void) {
 
 				if ( config.objAutoMove) {
 
-					config.objY = Math.sin( timestamp * 2.0 * 0.001 ) + 1.0;
+					config.objY = Math.abs( Math.sin( timestamp * 2.0 * 0.001 ) * 2.0 );
 
 				}
 
