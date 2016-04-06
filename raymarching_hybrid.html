@@ -34,6 +34,8 @@
 		</div>
 		<script id="fragment_shader" type="x-shader/x-fragment">
 
+#extension GL_EXT_frag_depth : require
+
 precision highp float;
 
 // uniforms
@@ -318,6 +320,7 @@ void main(void) {
 	vec3 ray = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
 
 	vec3 color = vec3( 0.0 );
+	float depth;
 	float alpha = 1.0;
 	Intersect nearest;
 
@@ -332,9 +335,12 @@ void main(void) {
 
 		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
 
+		if ( i == 0 ) depth = nearest.distance;
+
 	}
 
 	gl_FragColor = vec4(color, 1.0);
+	gl_FragDepthEXT = depth;
 
 }
 
@@ -426,11 +432,19 @@ void main(void) {
 				//
 
 				renderer = new THREE.WebGLRenderer();
-				renderer.setPixelRatio( window.devicePixelRatio );
+				//renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
 				canvas = renderer.domElement;
 				container.appendChild( canvas );
+
+				// check gl_FragDepthEXT
+				var gl = canvas.getContext( 'webgl' ) || canvas.getContext( 'experimental-webgl' );
+				var ext = gl.getExtension( 'EXT_frag_depth' );
+				if( ext == null ) {
+					alert( "gl_FragDepthEXT not supported" );
+					return;
+				}
 
 				orbitControls = new THREE.OrbitControls( camera, canvas );
 				orbitControls.enablePan = true;
