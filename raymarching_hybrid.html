@@ -465,6 +465,7 @@ void main(void) {
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
 				} );
 				plane = new THREE.Mesh( geometry, material );
+				plane.position.z = -1;
 				scene.add( plane );
 
 				// model
@@ -591,10 +592,10 @@ void main(void) {
 
 				stats.end();
 
-				camera.position.x += ( - mouseX - camera.position.x ) * .05;
-				camera.position.y += ( - mouseY - camera.position.y ) * .05;
+				//camera.position.x += ( - mouseX - camera.position.x ) * .05;
+				//camera.position.y += ( - mouseY - camera.position.y ) * .05;
 
-				camera.lookAt( scene.position );
+				//camera.lookAt( scene.position );
 
 				if ( mesh ) {
 
