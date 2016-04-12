@@ -391,7 +391,7 @@ void main(void) {
 			var config = {
 				saveImage: function() {
 
-					renderer.render( scene, dummyCamera );
+					renderer.render( scene, camera );
 					window.open( canvas.toDataURL() );
 
 				},
@@ -602,7 +602,7 @@ void main(void) {
 				
 
 				material.uniforms.objY.value = config.objY;
-				renderer.render( scene, dummyCamera );
+				renderer.render( scene, camera );
 
 				stats.end();
 
