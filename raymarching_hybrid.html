@@ -43,6 +43,9 @@ uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
 
+// camera
+uniform mat4 modelMatrix;
+
 // debug for camera
 uniform bool debugCamera;
 uniform vec3 cameraPos;
@@ -308,7 +311,7 @@ void main(void) {
 
 	// camera and ray
 	if ( debugCamera ) {
-		cPos  = cameraPos;
+		cPos  = modelMatrix[3].xyz;
 		cDir  = cameraDir;
 	} else {
 		cPos  = vec3( 0.0, 2.0, -4.0 );
