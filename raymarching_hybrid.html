@@ -43,6 +43,10 @@ uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
 
+// camera
+uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;
+
 // debug for camera
 uniform bool debugCamera;
 uniform vec3 cameraPos;
@@ -305,6 +309,7 @@ void main(void) {
 
 	// fragment position
 	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
+	vec2 q = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
 
 	// camera and ray
 	if ( debugCamera ) {
@@ -317,6 +322,10 @@ void main(void) {
 	vec3 cSide = normalize( cross( cDir, vec3( 0.0, 1.0 ,0.0 ) ) );
 	vec3 cUp   = normalize( cross( cSide, cDir ) );
 	float targetDepth = 1.3;
+
+	// invView = cameraModel = camera.matrixWorld
+	// invProjection = inverse( camera.projectionMatrix )
+	// ワールド座標系でのレイの先端 =  invView * invProjection * (スクリーンの正規化xy, 1.0)
 	vec3 ray = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
 
 	vec3 color = vec3( 0.0 );
