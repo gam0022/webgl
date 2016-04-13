@@ -46,6 +46,8 @@ uniform vec2 resolution;
 // camera
 uniform mat4 cameraWorldMatrix;
 uniform mat4 cameraProjectionMatrixInverse;
+uniform float cameraNear;
+uniform float cameraFar;
 
 // debug for camera
 uniform bool debugCamera;
@@ -301,6 +303,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
 
+	nearest.distance = depth;
 	return nearest;
 
 }
@@ -331,7 +334,7 @@ void main(void) {
 	vec3 ray = normalize( rayTip.xyz );
 
 	vec3 color = vec3( 0.0 );
-	float depth = 1.0;
+	float depth = cameraFar;
 	float alpha = 1.0;
 	Intersect nearest;
 
@@ -350,8 +353,10 @@ void main(void) {
 
 	}
 
-	gl_FragColor = vec4(color, 1.0);
-	gl_FragDepthEXT = depth;
+	float normalZ = ( depth - cameraNear ) / ( cameraFar - cameraNear );
+	gl_FragDepthEXT = cameraFar * normalZ / depth;
+
+	gl_FragColor = vec4( color, 1.0 );
 
 }
 
@@ -480,6 +485,8 @@ void main(void) {
 
 						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
 						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+						cameraNear: { type: 'f', value: camera.near },
+						cameraFar:  { type: 'f', value: camera.far },
 
 						debugCamera: { type: 'i', value: config.camera !== 'GLSL' },
 						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
@@ -611,6 +618,8 @@ void main(void) {
 
 				material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
 				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+				material.uniforms.cameraNear.value = camera.near;
+				material.uniforms.cameraFar.value  = camera.far;
 
 				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
