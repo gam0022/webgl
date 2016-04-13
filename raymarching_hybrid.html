@@ -109,7 +109,7 @@ float floorDist( vec3 p ){
 float sceneDist( vec3 p ) {
 
 	return min(
-		sphereDist( p, 1.0 ),
+		sphereDist( p, 3.0 ),
 		floorDist( p )
 	);
 
@@ -347,9 +347,8 @@ void main(void) {
 		ray = normalize( reflect( ray, nearest.normal ) );
 		cPos = nearest.position + nearest.normal * OFFSET;
 
-		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
-
 		if ( i == 0 ) depth = nearest.distance;
+		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
 
 	}
 
@@ -418,7 +417,7 @@ void main(void) {
 				shadowSharpness: 8.0,
 
 				objAutoMove: false,
-				objY: 3.0,
+				objY: 10.0,
 
 				resolution: '512',
 			};
@@ -432,7 +431,7 @@ void main(void) {
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.y = 5;
+				camera.position.y = 30;
 				camera.position.z = 20;
 
 				// scene
@@ -473,7 +472,7 @@ void main(void) {
 				orbitControls.rotateSpeed = 0.8;
 				orbitControls.autoRotate = false;
 				orbitControls.autoRotateSpeed = 0.0;
-				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
+				orbitControls.target = new THREE.Vector3( 0.0, 10.0, 0.0 );
 
 				// raymarching plane
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
@@ -528,7 +527,6 @@ void main(void) {
 				loader.load( modelFile, vmdFiles, function ( object ) {
 
 					mesh = object;
-					mesh.position.y = -10;
 
 					helper.add( mesh );
 					helper.setAnimation( mesh );
