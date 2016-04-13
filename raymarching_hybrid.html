@@ -100,7 +100,7 @@ float sphereDist( vec3 p, float r ) {
 
 float floorDist( vec3 p ){
 
-	return dot(p, vec3( 0.0, 1.0, 0.0 ) ) + 1.0;
+	return dot(p, vec3( 0.0, 1.0, 0.0 ) ) + 0.0;
 
 }
 
@@ -412,8 +412,8 @@ void main(void) {
 				shadowIntensity: 0.3,
 				shadowSharpness: 8.0,
 
-				objAutoMove: true,
-				objY: 0.0,
+				objAutoMove: false,
+				objY: 3.0,
 
 				resolution: '512',
 			};
@@ -427,7 +427,8 @@ void main(void) {
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.z = 25;
+				camera.position.y = 5;
+				camera.position.z = 20;
 
 				// scene
 
@@ -600,7 +601,7 @@ void main(void) {
 
 				if ( config.objAutoMove) {
 
-					config.objY = Math.abs( Math.sin( timestamp * 2.0 * 0.001 ) * 2.0 );
+					config.objY = Math.abs( Math.sin( timestamp * 2.0 * 0.001 ) * 30.0 );
 
 				}
 
