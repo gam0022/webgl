@@ -44,16 +44,13 @@ uniform vec2 mouse;
 uniform vec2 resolution;
 
 // camera
+uniform vec3 cameraPosition;
 uniform mat4 viewMatrix;
+
 uniform mat4 cameraWorldMatrix;
 uniform mat4 cameraProjectionMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
-
-// debug for camera
-uniform bool debugCamera;
-uniform vec3 cameraPos;
-uniform vec3 cameraDir;
 
 // shadow
 uniform int shadowType;
@@ -312,26 +309,11 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 void main(void) {
 
 	// fragment position
-	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
-	vec2 q = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
 
 	// camera and ray
-	if ( debugCamera ) {
-		cPos  = cameraPos;
-		cDir  = cameraDir;
-	} else {
-		cPos  = vec3( 0.0, 2.0, -4.0 );
-		cDir  = normalize( vec3( 0.0, -0.3, 1.0 ) );
-	}
-	vec3 cSide = normalize( cross( cDir, vec3( 0.0, 1.0 ,0.0 ) ) );
-	vec3 cUp   = normalize( cross( cSide, cDir ) );
-	float targetDepth = 1.3;
-
-	// invView = cameraModel = camera.matrixWorld
-	// invProjection = inverse( camera.projectionMatrix )
-	// ワールド座標系でのレイの先端 =  invView * invProjection * (スクリーンの正規化xy, 1.0)
-	// vec3 ray = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
-	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( q.xy, 1.0, 1.0 );
+	cPos = cameraPosition;
+	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( p.xy, 1.0, 1.0 );
 	vec3 ray = normalize( rayTip.xyz );
 
 	vec3 color = vec3( 0.0 );
@@ -489,10 +471,6 @@ void main(void) {
 						cameraNear: { type: 'f', value: camera.near },
 						cameraFar:  { type: 'f', value: camera.far },
 
-						debugCamera: { type: 'i', value: config.camera !== 'GLSL' },
-						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
-						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
-
 						shadowType: { type: 'i', value: config.shadowType },
 						shadowIntensity: { type: 'f', value: config.shadowIntensity },
 						shadowSharpness: { type: 'f', value: config.shadowSharpness },
@@ -620,10 +598,6 @@ void main(void) {
 				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
 				material.uniforms.cameraNear.value = camera.near;
 				material.uniforms.cameraFar.value  = camera.far;
-
-				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
-				material.uniforms.cameraPos.value = camera.getWorldPosition();
-				material.uniforms.cameraDir.value = camera.getWorldDirection();
 
 				material.uniforms.shadowType.value = config.shadowType;
 				material.uniforms.shadowIntensity.value = config.shadowIntensity;
