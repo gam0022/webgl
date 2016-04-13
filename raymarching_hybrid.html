@@ -474,6 +474,11 @@ void main(void) {
 						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
 						mouse: { type: 'v2', value: mouse },
 						time: { type: 'f', value: 0.0 },
+
+
+						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
+						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+
 						debugCamera: { type: 'i', value: config.camera !== 'GLSL' },
 						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
 						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
