@@ -44,6 +44,7 @@ uniform vec2 mouse;
 uniform vec2 resolution;
 
 // camera
+uniform mat4 viewMatrix;
 uniform mat4 cameraWorldMatrix;
 uniform mat4 cameraProjectionMatrixInverse;
 uniform float cameraNear;
@@ -277,7 +278,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	if ( abs(dist) < EPS ) {
 
 		nearest = sceneIntersect( p );
-		nearest.position = p;
 		nearest.normal = getNormal(p);
 		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
 		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
@@ -303,6 +303,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
 
+	nearest.position = p;
 	nearest.distance = depth;
 	return nearest;
 
@@ -334,9 +335,9 @@ void main(void) {
 	vec3 ray = normalize( rayTip.xyz );
 
 	vec3 color = vec3( 0.0 );
-	float depth = cameraFar;
 	float alpha = 1.0;
 	Intersect nearest;
+	vec3 position = vec3( 0.0, 0.0, 1000.0 );
 
 	for ( int i = 0; i < 2; i++ ) {
 
@@ -347,13 +348,14 @@ void main(void) {
 		ray = normalize( reflect( ray, nearest.normal ) );
 		cPos = nearest.position + nearest.normal * OFFSET;
 
-		if ( i == 0 ) depth = nearest.distance;
+		if ( i == 0 ) position = nearest.position;
 		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
 
 	}
 
-	float normalZ = ( depth - cameraNear ) / ( cameraFar - cameraNear );
-	gl_FragDepthEXT = cameraFar * normalZ / depth;
+	float z = -( viewMatrix * vec4( position, 1.0 ) ).z;
+	float normalZ = ( z - cameraNear ) / ( cameraFar - cameraNear );
+	gl_FragDepthEXT = cameraFar * normalZ / z;
 
 	gl_FragColor = vec4( color, 1.0 );
 
