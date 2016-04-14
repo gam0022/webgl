@@ -481,6 +481,7 @@ void main(void) {
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
 				} );
 				plane = new THREE.Mesh( geometry, material );
+				plane.frustumCulled = false;
 				plane.position.z = -1;
 				scene.add( plane );
 
