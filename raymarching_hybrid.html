@@ -6,22 +6,32 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			body {
-				font-family: Monospace;
-				background-color: #fff;
-				color: #000;
-				margin: 0px;
-				overflow: hidden;
+				background-color: black;
+				margin: 0;
+				padding: 0;
 			}
-			#info {
-				color: #000;
+
+			a { color: skyblue }
+
+			canvas {
+				display: block;
 				position: absolute;
-				top: 10px;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+
+			#info {
+				color: white;
+				font-size: 13px;
+				position: absolute;
+				bottom: 10px;
 				width: 100%;
 				text-align: center;
 				z-index: 100;
-				display:block;
 			}
-			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
 		</style>
 	</head>
 
@@ -369,6 +379,7 @@ void main(void) {
 
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
+		<script src="js/libs/dat.gui.min.js"></script>
 
 		<script>
 
@@ -379,11 +390,6 @@ void main(void) {
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var mesh, camera, scene, renderer;
 			var helper;
-
-			var mouseX = 0, mouseY = 0;
-
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
 
 			var clock = new THREE.Clock();
 
@@ -433,7 +439,7 @@ void main(void) {
 
 				renderer = new THREE.WebGLRenderer();
 				//renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( config.resolution, config.resolution );
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
 				canvas = renderer.domElement;
 				container.appendChild( canvas );
@@ -530,37 +536,58 @@ void main(void) {
 
 				}, onProgress, onError );
 
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
 				//
-
 				window.addEventListener( 'resize', onWindowResize, false );
+
+				var gui = new dat.GUI();
+				gui.add( config, 'saveImage' ).name( 'Save Image' );
+				gui.add( config, 'camera', [ 'GLSL', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
+
+				var shadowFolder = gui.addFolder('Shadow');
+				shadowFolder.add( config, 'shadowType', { Hard: 0, Soft1: 1, Soft2: 2 } ).name( 'Type');
+				shadowFolder.add( config, 'shadowIntensity', 0.0, 1.0 ).name( 'Intensity' );
+				shadowFolder.add( config, 'shadowSharpness', 0.0, 100.0 ).name( 'Sharpness' );
+				shadowFolder.open();
+
+				var objFolder = gui.addFolder('Obj');
+				objFolder.add( config, 'objAutoMove' ).name( 'Auto Move' );
+				objFolder.add( config, 'objY', -1.0, 10.0 ).name( 'Pos Y' ).listen();
+				objFolder.open();
+
+				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+
+					if ( value !== 'full' ) {
+
+						canvas.width = value;
+						canvas.height = value;
+
+					}
+					onWindowResize();
+
+				} );
 
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
+
+				onWindowResize();
 
 			}
 
 			function onWindowResize() {
 
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
+				if ( config.resolution === 'full' ) {
 
-				camera.aspect = window.innerWidth / window.innerHeight;
+					canvas.width = window.innerWidth;
+					canvas.height = window.innerHeight;
+
+				}
+
+				camera.aspect = canvas.width / canvas.height;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( canvas.width, canvas.height );
 
 			}
-
-			function onDocumentMouseMove( event ) {
-
-				mouseX = ( event.clientX - windowHalfX ) / 2;
-				mouseY = ( event.clientY - windowHalfY ) / 2;
-
-			}
-
-			//
 
 			function animate() {
 
@@ -581,7 +608,7 @@ void main(void) {
 
 				} else if ( config.camera === "Orbit" ) {
 
-					//orbitControls.update();
+					orbitControls.update();
 
 				}
 
@@ -609,11 +636,6 @@ void main(void) {
 				renderer.render( scene, camera );
 
 				stats.end();
-
-				//camera.position.x += ( - mouseX - camera.position.x ) * .05;
-				//camera.position.y += ( - mouseY - camera.position.y ) * .05;
-
-				//camera.lookAt( scene.position );
 
 				if ( mesh ) {
 
