@@ -313,12 +313,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	} else {
 
-		nearest.color = vec3( 0.2 );
+		nearest.color = vec3( 0.7 );
 		nearest.isHit = false;
 
 	}
  	
-	nearest.color += pow( clamp( 0.005 * depth, 0.0, 0.6 ), 2.0 );
+	nearest.color += clamp( 0.001 * depth, 0.0, 0.7 );
 	nearest.position = p;
 	nearest.distance = depth;
 	return nearest;
