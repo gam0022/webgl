@@ -125,7 +125,7 @@ float sdCappedCylinder( vec3 p, vec2 h )
 float sceneDist( vec3 p ) {
 
 	return min(
-		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 ) ),
+		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 + sin( p.x + p.y + time ) ) ),
 		floorDist( p )
 	);
 
