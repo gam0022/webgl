@@ -318,7 +318,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
  	
-	nearest.color += clamp( 0.001 * depth, 0.0, 0.7 );
+	//nearest.color += clamp( 0.002 * depth, 0.0, 1.0 );
 	nearest.position = p;
 	nearest.distance = depth;
 	return nearest;
