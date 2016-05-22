@@ -125,7 +125,7 @@ float sdCappedCylinder( vec3 p, vec2 h )
 float sceneDist( vec3 p ) {
 
 	return min(
-		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 + sin( p.x + p.y + time ) ) ),
+		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 + sin( 0.5 * ( p.z + p.x ) + 10.0 * time) ) ),
 		floorDist( p )
 	);
 
@@ -426,7 +426,7 @@ void main(void) {
 				objAutoMove: false,
 				objY: 10.0,
 
-				resolution: '512',
+				resolution: '256',
 			};
 
 			init();
@@ -606,10 +606,10 @@ void main(void) {
 
 			}
 
-			function animate() {
+			function animate( timestamp ) {
 
 				requestAnimationFrame( animate );
-				render();
+				render( timestamp );
 
 			}
 
