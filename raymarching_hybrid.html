@@ -606,10 +606,10 @@ void main(void) {
 
 			}
 
-			function animate() {
+			function animate( timestamp ) {
 
 				requestAnimationFrame( animate );
-				render();
+				render( timestamp );
 
 			}
 
