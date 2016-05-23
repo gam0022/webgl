@@ -91,8 +91,9 @@ struct Intersect {
 	vec3 color;
 };
 
-const int SPHERE_MATERIAL = 0;
+const int MIRROR_MATERIAL = 0;
 const int FLOOR_MATERIAL = 1;
+const int PSYLLIUM_MATERIAL = 2;
 
 // distance functions
 vec3 onRep( vec3 p, float interval ) {
@@ -127,15 +128,6 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
     vec3 pa = p - a, ba = b - a;
     float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
     return length( pa - ba*h ) - r;
-}
-
-float sceneDist( vec3 p ) {
-
-	return min(
-		sdCapsule( onRep( p, 15.0) , vec3(0.0, 0.0, 0.0), vec3(0.0, 3.0, 0.0), 0.5),
-		floorDist( p )
-	);
-
 }
 
 
@@ -175,11 +167,20 @@ Intersect minIntersect( Intersect a, Intersect b ) {
 
 }
 
+float sceneDist( vec3 p ) {
+
+	return min(
+		sdCapsule( onRep( p, 15.0) , vec3(0.0, 0.0, 0.0), vec3(0.0, 4.0, 0.0), 0.5),
+		floorDist( p )
+	);
+
+}
+
 Intersect sceneIntersect( vec3 p ) {
 
 	Intersect a, b;
-	a.distance = sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 ) );
-	a.material = SPHERE_MATERIAL;
+	a.distance = sdCapsule( onRep( p, 15.0) , vec3(0.0, 0.0, 0.0), vec3(0.0, 4.0, 0.0), 0.5);
+	a.material = PSYLLIUM_MATERIAL;
 
 	b.distance = floorDist( p );
 	b.material = FLOOR_MATERIAL;
@@ -307,12 +308,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 		if ( nearest.material == FLOOR_MATERIAL ) {
 
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
+			nearest.color = vec3( 0.1 ) * diffuse * shadow;
 			
-		} else if ( nearest.material == SPHERE_MATERIAL ) {
+		} else if ( nearest.material == PSYLLIUM_MATERIAL ) {
 
 			vec3 color = vec3( 1.0, 0.2, 0.2 );
-			nearest.color = color * diffuse * shadow + specular;
+			nearest.color = color;
 
 		}
 
@@ -357,7 +358,7 @@ void main(void) {
 		cPos = nearest.position + nearest.normal * OFFSET;
 
 		if ( i == 0 ) firstNearest = nearest;
-		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
+		if ( !nearest.isHit || nearest.material != MIRROR_MATERIAL ) break;
 
 	}
 
