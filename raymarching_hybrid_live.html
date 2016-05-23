@@ -122,10 +122,17 @@ float sdCappedCylinder( vec3 p, vec2 h )
   return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
 
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+    vec3 pa = p - a, ba = b - a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h ) - r;
+}
+
 float sceneDist( vec3 p ) {
 
 	return min(
-		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 + sin( 0.5 * ( p.z + p.x ) + 10.0 * time) ) ),
+		sdCapsule( onRep( p, 15.0) , vec3(0.0, 0.0, 0.0), vec3(0.0, 3.0, 0.0), 0.5),
 		floorDist( p )
 	);
 
