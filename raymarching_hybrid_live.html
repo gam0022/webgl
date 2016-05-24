@@ -320,7 +320,8 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
 
-	vec3 psyllium_color = vec3( 1.0, 0.2, 0.2 );
+	//vec3 psylliumColor = hsv2rgb( vec3( abs( getDiscreteGrid( p.xz ) * 0.1 ), 1.0, 1.0 ) );
+	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02 + 0.6, 1.0, 1.0 ) );
 
 	if ( abs(dist) < EPS ) {
 
@@ -336,8 +337,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			
 		} else if ( nearest.material == PSYLLIUM_MATERIAL ) {
 
-			vec3 color = psyllium_color;
-			nearest.color = color;
+			nearest.color = psylliumColor;
 
 		}
 
@@ -345,7 +345,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	} else {
 
-		nearest.color = psyllium_color * clamp(0.5 / minDist, 0.0, 1.0);
+		nearest.color = psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 		nearest.isHit = false;
 
 	}
