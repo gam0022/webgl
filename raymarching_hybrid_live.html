@@ -118,6 +118,11 @@ float floorDist( vec3 p ){
 
 }
 
+float udRoundBox( vec3 p, vec3 b, float r )
+{
+  return length(max(abs(p)-b,0.0))-r;
+}
+
 float sdCappedCylinder( vec3 p, vec2 h )
 {
   vec2 d = abs(vec2(length(p.xz),p.y)) - h;
@@ -185,7 +190,7 @@ float psylliumDist( vec3 p ) {
 	float r = 4.0;
 	float t = 8.0 * time;
 	float x = rand(getDiscreteGridVec2(p.xz)) * 10.0 - 5.0;
-	vec3 org = vec3( x, x, 0.0);
+	vec3 org = vec3( x, -10.0, x);
 	vec3 dir = vec3( cos( t ), 2.0, cos( t ) );
 	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
 }
@@ -194,7 +199,7 @@ float sceneDist( vec3 p ) {
 
 	return min(
 		sdCappedCylinder( onRep( p, 50.0) , vec2( 3.0, 20.0 ) ),
-		floorDist( p )
+		udRoundBox( p + vec3( 0.0, 1.0, 0.0 ), vec3( 20.0, 1.0, 20.0 ), 0.1 )
 	);
 
 }
@@ -206,7 +211,7 @@ Intersect sceneIntersect( vec3 p ) {
 	a.distance = sdCappedCylinder( onRep( p, 50.0) , vec2( 3.0, 20.0 ) );
 	a.material = MIRROR_MATERIAL;
 
-	b.distance = floorDist( p );
+	b.distance = udRoundBox( p + vec3( 0.0, 1.0, 0.0 ), vec3( 20.0, 1.0, 20.0 ), 0.1 );
 	b.material = FLOOR_MATERIAL;
 
 	return minIntersect( a, b );
@@ -305,15 +310,50 @@ float getShadow( vec3 ro, vec3 rd ) {
 Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	// marching loop
-	float dist, minDist = 9999.0;
+	float dist, minDist;
 	float depth = 0.0;
 	vec3 p = origin;
 	int count = 0;
 	Intersect nearest;
 
 	for ( int i = 0; i < 128; i++ ){
-
 		dist = sceneDist( p );
+		depth += dist;
+		p = origin + depth * ray;
+
+		count = i;
+		if ( abs(dist) < EPS ) break;
+	}
+
+	if ( abs(dist) < EPS ) {
+		nearest = sceneIntersect( p );
+		nearest.normal = getNormal(p);
+		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
+		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
+		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
+
+		if ( nearest.material == FLOOR_MATERIAL ) {
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
+		} else if ( nearest.material == MIRROR_MATERIAL ) {
+			vec3 color = vec3( 0.2, 0.2, 0.2 );
+			nearest.color = color * diffuse * shadow + specular;
+		}
+		nearest.isHit = true;
+	} else {
+		nearest.color = vec3( 0.1 );
+		nearest.isHit = false;
+	}
+
+	nearest.position = p;
+	nearest.distance = depth;
+
+	// psyllium pass
+	p = origin;
+	depth = 0.0;
+	minDist = 9999.9;
+	for ( int i = 0; i < 128; i++ ){
+
+		dist = psylliumDist( p );
 		minDist = min(dist, minDist);
 		depth += dist;
 		p = origin + depth * ray;
@@ -326,41 +366,15 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	//vec3 psylliumColor = hsv2rgb( vec3( abs( getDiscreteGrid( p.xz ) * 0.1 ), 1.0, 1.0 ) );
 	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02 + 0.6, 1.0, 1.0 ) );
 
-	if ( abs(dist) < EPS ) {
-
-		nearest = sceneIntersect( p );
-		nearest.normal = getNormal(p);
-		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
-		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
-		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
-
-		if ( nearest.material == FLOOR_MATERIAL ) {
-
-			nearest.color = vec3( 0.1 ) * diffuse * shadow;
-			
-		} else if ( nearest.material == PSYLLIUM_MATERIAL ) {
-
-			nearest.color = psylliumColor;
-
-		} else if ( nearest.material == MIRROR_MATERIAL ) {
-
-			vec3 color = vec3( 1.0, 0.2, 0.2 );
-			nearest.color = color * diffuse * shadow + specular;
-
+	if ( !nearest.isHit || depth < nearest.distance ) {
+		if ( abs(dist) < EPS ) {
+			nearest.color += psylliumColor;
+		} else {
+			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 		}
-
-		nearest.isHit = true;
-
-	} else {
-
-		nearest.color = psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
-		nearest.isHit = false;
-
 	}
  	
 	//nearest.color -= pow( clamp( 0.00001 * depth, 0.0, 0.5 ), 2.0 );
-	nearest.position = p;
-	nearest.distance = depth;
 	return nearest;
 
 }
