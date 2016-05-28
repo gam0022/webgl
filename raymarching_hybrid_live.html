@@ -70,9 +70,6 @@ uniform float shadowSharpness;
 // obj
 uniform float objY;
 
-// psyllium
-uniform mat4 psylliumRotationMarix;
-
 // consts
 const float EPS = 0.0001;
 const float OFFSET = EPS * 2000.0;
@@ -106,25 +103,6 @@ vec3 onRep( vec3 p, float interval ) {
 	q.y = p.y;
 	return q;
 
-}
-
-vec3 rotate(vec3 p, float angle, vec3 axis){
-    vec3 a = normalize(axis);
-    float s = sin(angle);
-    float c = cos(angle);
-    float r = 1.0 - c;
-    mat3 m = mat3(
-        a.x * a.x * r + c,
-        a.y * a.x * r + a.z * s,
-        a.z * a.x * r - a.y * s,
-        a.x * a.y * r - a.z * s,
-        a.y * a.y * r + c,
-        a.z * a.y * r + a.x * s,
-        a.x * a.z * r + a.y * s,
-        a.y * a.z * r - a.x * s,
-        a.z * a.z * r + c
-    );
-    return m * p;
 }
 
 float sphereDist( vec3 p, float r ) {
@@ -212,9 +190,9 @@ float psylliumDist( vec3 p ) {
 	float r = 4.0;
 	float t = 8.0 * time;
 	float x = rand(getDiscreteGridVec2(p.xz)) * 10.0 - 5.0;
-	vec3 org = vec3( 0.0, 0.0, 0.0);
-	vec3 dir = vec3( 0.0, 1.0, 0.0 );
-	return sdCapsule(rotate( onRep( p, GRID ), sin ( t ), vec3( 1.0, 0.1, 1.0 )) , org, org + r * normalize( dir ), 0.2 );
+	vec3 org = vec3( x, -10.0, x);
+	vec3 dir = vec3( cos( t ), 2.0, cos( t ) );
+	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
 }
 
 float sceneDist( vec3 p ) {
@@ -482,7 +460,6 @@ void main(void) {
 			var geometry, material, plane;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var mesh, camera, scene, renderer;
-			var psylliumRotationMarix = new THREE.Matrix4();
 			var helper;
 
 			var clock = new THREE.Clock();
@@ -576,7 +553,6 @@ void main(void) {
 						shadowSharpness: { type: 'f', value: config.shadowSharpness },
 
 						objY: { type: 'f', value: config.objY },
-						psylliumRotationMarix: { type: 'm4', value: psylliumRotationMarix },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -729,8 +705,6 @@ void main(void) {
 
 				material.uniforms.objY.value = config.objY;
 				renderer.render( scene, camera );
-
-				psylliumRotationMarix.makeRotationAxis( new THREE.Vector3( 1, 0, 1 ), Math.sin( timestamp * 2.0 * 0.001 ) );
 
 				stats.end();
 
