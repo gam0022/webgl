@@ -105,6 +105,17 @@ vec3 onRep( vec3 p, float interval ) {
 
 }
 
+// distance functions
+vec3 onRep2( vec3 p, float interval, float size ) {
+	if ( p.x >= -size * interval && p.x <= size * interval && p.z >= -size * interval && p.z <= size * interval ) {
+		vec3 q = mod( p, interval ) - 0.5 * interval;
+		q.y = p.y;
+		return q;
+	} else {
+		return p;
+	}
+}
+
 float sphereDist( vec3 p, vec3 c, float r ) {
 
 	return length( p - c ) - r;
@@ -199,31 +210,37 @@ float psylliumDist( vec3 p ) {
 	float r = 4.0;
 	float t = 8.0 * time;
 	float x = rand(getDiscreteGridVec2(p.xz)) * 8.0 - 4.0;
-	vec3 org = vec3( x, -10.0, x);
+	vec3 org = vec3( x, -50.0 + length( p.xz ) * 0.3, x);
 	vec3 dir = vec3( cos( t ), 2.0, -2.0 + cos( t ) );
 	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
 }
 
 float sceneDist( vec3 p ) {
 
-	return max(
-		sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
-		udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
+	return min( 
+		max(
+			sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
+			udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
+		),
+		sphereDist( onRep2( p , 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
 	);
 
 }
 
 Intersect sceneIntersect( vec3 p ) {
 
-	Intersect a, b;
+	Intersect a, b, c;
 
 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 );
-	a.material = FLOOR_MATERIAL;
+	a.material = MIRROR_MATERIAL;
 
 	b.distance = udRoundBox( p + vec3( 0.0, 1.0, 0.0 ), vec3( 20.0, 1.0, 20.0 ), 0.1 );
 	b.material = MIRROR_MATERIAL;
 
-	return minIntersect( a, b );
+	c.distance = sphereDist( onRep2( p , 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
+	c.material = MIRROR_MATERIAL;
+
+	return minIntersect( maxIntersect( a, b ), c );
 }
 
 vec3 getNormal( vec3 p ) {
