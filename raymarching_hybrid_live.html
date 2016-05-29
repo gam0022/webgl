@@ -106,7 +106,7 @@ vec3 onRep( vec3 p, float interval ) {
 }
 
 // distance functions
-vec3 onRep2( vec3 p, float interval, float size ) {
+vec3 onRepRange( vec3 p, float interval, float size ) {
 	if ( p.x >= -size * interval && p.x <= size * interval && p.z >= -size * interval && p.z <= size * interval ) {
 		vec3 q = mod( p, interval ) - 0.5 * interval;
 		q.y = p.y;
@@ -114,6 +114,11 @@ vec3 onRep2( vec3 p, float interval, float size ) {
 	} else {
 		return p;
 	}
+}
+
+vec3 onRepX( vec3 p, float interval ) {
+	p.x = mod( p.x, interval ) - 0.5 * interval;
+	return p;
 }
 
 float sphereDist( vec3 p, vec3 c, float r ) {
@@ -212,7 +217,11 @@ float psylliumDist( vec3 p ) {
 	float x = rand(getDiscreteGridVec2(p.xz)) * 8.0 - 4.0;
 	vec3 org = vec3( x, -50.0 + length( p.xz ) * 0.3, x);
 	vec3 dir = vec3( cos( t ), 2.0, -2.0 + cos( t ) );
-	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
+
+	return min(
+		sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 ),
+		sdCapsule( onRepX( p, 30.0) , vec3( 17.0 * sin( time * 2.0 ), -100.0, 0.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 )
+	);
 }
 
 float sceneDist( vec3 p ) {
@@ -222,7 +231,7 @@ float sceneDist( vec3 p ) {
 			sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
 			udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
 		),
-		sphereDist( onRep2( p , 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
+		sphereDist( onRepRange( p, 300.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
 	);
 
 }
@@ -234,10 +243,10 @@ Intersect sceneIntersect( vec3 p ) {
 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 );
 	a.material = MIRROR_MATERIAL;
 
-	b.distance = udRoundBox( p + vec3( 0.0, 1.0, 0.0 ), vec3( 20.0, 1.0, 20.0 ), 0.1 );
-	b.material = MIRROR_MATERIAL;
+	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
+	b.material = FLOOR_MATERIAL;
 
-	c.distance = sphereDist( onRep2( p , 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
+	c.distance = sphereDist( onRepRange( p, 300.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
 	c.material = MIRROR_MATERIAL;
 
 	return minIntersect( maxIntersect( a, b ), c );
@@ -359,7 +368,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
 
 		if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow + specular;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 			vec3 color = vec3( 0.2, 0.2, 0.2 );
 			nearest.color = color * diffuse * shadow + specular;
@@ -390,7 +399,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	}
 
 	//vec3 psylliumColor = hsv2rgb( vec3( abs( getDiscreteGrid( p.xz ) * 0.1 ), 1.0, 1.0 ) );
-	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02 + 0.6, 1.0, 1.0 ) );
+	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02, 1.0, 1.0 ) );
 
 	if ( !nearest.isHit || depth < nearest.distance ) {
 		if ( abs(dist) < EPS ) {
