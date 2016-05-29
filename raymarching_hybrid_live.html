@@ -94,7 +94,6 @@ struct Intersect {
 
 const int MIRROR_MATERIAL = 0;
 const int FLOOR_MATERIAL = 1;
-const int PSYLLIUM_MATERIAL = 2;
 
 // distance functions
 vec3 onRep( vec3 p, float interval ) {
@@ -157,17 +156,26 @@ float udRoundBox( vec3 p, vec3 b, float r )
   return length(max(abs(p)-b,0.0))-r;
 }
 
-float sdCappedCylinder( vec3 p, vec2 h )
-{
-  vec2 d = abs(vec2(length(p.xz),p.y)) - h;
-  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
-}
-
 float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
 {
     vec3 pa = p - a, ba = b - a;
     float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
     return length( pa - ba*h ) - r;
+}
+
+float sdCylinder( vec3 p, float width )
+{
+	return length( p.xz ) - width;
+}
+
+float barDist(vec3 p, float width) {
+	return length(max(abs(p.xz) - width, 0.0));
+}
+
+float sdCappedCylinder( vec3 p, vec2 h )
+{
+	vec2 d = abs(vec2(length(p.xz),p.y)) - h;
+	return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
 
 // utils
@@ -249,20 +257,19 @@ float laserDist( vec3 p ) {
 }
 
 float sceneDist( vec3 p ) {
-
-	return min( 
+	return min(min( 
 		max(
 			sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
 			udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
 		),
-		sphereDist( onRepRange( p, 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
+		sphereDist( onRepRange( p, 150.0, 1.0), vec3( 0.0, 100.0, 0.0 ), 50.0 )),
+		barDist( onRepRange( p, 150.0, 1.0), 10.0 )
 	);
-
 }
 
 Intersect sceneIntersect( vec3 p ) {
 
-	Intersect a, b, c;
+	Intersect a, b, c, d;
 
 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 );
 	a.material = MIRROR_MATERIAL;
@@ -270,10 +277,13 @@ Intersect sceneIntersect( vec3 p ) {
 	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
 	b.material = FLOOR_MATERIAL;
 
-	c.distance = sphereDist( onRepRange( p, 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
+	c.distance = sphereDist( onRepRange( p, 150.0, 1.0), vec3( 0.0, 100.0, 0.0 ), 50.0 );
 	c.material = MIRROR_MATERIAL;
 
-	return minIntersect( maxIntersect( a, b ), c );
+	d.distance = barDist( onRepRange( p, 150.0, 1.0), 10.0 );
+	d.material = MIRROR_MATERIAL;
+
+	return minIntersect( minIntersect( maxIntersect( a, b ), c ), d );
 }
 
 vec3 getNormal( vec3 p ) {
@@ -457,7 +467,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 		}
 	}
- 	
+	
 	return nearest;
 
 }
@@ -677,7 +687,7 @@ void main(void) {
 					 *       before you add mesh to scene or any other 3D object.
 					 * Note: Physics calculation is pretty heavy.
 					 *       It may not be acceptable for most mobile devices yet.
-			 		 */
+					 */
 					if ( ! isMobileDevice() ) {
 
 						helper.setPhysics( mesh );
@@ -817,12 +827,12 @@ void main(void) {
 				var s = navigator.userAgent;
 
 				if (    s.match( /iPhone/i )
-//				     || s.match( /iPad/i )
-				     || s.match( /iPod/i )
-				     || s.match( /webOS/i )
-				     || s.match( /BlackBerry/i )
-				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
-				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+//					 || s.match( /iPad/i )
+					 || s.match( /iPod/i )
+					 || s.match( /webOS/i )
+					 || s.match( /BlackBerry/i )
+					 || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
+					 || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
 
 					return true;
 
