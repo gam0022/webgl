@@ -121,6 +121,25 @@ vec3 onRepX( vec3 p, float interval ) {
 	return p;
 }
 
+vec3 rotate(vec3 p, float angle, vec3 axis){
+    vec3 a = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float r = 1.0 - c;
+    mat3 m = mat3(
+        a.x * a.x * r + c,
+        a.y * a.x * r + a.z * s,
+        a.z * a.x * r - a.y * s,
+        a.x * a.y * r - a.z * s,
+        a.y * a.y * r + c,
+        a.z * a.y * r + a.x * s,
+        a.x * a.z * r + a.y * s,
+        a.y * a.z * r - a.x * s,
+        a.z * a.z * r + c
+    );
+    return m * p;
+}
+
 float sphereDist( vec3 p, vec3 c, float r ) {
 
 	return length( p - c ) - r;
@@ -214,14 +233,19 @@ float rand(vec2 co){
 float psylliumDist( vec3 p ) {
 	float r = 4.0;
 	float t = 8.0 * time;
-	float x = rand(getDiscreteGridVec2(p.xz)) * 8.0 - 4.0;
-	vec3 org = vec3( x, -50.0 + length( p.xz ) * 0.3, x);
-	vec3 dir = vec3( cos( t ), 2.0, -2.0 + cos( t ) );
+	float rnd = rand(getDiscreteGridVec2(p.xz));
+	float x = rnd * 8.0 - 4.0;
+	float cost = cos( t + 2.0 * rnd );
+	vec3 org = vec3( x, -50.0 + cost + length( p.xz ) * 0.3, x);
+	vec3 dir = vec3( cost, 2.0, -2.0 + cost );
 
+	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
+}
+
+float laserDist( vec3 p ) {
 	return min(
-		sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 ),
-		sdCapsule( onRepX( p, 30.0) , vec3( 17.0 * sin( time * 2.0 ), -100.0, 0.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 )
-	);
+		sdCapsule( onRepX( rotate(p, -1.0, vec3(0.0, 0.0, 1.0)), 40.0), vec3( 22.0 * sin( time * 2.0 ), -1000.0, 1000.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 ),
+		sdCapsule( onRepX( p, 30.0) , vec3( 17.0 * cos( time * 2.0 ), -1000.0, 1000.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 ));
 }
 
 float sceneDist( vec3 p ) {
@@ -231,7 +255,7 @@ float sceneDist( vec3 p ) {
 			sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
 			udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
 		),
-		sphereDist( onRepRange( p, 300.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
+		sphereDist( onRepRange( p, 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 )
 	);
 
 }
@@ -246,7 +270,7 @@ Intersect sceneIntersect( vec3 p ) {
 	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
 	b.material = FLOOR_MATERIAL;
 
-	c.distance = sphereDist( onRepRange( p, 300.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
+	c.distance = sphereDist( onRepRange( p, 200.0, 2.0), vec3( 0.0, 150.0, 0.0 ), 50.0 );
 	c.material = MIRROR_MATERIAL;
 
 	return minIntersect( maxIntersect( a, b ), c );
@@ -351,7 +375,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	int count = 0;
 	Intersect nearest;
 
-	for ( int i = 0; i < 128; i++ ){
+	for ( int i = 0; i < 64; i++ ){
 		dist = sceneDist( p );
 		depth += dist;
 		p = origin + depth * ray;
@@ -386,7 +410,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	p = origin;
 	depth = 0.0;
 	minDist = 9999.9;
-	for ( int i = 0; i < 128; i++ ){
+	for ( int i = 0; i < 64; i++ ){
 
 		dist = psylliumDist( p );
 		minDist = min(dist, minDist);
@@ -398,7 +422,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
 
-	//vec3 psylliumColor = hsv2rgb( vec3( abs( getDiscreteGrid( p.xz ) * 0.1 ), 1.0, 1.0 ) );
 	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02, 1.0, 1.0 ) );
 
 	if ( !nearest.isHit || depth < nearest.distance ) {
@@ -408,8 +431,33 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 		}
 	}
+
+	// laser pass
+	p = origin;
+	depth = 0.0;
+	minDist = 9999.9;
+	for ( int i = 0; i < 20; i++ ){
+
+		dist = laserDist( p );
+		minDist = min(dist, minDist);
+		depth += dist;
+		p = origin + depth * ray;
+
+		count = i;
+		if ( abs(dist) < EPS ) break;
+
+	}
+
+	psylliumColor = vec3( 1.0 ) - psylliumColor;
+
+	if ( !nearest.isHit || depth < nearest.distance ) {
+		if ( abs(dist) < EPS ) {
+			nearest.color += psylliumColor;
+		} else {
+			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
+		}
+	}
  	
-	//nearest.color -= pow( clamp( 0.00001 * depth, 0.0, 0.5 ), 2.0 );
 	return nearest;
 
 }
