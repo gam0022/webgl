@@ -69,6 +69,7 @@ uniform float shadowSharpness;
 
 // obj
 uniform float objY;
+uniform vec3 mikuPosition;
 
 // consts
 const float EPS = 0.0001;
@@ -197,9 +198,9 @@ float rand(vec2 co){
 
 float psylliumDist( vec3 p ) {
 	float r = 4.0;
-	float t = 8.0 * time;
+	float t = 10.0 * time;
 	float x = rand(getDiscreteGridVec2(p.xz)) * 8.0 - 4.0;
-	vec3 org = vec3( x, -10.0, x);
+	vec3 org = vec3( x, -10.0 + cos( t ), x);
 	vec3 dir = vec3( cos( t ), 2.0, -2.0 + cos( t ) );
 	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
 }
@@ -207,8 +208,8 @@ float psylliumDist( vec3 p ) {
 float sceneDist( vec3 p ) {
 
 	return max(
-		sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
-		udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
+		sphereDist( p, vec3( 0.0, 0.0, 0.0 ) + mikuPosition, 10.0 ),
+		udRoundBox( p + vec3( 0.0, 20.0, 0.0 ) - mikuPosition, vec3( 20.0, 20.0, 20.0 ), 0.1 )
 	);
 
 }
@@ -217,10 +218,10 @@ Intersect sceneIntersect( vec3 p ) {
 
 	Intersect a, b;
 
-	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 );
+	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ) + mikuPosition, 10.0 );
 	a.material = FLOOR_MATERIAL;
 
-	b.distance = udRoundBox( p + vec3( 0.0, 1.0, 0.0 ), vec3( 20.0, 1.0, 20.0 ), 0.1 );
+	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ) - mikuPosition, vec3( 20.0, 20.0, 20.0 ), 0.1 );
 	b.material = MIRROR_MATERIAL;
 
 	return minIntersect( a, b );
@@ -342,7 +343,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
 
 		if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p - mikuPosition ) * diffuse * shadow;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 			vec3 color = vec3( 0.2, 0.2, 0.2 );
 			nearest.color = color * diffuse * shadow + specular;
@@ -468,7 +469,8 @@ void main(void) {
 
 			var geometry, material, plane;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
-			var mesh, camera, scene, renderer;
+			var miku, camera, scene, renderer;
+			var mikuPosition = new THREE.Vector3( 0, 0, 0 );
 			var helper;
 
 			var clock = new THREE.Clock();
@@ -480,7 +482,7 @@ void main(void) {
 					window.open( canvas.toDataURL() );
 
 				},
-				camera: 'Orbit',
+				camera: 'Auto',
 
 				shadowType: 2,
 				shadowIntensity: 0.3,
@@ -562,6 +564,7 @@ void main(void) {
 						shadowSharpness: { type: 'f', value: config.shadowSharpness },
 
 						objY: { type: 'f', value: config.objY },
+						mikuPosition: { type: 'v3', value: mikuPosition },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -593,26 +596,26 @@ void main(void) {
 
 				loader.load( modelFile, vmdFiles, function ( object ) {
 
-					mesh = object;
+					miku = object;
 
-					helper.add( mesh );
-					helper.setAnimation( mesh );
+					helper.add( miku );
+					helper.setAnimation( miku );
 
 					/*
 					 * Note: You must set Physics
-					 *       before you add mesh to scene or any other 3D object.
+					 *       before you add miku to scene or any other 3D object.
 					 * Note: Physics calculation is pretty heavy.
 					 *       It may not be acceptable for most mobile devices yet.
 			 		 */
 					if ( ! isMobileDevice() ) {
 
-						helper.setPhysics( mesh );
+						helper.setPhysics( miku );
 
 					}
 
 					helper.unifyAnimationDuration();
 
-					scene.add( mesh );
+					scene.add( miku );
 
 				}, onProgress, onError );
 
@@ -621,7 +624,7 @@ void main(void) {
 
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
-				gui.add( config, 'camera', [ 'GLSL', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
+				gui.add( config, 'camera', [ 'Auto', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
 
 				var shadowFolder = gui.addFolder('Shadow');
 				shadowFolder.add( config, 'shadowType', { Hard: 0, Soft1: 1, Soft2: 2 } ).name( 'Type');
@@ -690,6 +693,11 @@ void main(void) {
 
 					orbitControls.update();
 
+				} else if ( config.camera === "Auto" ) {
+
+					camera.position.z = mikuPosition.z + 30.0;
+					camera.lookAt( new THREE.Vector3( 0, 10, 0 ).add( mikuPosition ) );
+
 				}
 
 				if ( config.objAutoMove) {
@@ -713,11 +721,16 @@ void main(void) {
 				
 
 				material.uniforms.objY.value = config.objY;
+
 				renderer.render( scene, camera );
 
 				stats.end();
 
-				if ( mesh ) {
+				if ( miku ) {
+
+					mikuPosition.z = -timestamp * 0.01;
+					miku.position.copy( mikuPosition );
+					material.uniforms.mikuPosition.value = miku.position;
 
 					helper.animate( delta );
 					helper.render( scene, camera );
