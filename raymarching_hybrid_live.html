@@ -96,17 +96,6 @@ vec3 onRep( vec3 p, float interval ) {
 
 }
 
-// distance functions
-vec3 onRepRange( vec3 p, float interval, float size ) {
-	if ( p.x >= -size * interval && p.x <= size * interval && p.z >= -size * interval && p.z <= size * interval ) {
-		vec3 q = mod( p, interval ) - 0.5 * interval;
-		q.y = p.y;
-		return q;
-	} else {
-		return p;
-	}
-}
-
 vec3 onRepX( vec3 p, float interval ) {
 	p.x = mod( p.x, interval ) - 0.5 * interval;
 	return p;
@@ -171,13 +160,8 @@ float sdCappedCylinder( vec3 p, vec2 h )
 }
 
 // utils
-float getDiscreteGrid( vec2 p ) {
-
-	return floor( ( p.x + p.y + GRID / 2.0 ) / GRID );
-}
-
-vec2 getDiscreteGridVec2( vec2 p ) {
-	return floor(p / GRID);
+vec2 getDiscrete( vec2 p, float grid ) {
+	return floor(p / grid);
 }
 
 // color functions
@@ -233,7 +217,7 @@ float rand(vec2 co){
 float psylliumDist( vec3 p ) {
 	float r = 4.0;
 	float t = 8.0 * time;
-	float rnd = rand(getDiscreteGridVec2(p.xz));
+	float rnd = rand(getDiscrete(p.xz, GRID));
 	float x = rnd * 8.0 - 4.0;
 	float cost = cos( t + 2.0 * rnd );
 	vec3 org = vec3( x, -250.0 + cost + length( onRep( p, 1000.0).xz ) * 0.3, x);
@@ -249,19 +233,18 @@ float laserDist( vec3 p ) {
 }
 
 float sceneDist( vec3 p ) {
-	return min(min( 
+	return min( 
 		max(
 			sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 ),
 			udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
 		),
-		sphereDist( onRepRange( p, 150.0, 1.0), vec3( 0.0, 100.0, 0.0 ), 50.0 )),
-		barDist( onRepRange( p, 150.0, 1.0), 10.0 )
+		sphereDist( onRep( p, 500.0), vec3( 0.0, 100.0, 0.0 ), 100.0 )
 	);
 }
 
 Intersect sceneIntersect( vec3 p ) {
 
-	Intersect a, b, c, d;
+	Intersect a, b, c;
 
 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 10.0 );
 	a.material = MIRROR_MATERIAL;
@@ -269,13 +252,10 @@ Intersect sceneIntersect( vec3 p ) {
 	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
 	b.material = FLOOR_MATERIAL;
 
-	c.distance = sphereDist( onRepRange( p, 150.0, 1.0), vec3( 0.0, 100.0, 0.0 ), 50.0 );
+	c.distance = sphereDist( onRep( p, 500.0), vec3( 0.0, 100.0, 0.0 ), 100.0 );
 	c.material = MIRROR_MATERIAL;
 
-	d.distance = barDist( onRepRange( p, 150.0, 1.0), 10.0 );
-	d.material = MIRROR_MATERIAL;
-
-	return minIntersect( minIntersect( maxIntersect( a, b ), c ), d );
+	return minIntersect( maxIntersect( a, b ), c );
 }
 
 vec3 getNormal( vec3 p ) {
@@ -297,7 +277,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	int count = 0;
 	Intersect nearest;
 
-	for ( int i = 0; i < 64; i++ ){
+	for ( int i = 0; i < 128; i++ ){
 		dist = sceneDist( p );
 		depth += dist;
 		p = origin + depth * ray;
@@ -315,8 +295,8 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		if ( nearest.material == FLOOR_MATERIAL ) {
 			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse + specular;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
-			vec3 color = vec3( 0.2, 0.2, 0.2 );
-			nearest.color = color * diffuse + specular;
+			vec3 color = vec3( 0.2 );
+			nearest.color = color * diffuse + specular * 0.3;
 		}
 		nearest.isHit = true;
 	} else {
@@ -324,6 +304,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		nearest.isHit = false;
 	}
 
+	nearest.color *= clamp( 500.0 / depth, 0.0, 1.0 );
 	nearest.position = p;
 	nearest.distance = depth;
 
@@ -331,10 +312,14 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	p = origin;
 	depth = 0.0;
 	minDist = 9999.9;
+	vec3 minPos;
 	for ( int i = 0; i < 64; i++ ){
 
 		dist = psylliumDist( p );
-		minDist = min(dist, minDist);
+		if ( dist < minDist ) {
+			minDist = dist;
+			minPos = p;
+		}
 		depth += dist;
 		p = origin + depth * ray;
 
@@ -346,10 +331,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02, 1.0, 1.0 ) );
 
 	if ( !nearest.isHit || depth < nearest.distance ) {
+		float l = length( minPos - origin );
+		float k = clamp( 400.0 / l, 0.0, 1.0 );
 		if ( abs(dist) < EPS ) {
-			nearest.color += psylliumColor;
+			nearest.color += k * psylliumColor;
 		} else {
-			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
+			nearest.color += k * psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 		}
 	}
 
@@ -403,7 +390,7 @@ void main(void) {
 		nearest = getRayColor( cPos, ray );
 
 		color += alpha * nearest.color;
-		alpha *= 0.4;
+		alpha *= 1.0;
 		ray = normalize( reflect( ray, nearest.normal ) );
 		cPos = nearest.position + nearest.normal * OFFSET;
 
