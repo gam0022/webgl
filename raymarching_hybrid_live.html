@@ -62,14 +62,6 @@ uniform mat4 cameraProjectionMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 
-// shadow
-uniform int shadowType;
-uniform float shadowIntensity;
-uniform float shadowSharpness;
-
-// obj
-uniform float objY;
-
 // consts
 const float EPS = 0.0001;
 const float OFFSET = EPS * 2000.0;
@@ -296,86 +288,6 @@ vec3 getNormal( vec3 p ) {
 
 }
 
-float getHardShadow( vec3 ro, vec3 rd ) {
-
-	float dist;
-	float depth = EPS;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		depth += dist;
-
-	}
-
-	return 1.0;
-
-}
-
-float getSoft1Shadow( vec3 ro, vec3 rd ) {
-
-	float dist;
-	float depth = EPS;
-	float bright = 1.0;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		bright = min( bright, shadowSharpness * dist );
-
-		depth += dist;
-
-	}
-
-	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
-
-}
-
-float getSoft2Shadow( vec3 ro, vec3 rd ) {
-
-	float dist;
-	float depth = EPS;
-	float bright = 1.0;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		bright = min( bright, shadowSharpness * dist / depth );
-		depth += dist;
-
-	}
-
-	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
-
-}
-
-float getShadow( vec3 ro, vec3 rd ) {
-
-	if ( shadowType == 0 ) {
-
-		return getHardShadow( ro, rd );
-
-	} else if ( shadowType == 1 ) {
-
-		return getSoft1Shadow( ro, rd );
-
-	} //else if ( shadowType == 2 ) {
-
-		return getSoft2Shadow( ro, rd );
-
-	//}
-
-}
-
 Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	// marching loop
@@ -399,13 +311,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		nearest.normal = getNormal(p);
 		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
 		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
-		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
 
 		if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow + specular;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse + specular;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 			vec3 color = vec3( 0.2, 0.2, 0.2 );
-			nearest.color = color * diffuse * shadow + specular;
+			nearest.color = color * diffuse + specular;
 		}
 		nearest.isHit = true;
 	} else {
@@ -565,14 +476,6 @@ void main(void) {
 
 				},
 				camera: 'Orbit',
-
-				shadowType: 2,
-				shadowIntensity: 0.3,
-				shadowSharpness: 8.0,
-
-				objAutoMove: false,
-				objY: 10.0,
-
 				resolution: '256',
 			};
 
@@ -640,12 +543,6 @@ void main(void) {
 						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
 						cameraNear: { type: 'f', value: camera.near },
 						cameraFar:  { type: 'f', value: camera.far },
-
-						shadowType: { type: 'i', value: config.shadowType },
-						shadowIntensity: { type: 'f', value: config.shadowIntensity },
-						shadowSharpness: { type: 'f', value: config.shadowSharpness },
-
-						objY: { type: 'f', value: config.objY },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -706,17 +603,6 @@ void main(void) {
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
 				gui.add( config, 'camera', [ 'GLSL', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
-
-				var shadowFolder = gui.addFolder('Shadow');
-				shadowFolder.add( config, 'shadowType', { Hard: 0, Soft1: 1, Soft2: 2 } ).name( 'Type');
-				shadowFolder.add( config, 'shadowIntensity', 0.0, 1.0 ).name( 'Intensity' );
-				shadowFolder.add( config, 'shadowSharpness', 0.0, 100.0 ).name( 'Sharpness' );
-				shadowFolder.open();
-
-				var objFolder = gui.addFolder('Obj');
-				objFolder.add( config, 'objAutoMove' ).name( 'Auto Move' );
-				objFolder.add( config, 'objY', -1.0, 10.0 ).name( 'Pos Y' ).listen();
-				objFolder.open();
 
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
@@ -791,12 +677,6 @@ void main(void) {
 				material.uniforms.cameraNear.value = camera.near;
 				material.uniforms.cameraFar.value  = camera.far;
 
-				material.uniforms.shadowType.value = config.shadowType;
-				material.uniforms.shadowIntensity.value = config.shadowIntensity;
-				material.uniforms.shadowSharpness.value = config.shadowSharpness;
-				
-
-				material.uniforms.objY.value = config.objY;
 				renderer.render( scene, camera );
 
 				stats.end();
