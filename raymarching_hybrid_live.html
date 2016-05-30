@@ -270,15 +270,13 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	float dist, minDist;
 	float depth = 0.0;
 	vec3 p = origin;
-	int count = 0;
 	Intersect nearest;
 
-	for ( int i = 0; i < 128; i++ ){
+	for ( int i = 0; i < 90; i++ ){
 		dist = sceneDist( p );
 		depth += dist;
 		p = origin + depth * ray;
 
-		count = i;
 		if ( abs(dist) < EPS ) break;
 	}
 
@@ -309,7 +307,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	depth = 0.0;
 	minDist = 9999.9;
 	vec3 minPos;
-	for ( int i = 0; i < 64; i++ ){
+	for ( int i = 0; i < 30; i++ ){
 
 		dist = psylliumDist( p );
 		if ( dist < minDist ) {
@@ -319,7 +317,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		depth += dist;
 		p = origin + depth * ray;
 
-		count = i;
 		if ( abs(dist) < EPS ) break;
 
 	}
@@ -347,7 +344,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		depth += dist;
 		p = origin + depth * ray;
 
-		count = i;
 		if ( abs(dist) < EPS ) break;
 
 	}
