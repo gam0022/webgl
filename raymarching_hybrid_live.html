@@ -236,7 +236,7 @@ float psylliumDist( vec3 p ) {
 	float rnd = rand(getDiscreteGridVec2(p.xz));
 	float x = rnd * 8.0 - 4.0;
 	float cost = cos( t + 2.0 * rnd );
-	vec3 org = vec3( x, -50.0 + cost + length( p.xz ) * 0.3, x);
+	vec3 org = vec3( x, -250.0 + cost + length( onRep( p, 1000.0).xz ) * 0.3, x);
 	vec3 dir = vec3( cost, 2.0, -2.0 + cost );
 
 	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
