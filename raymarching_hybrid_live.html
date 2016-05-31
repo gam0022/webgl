@@ -86,6 +86,7 @@ struct Intersect {
 
 const int MIRROR_MATERIAL = 0;
 const int FLOOR_MATERIAL = 1;
+const int CIRCUIT_MATERIAL = 2;
 
 // distance functions
 vec3 onRep( vec3 p, float interval ) {
@@ -157,6 +158,46 @@ vec3 hsv2rgb( vec3 c ) {
 	vec4 K = vec4( 1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0 );
 	vec3 p = abs( fract( c.xxx + K.xyz ) * 6.0 - K.www );
 	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
+
+}
+
+// thanks to http://glslsandbox.com/e#21290.5
+vec2 circuitPattern( vec2 p ) {
+
+	p = fract(p);
+	float r = 0.123;
+	float v = 0.0, g = 0.0;
+	r = fract(r * 9184.928);
+	float cp, d;
+	
+	d = p.x;
+	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
+	d = p.y;
+	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
+	d = p.x - 1.0;
+	g += pow(clamp(3.0 - abs(d), 0.0, 1.0), 1000.0);
+	d = p.y - 1.0;
+	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 10000.0);
+	
+	const int iter = 15;
+	for(int i = 0; i < iter; i ++)
+	{
+		cp = 0.5 + (r - 0.5) * 0.9;
+		d = p.x - cp;
+		g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 200.0);
+		if(d > 0.0) {
+			r = fract(r * 4829.013 * 2.0);
+			p.x = (p.x - cp) / (1.0 - cp);
+			v += 1.0;
+		}
+		else {
+			r = fract(r * 1239.528);
+			p.x = p.x / cp;
+		}
+		p = p.yx;
+	}
+	v /= float(iter);
+	return vec2(g, v);
 
 }
 
@@ -249,7 +290,7 @@ Intersect sceneIntersect( vec3 p ) {
 	b.material = FLOOR_MATERIAL;
 
 	c.distance = sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 );
-	c.material = MIRROR_MATERIAL;
+	c.material = CIRCUIT_MATERIAL;
 
 	return minIntersect( maxIntersect( a, b ), c );
 }
@@ -280,13 +321,21 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		if ( abs(dist) < EPS ) break;
 	}
 
+	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02, 1.0, 1.0 ) );
+
 	if ( abs(dist) < EPS ) {
 		nearest = sceneIntersect( p );
 		nearest.normal = getNormal(p);
 		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
 		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
 
-		if ( nearest.material == FLOOR_MATERIAL ) {
+		if ( nearest.material == CIRCUIT_MATERIAL ) {
+			vec2 uv = p.yz / 1000.0;
+			uv.xy += time * 0.01;
+			vec2 dg = circuitPattern(uv);
+			float pattern = max( dg.x - 1.0, 0.0 );
+			nearest.color = psylliumColor * pattern;
+		} else if ( nearest.material == FLOOR_MATERIAL ) {
 			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse + specular;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 			vec3 color = vec3( 0.2 );
@@ -321,7 +370,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	}
 
-	vec3 psylliumColor = hsv2rgb( vec3( time * 0.02, 1.0, 1.0 ) );
 
 	if ( !nearest.isHit || depth < nearest.distance ) {
 		float l = length( minPos - origin );
