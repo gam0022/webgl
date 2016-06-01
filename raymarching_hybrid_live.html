@@ -108,6 +108,31 @@ mat2 rotate(in float a)
     return mat2(c,s,-s,c);
 }
 
+vec2 fold(in vec2 p, in float s)
+{
+    float a = PI / s - atan(p.x, p.y);
+    float n = PI2 / s;
+    a = floor(a / n) * n;
+    p *= rotate(a);
+    return p;
+}
+
+vec2 bend(in vec2 p, in float d)
+{
+    p.y -= d*p.x*p.x;
+    p.y *= cos(atan(2.0*d*p.x));
+	return p;
+}
+
+float opCheapBend( vec3 p )
+{
+    float c = cos(20.0*p.y);
+    float s = sin(20.0*p.y);
+    mat2  m = mat2(c,-s,s,c);
+    vec3  q = vec3(m*p.xy,p.z);
+    return primitive(q);
+}
+
 float sphereDist( vec3 p, vec3 c, float r ) {
 
 	return length( p - c ) - r;
