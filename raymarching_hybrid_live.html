@@ -89,7 +89,7 @@ const int MIRROR_MATERIAL = 0;
 const int FLOOR_MATERIAL = 1;
 const int CIRCUIT_MATERIAL = 2;
 const int BASIC_MATERIAL = 3;
-const int CIRCUIT_MATERIAL2 = 4;
+const int FLOOR_MATERIAL2 = 4;
 
 // distance functions
 vec3 onRep( vec3 p, float interval ) {
@@ -234,10 +234,10 @@ vec2 circuitPattern( vec2 p ) {
 
 }
 
-float checkeredPattern( vec3 p ) {
+float checkeredPattern( vec2 p ) {
 
 	float u = 1.0 - floor( mod( p.x, 2.0 ) );
-	float v = 1.0 - floor( mod( p.z, 2.0 ) );
+	float v = 1.0 - floor( mod( p.y, 2.0 ) );
 
 	if ( ( u == 1.0 && v < 1.0 ) || ( u < 1.0 && v == 1.0 ) ) {
 
@@ -346,7 +346,8 @@ Intersect sceneIntersect( vec3 p ) {
 					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
 					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
 				);
-	d.material = CIRCUIT_MATERIAL2;
+	d.material = FLOOR_MATERIAL2;
+	d.position = p2;
 
 	return minIntersect( minIntersect( maxIntersect( a, b ), d ), c);
 }
@@ -392,16 +393,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			float pattern = max( dg.x - 1.0, 0.0 );
 			nearest.color = psylliumColor * pattern;
 		} else if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse + specular;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p.xz ) * diffuse + specular;
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 			vec3 color = vec3( 0.2 );
 			nearest.color = color * diffuse + specular * 0.3;
-		} else if ( nearest.material == CIRCUIT_MATERIAL2 ) {
-			vec2 uv = p.yz / 100.0;
-			uv.xy += time * 0.1;
-			vec2 dg = circuitPattern(uv);
-			float pattern = max( dg.x - 1.0, 0.0 );
-			nearest.color = (vec3(1.0) - psylliumColor) * pattern;
+		} else if ( nearest.material == FLOOR_MATERIAL2 ) {
+			nearest.color = vec3( 0.9 ) * checkeredPattern( nearest.position.yz ) * diffuse + specular;
 		}
 		nearest.isHit = true;
 	} else {
