@@ -499,14 +499,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	psylliumColor = vec3( 1.0 ) - psylliumColor;
 
-	if ( !nearest.isHit || depth < nearest.distance ) {
-		if ( abs(dist) < EPS ) {
-			nearest.color += psylliumColor;
-		} else {
-			nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
-		}
+	if ( abs(dist) < EPS ) {
+		nearest.color += psylliumColor;
+	} else {
+		nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
 	}
-	
+
 	return nearest;
 
 }
