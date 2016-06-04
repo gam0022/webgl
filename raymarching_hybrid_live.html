@@ -556,10 +556,12 @@ void main(void) {
 
 			var config = {
 				saveImage: function() {
-
 					renderer.render( scene, camera );
-					window.open( canvas.toDataURL() );
+					if ( mesh ) {
+						helper.render( scene, camera );
+					}
 
+					window.open( canvas.toDataURL() );
 				},
 				camera: 'Orbit',
 				resolution: '256',
