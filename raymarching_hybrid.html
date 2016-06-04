@@ -125,7 +125,7 @@ float sdCappedCylinder( vec3 p, vec2 h )
 float sceneDist( vec3 p ) {
 
 	return min(
-		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 ) ),
+		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) ),
 		floorDist( p )
 	);
 
@@ -171,7 +171,7 @@ Intersect minIntersect( Intersect a, Intersect b ) {
 Intersect sceneIntersect( vec3 p ) {
 
 	Intersect a, b;
-	a.distance = sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 20.0 ) );
+	a.distance = sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) );
 	a.material = SPHERE_MATERIAL;
 
 	b.distance = floorDist( p );
@@ -313,12 +313,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	} else {
 
-		nearest.color = vec3( 0.7 );
+		nearest.color = vec3( 1.0 );
 		nearest.isHit = false;
 
 	}
  	
-	//nearest.color += clamp( 0.002 * depth, 0.0, 1.0 );
+	//nearest.color += clamp( 0.002 * depth, 0.0, 0.9 );
 	nearest.position = p;
 	nearest.distance = depth;
 	return nearest;

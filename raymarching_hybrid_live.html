@@ -296,7 +296,7 @@ float laserDist( vec3 p ) {
 		sdCapsule( onRepX( p, 30.0) , vec3( 17.0 * cos( time * 2.0 ), -1000.0, 1000.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 ));
 }
 
-float sceneDist( vec3 p ) {
+float sceneDist_( vec3 p ) {
 	vec3 q = p;
 	q.xz *= rotate( -2.0 );
 
@@ -321,7 +321,7 @@ float sceneDist( vec3 p ) {
 		);
 }
 
-Intersect sceneIntersect( vec3 p ) {
+Intersect sceneIntersect_( vec3 p ) {
 
 	Intersect a, b, c, d;
 
@@ -350,6 +350,48 @@ Intersect sceneIntersect( vec3 p ) {
 	d.position = p2;
 
 	return minIntersect( minIntersect( maxIntersect( a, b ), d ), c);
+}
+float sceneDist( vec3 p ) {
+	vec3 q = p;
+	q.xz *= rotate( -2.0 );
+
+	vec3 p2 = p;
+	p2.xz = fold( p2.xz, 8.0 );
+	p2.z -= 20.0;
+	p2.yz *= rotate( -0.5 );
+
+	return 
+		min(
+			max(
+				sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 12.0 ),
+				udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
+			),
+			sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 )
+		);
+}
+
+Intersect sceneIntersect( vec3 p ) {
+
+	Intersect a, b, c, d;
+
+	vec3 q = p;
+	q.xz *= rotate( -2.0 );
+
+	vec3 p2 = p;
+	p2.xz = fold( p2.xz, 8.0 );
+	p2.z -= 20.0;
+	p2.yz *= rotate( -0.5 );
+
+	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 12.0 );
+	a.material = MIRROR_MATERIAL;
+
+	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
+	b.material = FLOOR_MATERIAL;
+
+	c.distance = sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 );
+	c.material = CIRCUIT_MATERIAL;
+
+	return minIntersect( maxIntersect( a, b ), c );
 }
 
 vec3 getNormal( vec3 p ) {
