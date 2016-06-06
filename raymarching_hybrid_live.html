@@ -63,8 +63,8 @@ uniform float cameraNear;
 uniform float cameraFar;
 
 // consts
-const float EPS = 0.0001;
-const float OFFSET = EPS * 2000.0;
+const float EPS = 0.05;
+const float OFFSET = EPS * 100.0;
 const float PI  = 3.14159265359;
 const float PI2 = 6.28318530718;
 const float GRID = 12.0;
@@ -88,16 +88,11 @@ struct Intersect {
 const int MIRROR_MATERIAL = 0;
 const int FLOOR_MATERIAL = 1;
 const int CIRCUIT_MATERIAL = 2;
-const int BASIC_MATERIAL = 3;
-const int FLOOR_MATERIAL2 = 4;
 
 // distance functions
 vec3 onRep( vec3 p, float interval ) {
-
-	vec3 q = mod( p, interval ) - 0.5 * interval;
-	q.y = p.y;
-	return q;
-
+	vec2 q = mod( p.xz, interval ) - 0.5 * interval;
+	return vec3( q.x, p.y, q.y );
 }
 
 vec3 onRepX( vec3 p, float interval ) {
@@ -296,69 +291,65 @@ float laserDist( vec3 p ) {
 		sdCapsule( onRepX( p, 30.0) , vec3( 17.0 * cos( time * 2.0 ), -1000.0, 1000.0 ), vec3( 0.0, 10000.0, -10000.0), 0.2 ));
 }
 
-float sceneDist_( vec3 p ) {
-	vec3 q = p;
-	q.xz *= rotate( -2.0 );
+// float sceneDist( vec3 p ) {
+// 	vec3 q = p;
+// 	q.xz *= rotate( -2.0 );
+// 
+// 	vec3 p2 = p;
+// 	p2.xz = fold( p2.xz, 8.0 );
+// 	p2.z -= 20.0;
+// 	p2.yz *= rotate( -0.5 );
+// 
+// 	return 
+// 		min(
+// 			min(
+// 				max(
+// 					sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 15.0 ),
+// 					udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
+// 				),
+// 				max(
+// 					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
+// 					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
+// 				)
+// 			),
+// 			sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 )
+// 		);
+// }
 
-	vec3 p2 = p;
-	p2.xz = fold( p2.xz, 8.0 );
-	p2.z -= 20.0;
-	p2.yz *= rotate( -0.5 );
+// Intersect sceneIntersect( vec3 p ) {
+// 
+// 	Intersect a, b, c, d;
+// 
+// 	vec3 q = p;
+// 	q.xz *= rotate( -2.0 );
+// 
+// 	vec3 p2 = p;
+// 	p2.xz = fold( p2.xz, 8.0 );
+// 	p2.z -= 20.0;
+// 	p2.yz *= rotate( -0.5 );
+// 
+// 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 15.0 );
+// 	a.material = MIRROR_MATERIAL;
+// 
+// 	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
+// 	b.material = FLOOR_MATERIAL;
+// 
+// 	c.distance = sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 );
+// 	c.material = CIRCUIT_MATERIAL;
+// 
+// 	d.distance = max(
+// 					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
+// 					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
+// 				);
+// 	d.material = FLOOR_MATERIAL2;
+// 	d.position = p2;
+// 
+// 	return minIntersect( minIntersect( maxIntersect( a, b ), d ), c);
+// }
 
-	return 
-		min(
-			min(
-				max(
-					sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 15.0 ),
-					udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 )
-				),
-				max(
-					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
-					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
-				)
-			),
-			sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 )
-		);
-}
-
-Intersect sceneIntersect_( vec3 p ) {
-
-	Intersect a, b, c, d;
-
-	vec3 q = p;
-	q.xz *= rotate( -2.0 );
-
-	vec3 p2 = p;
-	p2.xz = fold( p2.xz, 8.0 );
-	p2.z -= 20.0;
-	p2.yz *= rotate( -0.5 );
-
-	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 15.0 );
-	a.material = MIRROR_MATERIAL;
-
-	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
-	b.material = FLOOR_MATERIAL;
-
-	c.distance = sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 );
-	c.material = CIRCUIT_MATERIAL;
-
-	d.distance = max(
-					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
-					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
-				);
-	d.material = FLOOR_MATERIAL2;
-	d.position = p2;
-
-	return minIntersect( minIntersect( maxIntersect( a, b ), d ), c);
-}
 float sceneDist( vec3 p ) {
 	vec3 q = p;
 	q.xz *= rotate( -2.0 );
-
-	vec3 p2 = p;
-	p2.xz = fold( p2.xz, 8.0 );
-	p2.z -= 20.0;
-	p2.yz *= rotate( -0.5 );
 
 	return 
 		min(
@@ -377,11 +368,6 @@ Intersect sceneIntersect( vec3 p ) {
 	vec3 q = p;
 	q.xz *= rotate( -2.0 );
 
-	vec3 p2 = p;
-	p2.xz = fold( p2.xz, 8.0 );
-	p2.z -= 20.0;
-	p2.yz *= rotate( -0.5 );
-
 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 12.0 );
 	a.material = MIRROR_MATERIAL;
 
@@ -394,14 +380,21 @@ Intersect sceneIntersect( vec3 p ) {
 	return minIntersect( maxIntersect( a, b ), c );
 }
 
-vec3 getNormal( vec3 p ) {
+//vec3 getNormal( vec3 p ) {
+//
+//	return normalize(vec3(
+//		sceneDist(p + vec3( EPS, 0.0, 0.0 ) ) - sceneDist(p + vec3( -EPS, 0.0, 0.0 ) ),
+//		sceneDist(p + vec3( 0.0, EPS, 0.0 ) ) - sceneDist(p + vec3( 0.0, -EPS, 0.0 ) ),
+//		sceneDist(p + vec3( 0.0, 0.0, EPS ) ) - sceneDist(p + vec3( 0.0, 0.0, -EPS ) )
+//	));
+//
+//}
 
-	return normalize(vec3(
-		sceneDist(p + vec3( EPS, 0.0, 0.0 ) ) - sceneDist(p + vec3( -EPS, 0.0, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, EPS, 0.0 ) ) - sceneDist(p + vec3( 0.0, -EPS, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, 0.0, EPS ) ) - sceneDist(p + vec3( 0.0, 0.0, -EPS ) )
-	));
-
+vec3 getNormal( in vec3 pos ) {
+	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
+	return normalize(
+		e.xyy * sceneDist( pos + e.xyy ) + e.yyx * sceneDist( pos + e.yyx ) + 
+		e.yxy * sceneDist( pos + e.yxy ) + e.xxx * sceneDist( pos + e.xxx ) );
 }
 
 Intersect getRayColor( vec3 origin, vec3 ray ) {
@@ -412,7 +405,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	vec3 p = origin;
 	Intersect nearest;
 
-	for ( int i = 0; i < 90; i++ ){
+	for ( int i = 0; i < 30; i++ ){
 		dist = sceneDist( p );
 		depth += dist;
 		p = origin + depth * ray;
@@ -424,9 +417,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 
 	if ( abs(dist) < EPS ) {
 		nearest = sceneIntersect( p );
-		nearest.normal = getNormal(p);
-		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
-		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
 
 		if ( nearest.material == CIRCUIT_MATERIAL ) {
 			vec2 uv = p.yz / 1000.0;
@@ -435,16 +425,15 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			float pattern = max( dg.x - 1.0, 0.0 );
 			nearest.color = psylliumColor * pattern;
 		} else if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p.xz ) * diffuse + specular;
-		} else if ( nearest.material == MIRROR_MATERIAL ) {
-			vec3 color = vec3( 0.2 );
-			nearest.color = color * diffuse + specular * 0.3;
-		} else if ( nearest.material == FLOOR_MATERIAL2 ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( nearest.position.yz ) * diffuse + specular;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p.xz ) * 0.7;
+		//} else if ( nearest.material == MIRROR_MATERIAL ) {
+		} else {
+			nearest.normal = getNormal(p);
+			nearest.color = vec3( 0.0 );
 		}
 		nearest.isHit = true;
 	} else {
-		nearest.color = vec3( 0.1 );
+		nearest.color = vec3( 0.0 );
 		nearest.isHit = false;
 	}
 
@@ -457,8 +446,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	depth = 0.0;
 	minDist = 9999.9;
 	vec3 minPos;
-	for ( int i = 0; i < 30; i++ ){
-
+	for ( int i = 0; i < 25; i++ ){
 		dist = psylliumDist( p );
 		if ( dist < minDist ) {
 			minDist = dist;
@@ -468,7 +456,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		p = origin + depth * ray;
 
 		if ( abs(dist) < EPS ) break;
-
 	}
 
 
@@ -478,7 +465,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		if ( abs(dist) < EPS ) {
 			nearest.color += k * psylliumColor;
 		} else {
-			nearest.color += k * psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
+			nearest.color += k * psylliumColor * clamp( 0.3 / minDist, 0.0, 1.0 );
 		}
 	}
 
@@ -487,14 +474,12 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	depth = 0.0;
 	minDist = 9999.9;
 	for ( int i = 0; i < 20; i++ ){
-
 		dist = laserDist( p );
 		minDist = min(dist, minDist);
 		depth += dist;
 		p = origin + depth * ray;
 
 		if ( abs(dist) < EPS ) break;
-
 	}
 
 	psylliumColor = vec3( 1.0 ) - psylliumColor;
@@ -502,7 +487,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	if ( abs(dist) < EPS ) {
 		nearest.color += psylliumColor;
 	} else {
-		nearest.color += psylliumColor * clamp(0.3 / minDist, 0.0, 1.0);
+		nearest.color += psylliumColor * clamp( 0.3 / minDist, 0.0, 1.0 );
 	}
 
 	return nearest;
@@ -519,23 +504,16 @@ void main(void) {
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( p.xy, 1.0, 1.0 );
 	vec3 ray = normalize( rayTip.xyz );
 
-	vec3 color = vec3( 0.0 );
-	float alpha = 1.0;
-	Intersect nearest;
-	Intersect firstNearest;
+	Intersect nearest = getRayColor( cPos, ray );
+	Intersect firstNearest = nearest;
+	vec3 color = nearest.color;
 
-	for ( int i = 0; i < 2; i++ ) {
-
+	if ( nearest.material == MIRROR_MATERIAL && nearest.isHit ) {
+		cPos = nearest.position + nearest.normal * OFFSET;
+		ray = normalize( reflect( ray, nearest.normal ) );
 		nearest = getRayColor( cPos, ray );
 
-		color += alpha * nearest.color;
-		alpha *= 0.8;
-		ray = normalize( reflect( ray, nearest.normal ) );
-		cPos = nearest.position + nearest.normal * OFFSET;
-
-		if ( i == 0 ) firstNearest = nearest;
-		if ( !nearest.isHit || nearest.material != MIRROR_MATERIAL ) break;
-
+		color += 0.8 * nearest.color;
 	}
 
 	if ( firstNearest.isHit ) {

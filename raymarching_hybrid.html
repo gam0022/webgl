@@ -59,6 +59,7 @@ uniform mat4 viewMatrix;
 
 uniform mat4 cameraWorldMatrix;
 uniform mat4 cameraProjectionMatrixInverse;
+uniform mat4 cameraViewProjectionpMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 
@@ -332,7 +333,9 @@ void main(void) {
 
 	// camera and ray
 	cPos = cameraPosition;
+	//vec4 rayTip = cameraViewProjectionpMatrixInverse * vec4( p.xy, 1.0, 1.0 );
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( p.xy, 1.0, 1.0 );
+	//vec4 rayTip = cameraProjectionMatrixInverse * cameraWorldMatrix * vec4( p.xy, 1.0, 1.0 );
 	vec3 ray = normalize( rayTip.xyz );
 
 	vec3 color = vec3( 0.0 );
@@ -493,6 +496,7 @@ void main(void) {
 
 						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
 						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+						cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
 						cameraNear: { type: 'f', value: camera.near },
 						cameraFar:  { type: 'f', value: camera.far },
 
@@ -641,8 +645,17 @@ void main(void) {
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.time.value = timestamp * 0.001;
 
+				var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
+				var cameraViewInverseMatrix = camera.matrixWorld;
+				var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+				//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
+				cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
+				cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+				material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+
 				material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
 				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+
 				material.uniforms.cameraNear.value = camera.near;
 				material.uniforms.cameraFar.value  = camera.far;
 
