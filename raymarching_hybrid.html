@@ -359,9 +359,14 @@ void main(void) {
 
 	if ( firstNearest.isHit ) {
 
-		float z = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
-		float normalZ = ( z - cameraNear ) / ( cameraFar - cameraNear );
-		gl_FragDepthEXT = cameraFar * normalZ / z;
+		//float z = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
+		//float normalZ = ( z - cameraNear ) / ( cameraFar - cameraNear );
+		//gl_FragDepthEXT = cameraFar * normalZ / z;
+
+		float viewZ = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
+		float normalZ = ( viewZ - cameraNear ) / ( cameraFar - cameraNear );
+		float clipZ = cameraFar * normalZ;
+		gl_FragDepthEXT = clipZ / viewZ;
 
 	} else {
 
