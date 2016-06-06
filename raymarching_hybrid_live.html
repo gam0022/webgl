@@ -64,6 +64,7 @@ uniform float cameraFar;
 
 // consts
 const float EPS = 0.05;
+const float ROUGH_EPS = 0.3;
 const float OFFSET = EPS * 100.0;
 const float PI  = 3.14159265359;
 const float PI2 = 6.28318530718;
@@ -455,14 +456,14 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		depth += dist;
 		p = origin + depth * ray;
 
-		if ( abs(dist) < EPS ) break;
+		if ( abs(dist) < ROUGH_EPS ) break;
 	}
 
 
 	if ( !nearest.isHit || depth < nearest.distance ) {
 		float l = length( minPos - origin );
 		float k = clamp( 400.0 / l, 0.0, 1.0 );
-		if ( abs(dist) < EPS ) {
+		if ( abs(dist) < ROUGH_EPS ) {
 			nearest.color += k * psylliumColor;
 		} else {
 			nearest.color += k * psylliumColor * clamp( 0.3 / minDist, 0.0, 1.0 );
