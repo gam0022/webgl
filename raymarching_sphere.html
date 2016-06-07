@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Three.jsからレイマーチングを最小限のサンプル</title>
+  </head>
+  <body>
+
+<!-- フラグメントシェーダ -->
+<script id="fragment_shader" type="x-shader/x-fragment">
+precision highp float;
+uniform float time;
+uniform vec2 resolution;
+
+// 微小な値
+const float EPS = 0.001;
+
+// 距離関数
+float sphereDist(vec3 p, float r) {
+  return length(p) - r;
+}
+
+float sceneDist(vec3 p) {
+  return sphereDist(p, 1.3);
+}
+
+// 法線の計算
+vec3 getNormal(vec3 p) {
+  return normalize(vec3(
+    sceneDist(p + vec3(EPS, 0.0, 0.0)) - sceneDist(p + vec3(-EPS,  0.0,  0.0)),
+    sceneDist(p + vec3(0.0, EPS, 0.0)) - sceneDist(p + vec3( 0.0, -EPS,  0.0)),
+    sceneDist(p + vec3(0.0, 0.0, EPS)) - sceneDist(p + vec3( 0.0,  0.0, -EPS))
+  ));
+}
+
+void main(void) {
+  // スクリーン座標の正規化
+  vec2 p =
+    (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+
+  // カメラとレイの定義
+  vec3 cPos  = vec3(0.0, 1.6, 2.0);
+  vec3 cDir  = normalize(vec3(0.0, -0.9, -1.0));
+  vec3 cSide = normalize(cross(cDir, vec3(0.0, 1.0 ,0.0)));
+  vec3 cUp   = normalize(cross(cSide, cDir));
+  float targetDepth = 1.3;
+  vec3 ray = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
+
+
+  // 距離関数を用いたレイのマーチング・ループ
+  float dist;
+  float depth = 0.0;
+  vec3 dPos = cPos;
+  for (int i = 0; i < 32; i++) {
+    dist = sceneDist(dPos);
+    depth += dist;
+    dPos = cPos + depth * ray;
+    if (abs(dist) < EPS) break;
+  }
+
+  // 衝突判定の結果に応じたピクセル色の決定
+  vec3 lightDir = normalize(vec3(8.0, 20.0, 1.0));
+  vec3 color;
+  if (abs(dist) < EPS) {
+    // 衝突した場合
+    vec3 normal = getNormal(dPos);
+    float diffuse = clamp(dot(lightDir, normal), 0.1, 1.0);
+    float specular = pow(clamp(dot(reflect(lightDir, normal), ray), 0.0, 1.0), 20.0);
+    color = vec3(0.9, 0.1, 0.1) * diffuse + vec3(1.0) * specular;
+  } else {
+    // 衝突しなかった場合
+    color = vec3(1.0);
+  }
+  gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<!-- 頂点シェーダ -->
+<script id="vertex_shader" type="x-shader/x-vertex">
+void main(void) {
+  gl_Position = vec4(position, 1.0);
+}
+</script>
+
+<!-- Three.jsからシェーダを呼び出すJavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r77/three.min.js">
+</script>
+<script>
+var scene, camera, renderer;
+var geometry, material, mesh;
+var canvas;
+
+init();
+render();
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.Camera();
+
+  geometry = new THREE.PlaneBufferGeometry(2.0, 2.0);
+  material = new THREE.ShaderMaterial({
+    uniforms: {
+      time: { type: "f", value: 0.0 },
+      resolution: { type: "v2", value: new THREE.Vector2(512.0, 512.0) }
+    },
+    vertexShader: document.getElementById('vertex_shader').textContent,
+    fragmentShader: document.getElementById('fragment_shader').textContent
+  });
+  mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(512.0, 512.0);
+
+  canvas = renderer.domElement;
+  document.body.appendChild(canvas);
+}
+
+function render(timestamp) {
+  requestAnimationFrame(render);
+  material.uniforms.time.value = timestamp * 0.001;
+  renderer.render(scene, camera);
+}
+</script>
+  </body>
+</html>
