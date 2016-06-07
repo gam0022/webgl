@@ -16,6 +16,7 @@
 
 		<script src="js/three.min.js"></script>
 
+		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/renderers/Projector.js"></script>
 		<script src="js/renderers/SVGRenderer.js"></script>
 		<script src="js/libs/stats.min.js"></script>
@@ -32,6 +33,7 @@
 			var renderer;
 
 			var mesh, group;
+			var controls;
 
 			init();
 			animate();
@@ -41,143 +43,58 @@
 				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
 				camera.position.z = 500;
 
+				camera2 = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+
 				scene = new THREE.Scene();
-
-				// QRCODE
-
-				mesh = new THREE.Mesh( new Qrcode(), new THREE.MeshLambertMaterial( { /*emissive: 0xff0000,*/ vertexColors: THREE.FaceColors } ) );
-				mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
-				scene.add( mesh );
 
 				// CUBES
 
 				var cube = new THREE.BoxGeometry( 100, 100, 100 );
 
 				mesh = new THREE.Mesh( cube, new THREE.MeshBasicMaterial( { color: 0x0000ff, opacity: 0.5, transparent: true } ) );
-				mesh.position.x = 500;
-				mesh.rotation.x = Math.random();
-				mesh.rotation.y = Math.random();
+				mesh.position.x = 000;
+				mesh.rotation.x = Math.PI / 8;
+				mesh.rotation.y = -Math.PI / 4;
 				mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
 				scene.add( mesh );
 
-				mesh = new THREE.Mesh( cube, new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff } ) );
-				mesh.position.x = 500;
-				mesh.position.y = 500;
-				mesh.rotation.x = Math.random();
-				mesh.rotation.y = Math.random();
-				mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
-				scene.add( mesh );
+				//var axisHelper = new THREE.AxisHelper( 100 );
+				//mesh.add( axisHelper );
 
-				// PLANE
+				// local axis
+				var dir = new THREE.Vector3( 1, 0, 0 );
+				var origin = new THREE.Vector3( 0, 0, 0 );
+				var length = 100;
+				var hex = 0xff0000;
+				var arrowHelper = new THREE.ArrowHelper( dir, origin, length, hex );
+				mesh.add( arrowHelper );
 
-				mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 100, 100 ), new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, side: THREE.DoubleSide } ) );
-				mesh.position.y = -500;
-				mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
-				scene.add( mesh );
+				dir = new THREE.Vector3( 0, 1, 0 );
+				hex = 0x00ff00;
+				arrowHelper = new THREE.ArrowHelper( dir, origin, length, hex );
+				mesh.add( arrowHelper );
 
-				// CYLINDER
+				dir = new THREE.Vector3( 0, 0, 1 );
+				hex = 0x0000ff;
+				arrowHelper = new THREE.ArrowHelper( dir, origin, length, hex );
+				mesh.add( arrowHelper );
 
-				mesh = new THREE.Mesh( new THREE.CylinderGeometry( 20, 100, 200, 10 ), new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff } ) );
-				mesh.position.x = -500;
-				mesh.rotation.x = - Math.PI / 2;
-				mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
-				scene.add( mesh );
+				// 
+				cameraHelper = new THREE.CameraHelper( camera2 );
+				camera2.add( cameraHelper );
 
-				// POLYFIELD
-
-				var geometry = new THREE.Geometry();
-				var material = new THREE.MeshBasicMaterial( { vertexColors: THREE.FaceColors, side: THREE.DoubleSide } );
-
-				for ( var i = 0; i < 100; i ++ ) {
-
-					var v = new THREE.Vector3(
-						Math.random() * 1000 - 500,
-						Math.random() * 1000 - 500,
-						Math.random() * 1000 - 500
-					);
-
-					var v0 = new THREE.Vector3(
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50
-					);
-
-					var v1 = new THREE.Vector3(
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50
-					);
-
-					var v2 = new THREE.Vector3(
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50,
-						Math.random() * 100 - 50
-					);
-
-					v0.add( v );
-					v1.add( v );
-					v2.add( v );
-
-					var face = new THREE.Face3(
-						geometry.vertices.push( v0 ) - 1,
-						geometry.vertices.push( v1 ) - 1,
-						geometry.vertices.push( v2 ) - 1,
-						null,
-						new THREE.Color( Math.random() * 0xffffff )
-					);
-
-					geometry.faces.push( face );
-
-				}
-
-				geometry.computeFaceNormals();
-
-				group = new THREE.Mesh( geometry, material );
-				group.scale.set( 2, 2, 2 );
-				scene.add( group );
-
-				// SPRITES
-
-				for ( var i = 0; i < 50; i ++ ) {
-
-					var material = new THREE.SpriteMaterial( { color: Math.random() * 0xffffff } );
-					var sprite = new THREE.Sprite( material );
-					sprite.position.x = Math.random() * 1000 - 500;
-					sprite.position.y = Math.random() * 1000 - 500;
-					sprite.position.z = Math.random() * 1000 - 500;
-					sprite.scale.set( 64, 64, 1 );
-					scene.add( sprite );
-
-				}
-
-				// CUSTOM
-
-				var node = document.createElementNS( 'http://www.w3.org/2000/svg', 'circle' );
-				node.setAttribute( 'stroke', 'black' );
-				node.setAttribute( 'fill', 'red' );
-				node.setAttribute( 'r', '40' );
-
-				for ( var i = 0; i < 50; i ++ ) {
-
-					var object = new THREE.SVGObject( node.cloneNode() );
-					object.position.x = Math.random() * 1000 - 500;
-					object.position.y = Math.random() * 1000 - 500;
-					object.position.z = Math.random() * 1000 - 500;
-					scene.add( object );
-
-				}
 
 				// LIGHTS
 
-				var ambient = new THREE.AmbientLight( 0x80ffff );
+				var ambient = new THREE.AmbientLight( 0xffffff );
 				scene.add( ambient );
 
-				var directional = new THREE.DirectionalLight( 0xffff00 );
+				var directional = new THREE.DirectionalLight( 0xffffff );
 				directional.position.set( - 1, 0.5, 0 );
 				scene.add( directional );
 
 				renderer = new THREE.SVGRenderer();
-				renderer.setClearColor( 0xf0f0f0 );
+				renderer.setClearColor( 0xffffff );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setQuality( 'low' );
 				document.body.appendChild( renderer.domElement );
@@ -190,6 +107,10 @@
 				//
 
 				window.addEventListener( 'resize', onWindowResize, false );
+
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				controls.enableZoom = true;
+				controls.target = new THREE.Vector3( 0, 0.7, 0 );
 
 			}
 
@@ -208,6 +129,8 @@
 
 				requestAnimationFrame( animate );
 
+				controls.update();
+
 				render();
 				stats.update();
 
@@ -216,12 +139,6 @@
 			function render() {
 
 				var time = Date.now() * 0.0002;
-
-				camera.position.x = Math.sin( time ) * 500;
-				camera.position.z = Math.cos( time ) * 500;
-				camera.lookAt( scene.position );
-
-				group.rotation.x += 0.01;
 
 				renderer.render( scene, camera );
 
