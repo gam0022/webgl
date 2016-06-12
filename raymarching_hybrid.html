@@ -37,7 +37,7 @@
 
 	<body>
 		<div id="info">
-		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader test<br />
+		<a href="http://threejs.org" target="_blank">three.js</a> - webgl raymarching hybrid example<br />
 		Copyright
 		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a>
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
@@ -67,9 +67,6 @@ uniform float cameraFar;
 uniform int shadowType;
 uniform float shadowIntensity;
 uniform float shadowSharpness;
-
-// obj
-uniform float objY;
 
 // consts
 const float EPS = 0.0001;
@@ -101,13 +98,6 @@ vec3 onRep( vec3 p, float interval ) {
 	vec3 q = mod( p, interval ) - 0.5 * interval;
 	q.y = p.y;
 	return q;
-
-}
-
-float sphereDist( vec3 p, float r ) {
-
-	vec3 c = vec3( 0.0, objY, 0.0 );
-	return length( p - c ) - r;
 
 }
 
@@ -433,9 +423,6 @@ void main(void) {
 				shadowIntensity: 0.3,
 				shadowSharpness: 8.0,
 
-				objAutoMove: false,
-				objY: 10.0,
-
 				resolution: '512',
 			};
 
@@ -508,8 +495,6 @@ void main(void) {
 						shadowType: { type: 'i', value: config.shadowType },
 						shadowIntensity: { type: 'f', value: config.shadowIntensity },
 						shadowSharpness: { type: 'f', value: config.shadowSharpness },
-
-						objY: { type: 'f', value: config.objY },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -577,11 +562,6 @@ void main(void) {
 				shadowFolder.add( config, 'shadowSharpness', 0.0, 100.0 ).name( 'Sharpness' );
 				shadowFolder.open();
 
-				var objFolder = gui.addFolder('Obj');
-				objFolder.add( config, 'objAutoMove' ).name( 'Auto Move' );
-				objFolder.add( config, 'objY', -1.0, 10.0 ).name( 'Pos Y' ).listen();
-				objFolder.open();
-
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
 					if ( value !== 'full' ) {
@@ -640,12 +620,6 @@ void main(void) {
 
 				}
 
-				if ( config.objAutoMove) {
-
-					config.objY = Math.abs( Math.sin( timestamp * 2.0 * 0.001 ) * 30.0 );
-
-				}
-
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.time.value = timestamp * 0.001;
@@ -668,8 +642,6 @@ void main(void) {
 				material.uniforms.shadowIntensity.value = config.shadowIntensity;
 				material.uniforms.shadowSharpness.value = config.shadowSharpness;
 				
-
-				material.uniforms.objY.value = config.objY;
 				renderer.render( scene, camera );
 
 				stats.end();
