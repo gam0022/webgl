@@ -571,6 +571,8 @@ void main(void) {
 			var mesh, camera, scene, renderer;
 			var helper;
 
+			var ready = false;
+
 			var clock = new THREE.Clock();
 
 			var config = {
@@ -817,7 +819,7 @@ void main(void) {
 
 				stats.end();
 
-				if ( mesh ) {
+				if ( ready ) {
 
 					helper.animate( delta );
 					helper.render( scene, camera );
