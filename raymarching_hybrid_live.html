@@ -426,7 +426,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			float pattern = max( dg.x - 1.0, 0.0 );
 			nearest.color = psylliumColor * pattern;
 		} else if ( nearest.material == FLOOR_MATERIAL ) {
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p.xz ) * 0.7;
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p.xz );
 		//} else if ( nearest.material == MIRROR_MATERIAL ) {
 		} else {
 			nearest.normal = getNormal(p);
