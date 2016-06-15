@@ -456,7 +456,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		depth += dist;
 		p = origin + depth * ray;
 
-		if ( abs(dist) < ROUGH_EPS ) break;
+		if ( depth > nearest.distance ) break;
 	}
 
 
@@ -479,8 +479,6 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		minDist = min(dist, minDist);
 		depth += dist;
 		p = origin + depth * ray;
-
-		if ( abs(dist) < EPS ) break;
 	}
 
 	psylliumColor = vec3( 1.0 ) - psylliumColor;
