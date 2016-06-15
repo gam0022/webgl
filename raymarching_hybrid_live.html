@@ -272,15 +272,15 @@ float rand(vec2 co){
 }
 
 float psylliumDist( vec3 p ) {
-	float r = 4.0;
+
 	float t = 8.0 * time;
-	float rnd = rand(getDiscrete(p.xz, GRID));
+	float rnd = rand( floor( p.xz / GRID ) );
 	float x = rnd * 8.0 - 4.0;
 	float cost = cos( t + 2.0 * rnd );
-	vec3 org = vec3( x, -250.0 + cost + length( onRep( p, 1000.0).xz ) * 0.3, x);
+	vec3 org = vec3( x, -250.0 + cost + length( p.xz ) * 0.2, x );
 	vec3 dir = vec3( cost, 2.0, -2.0 + cost );
 
-	return sdCapsule( onRep( p, GRID) , org, org + r * normalize( dir ), 0.2 );
+	return sdCapsule( onRep( p, GRID) , org, org + 4.0 * normalize( dir ), 0.2 );
 }
 
 float laserDist( vec3 p ) {
@@ -447,7 +447,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	depth = 0.0;
 	minDist = 9999.9;
 	vec3 minPos;
-	for ( int i = 0; i < 25; i++ ){
+	for ( int i = 0; i < 15; i++ ){
 		dist = psylliumDist( p );
 		if ( dist < minDist ) {
 			minDist = dist;
