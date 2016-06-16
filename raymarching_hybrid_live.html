@@ -271,7 +271,7 @@ float rand(vec2 co){
 	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-float psylliumDist( vec3 p ) {
+float psylliumDist_sdCapsule( vec3 p ) {
 
 	float t = 8.0 * time;
 	float rnd = rand( floor( p.xz / GRID ) );
@@ -280,7 +280,31 @@ float psylliumDist( vec3 p ) {
 	vec3 org = vec3( x, -250.0 + cost + length( p.xz ) * 0.2, x );
 	vec3 dir = vec3( cost, 2.0, -2.0 + cost );
 
-	return sdCapsule( onRep( p, GRID) , org, org + 4.0 * normalize( dir ), 0.2 );
+	return sdCapsule( onRep( p, GRID ), org, org + 4.0 * normalize( dir ), 0.2 );
+}
+
+vec3 opScaleY( vec3 p, float s )
+{
+	vec3 q = p;
+	q.y /= s;
+    return q;
+}
+
+float psylliumDist( vec3 p ) {
+
+	float t = 8.0 * time;
+	float rnd = rand( floor( p.xz / GRID ) );
+	float x = rnd * 6.0 - 3.0;
+	float cos_t = cos( t );
+
+	vec3 q = p;
+	q.y += 200.0 - length( p.xz ) * 0.2;
+	q = onRep( q, GRID );
+	q.yz *= rotate( cos_t - 0.5 );
+	q.y -= 3.0;
+	q.x -= x;
+
+	return sdCappedCylinder( q, vec2( 0.1, 3.0 ) );
 }
 
 float laserDist( vec3 p ) {
