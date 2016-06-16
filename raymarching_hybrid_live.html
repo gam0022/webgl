@@ -582,7 +582,7 @@ void main(void) {
 
 					window.open( canvas.toDataURL() );
 				},
-				camera: 'Orbit',
+				camera: 'Auto',
 				resolution: '256',
 			};
 
@@ -739,7 +739,11 @@ void main(void) {
 
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
-				gui.add( config, 'camera', [ 'GLSL', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
+				gui.add( config, 'camera', [ 'Auto', 'Orbit' ] ).name( 'Camera' ).onChange( function( value ) {
+
+					helper.doCameraAnimation = ( value == 'Auto' );
+
+				} );
 
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
