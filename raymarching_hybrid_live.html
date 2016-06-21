@@ -583,7 +583,7 @@ void main(void) {
 
 			var geometry, material, plane;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
-			var mesh, camera, scene, renderer;
+			var mesh, scene, renderer;
 			var helper;
 
 			var ready = false;
@@ -613,7 +613,7 @@ void main(void) {
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
 				camera.position.y = 30;
-				camera.position.z = 20;
+				camera.position.z = 60;
 
 				// scene
 
@@ -705,7 +705,8 @@ void main(void) {
 
 					helper.add( mesh );
 					helper.setAnimation( mesh );
-					helper.doOutlineDrawing = false;
+					//helper.doOutlineDrawing = false;
+
 					/*
 					 * Note: You must set Physics
 					 *       before you add mesh to scene or any other 3D object.
