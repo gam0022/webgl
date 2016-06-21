@@ -271,7 +271,7 @@ float rand(vec2 co){
 	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-float psylliumDist_sdCapsule( vec3 p ) {
+float psylliumDistCapsule( vec3 p ) {
 
 	float t = 8.0 * time;
 	float rnd = rand( floor( p.xz / GRID ) );
@@ -283,7 +283,7 @@ float psylliumDist_sdCapsule( vec3 p ) {
 	return sdCapsule( onRep( p, GRID ), org, org + 4.0 * normalize( dir ), 0.2 );
 }
 
-float psylliumDist( vec3 p ) {
+float psylliumDistCylinder( vec3 p ) {
 
 	float t = 8.0 * time;
 	float rnd = rand( floor( p.xz / GRID ) );
@@ -465,7 +465,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	minDist = 9999.9;
 	vec3 minPos;
 	for ( int i = 0; i < 15; i++ ){
-		dist = psylliumDist( p );
+		dist = psylliumDistCapsule( p );
 		if ( dist < minDist ) {
 			minDist = dist;
 			minPos = p;
