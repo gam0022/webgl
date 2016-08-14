@@ -390,7 +390,7 @@ void main(void) {
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera(35, 800/600);
 				dummyCamera = new THREE.Camera();
-				camera.position.set(10, 1, 1);
+				camera.position.set(0, 0, -10);
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
@@ -498,9 +498,9 @@ void main(void) {
 				var dir = camera.getWorldDirection();
 
 				document.getElementById( 'info' ).innerHTML = ""
-					+ pos.x + ", " + pos.y + ", " + pos.z + "<br />"
-					+ dir.x + ", " + dir.y + ", " + dir.z + "<br />"
-					+ timestamp * 0.001;
+					+ "POS: " + pos.x + ", " + pos.y + ", " + pos.z + "<br />"
+					+ "DIR: " + dir.x + ", " + dir.y + ", " + dir.z + "<br />"
+					+ "TIME: " + timestamp * 0.001;
 
 			}
 
