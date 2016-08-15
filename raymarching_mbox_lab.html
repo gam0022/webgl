@@ -56,6 +56,7 @@ precision mediump float;
 uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
+uniform float mboxScale;
 
 // debug for camera
 uniform bool debugCamera;
@@ -101,7 +102,6 @@ vec3 onRep( vec3 p, float interval ) {
 // thanks to https://www.shadertoy.com/view/MdVGRc
 float MBoxDist( vec3 p ) {
 
-  const float scale = 2.7;
   const int n = 12;
   vec4 q0 = vec4 (p, 1.);
   vec4 q = q0;
@@ -109,7 +109,7 @@ float MBoxDist( vec3 p ) {
   for ( int i = 0; i < n; i++ ) {
 
     q.xyz = clamp( q.xyz, -1.0, 1.0 ) * 2.0 - q.xyz;
-    q = q * scale / clamp( dot( q.xyz, q.xyz ), 0.5, 1.0 ) + q0;
+    q = q * mboxScale / clamp( dot( q.xyz, q.xyz ), 0.5, 1.0 ) + q0;
 
   }
 
@@ -240,7 +240,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 	int count = 0;
 	Intersect nearest;
 
-	for ( int i = 0; i < 64; i++ ){
+	for ( int i = 0; i < 128; i++ ){
 
 		dist = sceneDist( p );
 		depth += dist;
@@ -256,16 +256,16 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		nearest = sceneIntersect( p );
 		nearest.position = p;
 		nearest.normal = getNormal(p);
-		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.2, 1.0 );
+		float diffuse = clamp( abs( dot( lightDir, nearest.normal ) ), 0.2, 1.0 );
 		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
 		//float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
 
 		if ( nearest.material == CIRCUIT_MATERIAL ) {
 
-			vec2 uv = p.yz;
-			vec2 dg = circuitPattern(uv);
-			float glow = max( sin( length( p ) - 1.8 * time ) * 2.5, 0.0 );
-			float pattern = max( dg.x - 1.0, 0.0 );
+			//vec2 uv = p.yz;
+			//vec2 dg = circuitPattern(uv);
+			//float glow = max( sin( length( p ) - 1.8 * time ) * 2.5, 0.0 );
+			//float pattern = max( dg.x - 1.0, 0.0 );
 			nearest.color = vec3(1.0) * diffuse + specular /* * max( 0.5, shadow )*/;
 			
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
@@ -380,6 +380,7 @@ void main(void) {
 				},
 				camera: 'Orbit',
 				resolution: '512',
+				mboxScale: 2.7,
 			};
 
 			init();
@@ -401,6 +402,7 @@ void main(void) {
 						debugCamera: { type: 'i', value: config.camera !== 'GLSL' },
 						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
 						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
+						mboxScale: { type: 'f', value: config.mboxScale },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -450,6 +452,7 @@ void main(void) {
 					onWindowResize();
 
 				} );
+				gui.add( config, 'mboxScale', -1.0, 5.0 ).step( 0.01 ).name( 'Mbox Scale' );
 
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
@@ -489,6 +492,7 @@ void main(void) {
 				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
+				material.uniforms.mboxScale.value = config.mboxScale;
 				renderer.render( scene, camera );
 
 				stats.end();
