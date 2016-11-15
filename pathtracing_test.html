@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - loaders - MMD loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: black;
+				margin: 0;
+				padding: 0;
+			}
+
+			a { color: skyblue }
+
+			canvas {
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+
+			#info {
+				color: white;
+				font-size: 13px;
+				position: absolute;
+				bottom: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="http://threejs.org" target="_blank">three.js</a> - webgl raymarching hybrid example<br />
+		Copyright
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a>
+		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
+		</div>
+		<script id="fragment_shader" type="x-shader/x-fragment">
+
+#extension GL_EXT_frag_depth : require
+
+precision highp float;
+
+// uniforms
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+// camera
+uniform vec3 cameraPosition;
+uniform mat4 viewMatrix;
+
+uniform mat4 cameraWorldMatrix;
+uniform mat4 cameraProjectionMatrixInverse;
+uniform mat4 cameraViewProjectionpMatrixInverse;
+uniform float cameraNear;
+uniform float cameraFar;
+
+// shadow
+uniform int shadowType;
+uniform float shadowIntensity;
+uniform float shadowSharpness;
+
+// consts
+const float EPS = 0.0001;
+const float OFFSET = EPS * 2000.0;
+const float PI = 3.14159;
+
+
+// globals
+const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
+vec3 cPos, cDir;
+
+struct Intersect {
+	bool isHit;
+
+	vec3 position;
+	float distance;
+	vec3 normal;
+
+	int material;
+	vec3 color;
+};
+
+const int SPHERE_MATERIAL = 0;
+const int FLOOR_MATERIAL = 1;
+
+// distance functions
+vec3 onRep( vec3 p, float interval ) {
+
+	vec3 q = mod( p, interval ) - 0.5 * interval;
+	q.y = p.y;
+	return q;
+
+}
+
+float floorDist( vec3 p ){
+
+	return dot(p, vec3( 0.0, 1.0, 0.0 ) ) + 0.0;
+
+}
+
+float sdCappedCylinder( vec3 p, vec2 h )
+{
+  vec2 d = abs(vec2(length(p.xz),p.y)) - h;
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float sceneDist( vec3 p ) {
+
+	return min(
+		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) ),
+		floorDist( p )
+	);
+
+}
+
+
+// color functions
+vec3 hsv2rgb( vec3 c ) {
+
+	vec4 K = vec4( 1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0 );
+	vec3 p = abs( fract( c.xxx + K.xyz ) * 6.0 - K.www );
+	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
+
+}
+
+float checkeredPattern( vec3 p ) {
+
+	float u = 1.0 - floor( mod( p.x, 2.0 ) );
+	float v = 1.0 - floor( mod( p.z, 2.0 ) );
+
+	if ( ( u == 1.0 && v < 1.0 ) || ( u < 1.0 && v == 1.0 ) ) {
+
+		return 0.2;
+
+	} else {
+
+		return 1.0;
+
+	}
+
+}
+
+Intersect minIntersect( Intersect a, Intersect b ) {
+
+	if ( a.distance < b.distance ) {
+		return a;
+	} else {
+		return b;
+	}
+
+}
+
+Intersect sceneIntersect( vec3 p ) {
+
+	Intersect a, b;
+	a.distance = sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) );
+	a.material = SPHERE_MATERIAL;
+
+	b.distance = floorDist( p );
+	b.material = FLOOR_MATERIAL;
+
+	return minIntersect( a, b );
+}
+
+vec3 getNormal( vec3 p ) {
+
+	return normalize(vec3(
+		sceneDist(p + vec3( EPS, 0.0, 0.0 ) ) - sceneDist(p + vec3( -EPS, 0.0, 0.0 ) ),
+		sceneDist(p + vec3( 0.0, EPS, 0.0 ) ) - sceneDist(p + vec3( 0.0, -EPS, 0.0 ) ),
+		sceneDist(p + vec3( 0.0, 0.0, EPS ) ) - sceneDist(p + vec3( 0.0, 0.0, -EPS ) )
+	));
+
+}
+
+float getHardShadow( vec3 ro, vec3 rd ) {
+
+	float dist;
+	float depth = EPS;
+
+	for ( int i = 0; i < 30; i++ ) {
+
+		dist = sceneDist( ro + rd * depth );
+
+		if ( dist < EPS ) return shadowIntensity;
+
+		depth += dist;
+
+	}
+
+	return 1.0;
+
+}
+
+float getSoft1Shadow( vec3 ro, vec3 rd ) {
+
+	float dist;
+	float depth = EPS;
+	float bright = 1.0;
+
+	for ( int i = 0; i < 30; i++ ) {
+
+		dist = sceneDist( ro + rd * depth );
+
+		if ( dist < EPS ) return shadowIntensity;
+
+		bright = min( bright, shadowSharpness * dist );
+
+		depth += dist;
+
+	}
+
+	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
+
+}
+
+float getSoft2Shadow( vec3 ro, vec3 rd ) {
+
+	float dist;
+	float depth = EPS;
+	float bright = 1.0;
+
+	for ( int i = 0; i < 30; i++ ) {
+
+		dist = sceneDist( ro + rd * depth );
+
+		if ( dist < EPS ) return shadowIntensity;
+
+		bright = min( bright, shadowSharpness * dist / depth );
+		depth += dist;
+
+	}
+
+	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
+
+}
+
+float getShadow( vec3 ro, vec3 rd ) {
+
+	if ( shadowType == 0 ) {
+
+		return getHardShadow( ro, rd );
+
+	} else if ( shadowType == 1 ) {
+
+		return getSoft1Shadow( ro, rd );
+
+	} //else if ( shadowType == 2 ) {
+
+		return getSoft2Shadow( ro, rd );
+
+	//}
+
+}
+
+Intersect getRayColor( vec3 origin, vec3 ray ) {
+
+	// marching loop
+	float dist;
+	float depth = 0.0;
+	vec3 p = origin;
+	int count = 0;
+	Intersect nearest;
+
+	for ( int i = 0; i < 128; i++ ){
+
+		dist = sceneDist( p );
+		depth += dist;
+		p = origin + depth * ray;
+
+		count = i;
+		if ( abs(dist) < EPS ) break;
+
+	}
+
+	if ( abs(dist) < EPS ) {
+
+		nearest = sceneIntersect( p );
+		nearest.normal = getNormal(p);
+		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
+		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
+		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
+
+		if ( nearest.material == FLOOR_MATERIAL ) {
+
+			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
+			
+		} else if ( nearest.material == SPHERE_MATERIAL ) {
+
+			vec3 color = vec3( 1.0, 0.2, 0.2 );
+			nearest.color = color * diffuse * shadow + specular;
+
+		}
+
+		nearest.isHit = true;
+
+	} else {
+
+		nearest.color = vec3( 1.0 );
+		nearest.isHit = false;
+
+	}
+ 	
+	//nearest.color += clamp( 0.002 * depth, 0.0, 0.9 );
+	nearest.position = p;
+	nearest.distance = depth;
+	return nearest;
+
+}
+
+void main(void) {
+
+	// fragment position
+	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+
+	// camera and ray
+	cPos = cameraPosition;
+	//vec4 rayTip = cameraViewProjectionpMatrixInverse * vec4( p.xy, 1.0, 1.0 );
+	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( p.xy, 1.0, 1.0 );
+	//vec4 rayTip = cameraProjectionMatrixInverse * cameraWorldMatrix * vec4( p.xy, 1.0, 1.0 );
+	vec3 ray = normalize( rayTip.xyz );
+
+	vec3 color = vec3( 0.0 );
+	float alpha = 1.0;
+	Intersect nearest;
+	Intersect firstNearest;
+
+	for ( int i = 0; i < 2; i++ ) {
+
+		nearest = getRayColor( cPos, ray );
+
+		color += alpha * nearest.color;
+		alpha *= 0.4;
+		ray = normalize( reflect( ray, nearest.normal ) );
+		cPos = nearest.position + nearest.normal * OFFSET;
+
+		if ( i == 0 ) firstNearest = nearest;
+		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
+
+	}
+
+	if ( firstNearest.isHit ) {
+
+		//float z = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
+		//float normalZ = ( z - cameraNear ) / ( cameraFar - cameraNear );
+		//gl_FragDepthEXT = cameraFar * normalZ / z;
+
+		float viewZ = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
+		float normalZ = ( viewZ - cameraNear ) / ( cameraFar - cameraNear );
+		float clipZ = cameraFar * normalZ;
+		gl_FragDepthEXT = clipZ / viewZ;
+
+	} else {
+
+		gl_FragDepthEXT = 1.0;
+
+	}
+
+	gl_FragColor = vec4( color, 1.0 );
+
+}
+
+		</script>
+
+		<script id="vertex_shader" type="x-shader/x-vertex">
+
+			attribute vec3 position;
+
+			void main(void) {
+
+				gl_Position = vec4(position, 1.0);
+
+			}
+
+		</script>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>
+
+		<script src="js/libs/charsetencoder.min.js"></script>
+		<script src="js/libs/ammo.js"></script>
+		<script src="js/loaders/TGALoader.js"></script>
+		<script src="js/loaders/MMDLoader.js"></script>
+		<script src="js/animation/CCDIKSolver.js"></script>
+		<script src="js/animation/MMDPhysics.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+		<script src="js/libs/dat.gui.min.js"></script>
+
+		<script>
+
+			var container, stats;
+			var camera, flyControls, orbitControls, renderer;
+			var scene, material;
+			var backScene, readBuffer, writeBuffer;
+
+			var mouse = new THREE.Vector2( 0.5, 0.5 );
+			var mesh, camera, scene, renderer;
+			var helper;
+
+			var clock = new THREE.Clock();
+
+			var config = {
+				saveImage: function() {
+					renderer.render( scene, camera );
+					if ( mesh ) {
+						helper.render( scene, camera );
+					}
+
+					window.open( canvas.toDataURL() );
+				},
+				camera: 'Orbit',
+
+				shadowType: 2,
+				shadowIntensity: 0.3,
+				shadowSharpness: 8.0,
+
+				resolution: '512',
+			};
+
+			init();
+			animate();
+
+			function createQuadScene( parameters ) {
+				var scene = new THREE.Scene();
+				var geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
+				var material = new THREE.RawShaderMaterial( {
+					uniforms: parameters.uniforms,
+					vertexShader: parameters.vertexShader,
+					fragmentShader: parameters.fragmentShader,
+				} );
+				var plane = new THREE.Mesh( geometry, material );
+				plane.frustumCulled = false;
+				plane.position.z = -1;
+				scene.add( plane );
+
+				return {
+					scene: scene,
+					geometry: geometry,
+					material: material,
+				};
+			}
+
+			function init() {
+
+				var renderTarget = new THREE.WebGLRenderTarget( config.resolution, config.resolution, {
+					wrapS: THREE.RepeatWrapping,
+					wrapT: THREE.RepeatWrapping,
+					minFilter: THREE.NearestFilter,
+					magFilter: THREE.NearestFilter,
+					format: THREE.RGBAFormat,
+					type: THREE.FloatType,
+					stencilBuffer: false,
+					depthBuffer: false
+				});
+
+				readBuffer = renderTarget;
+				writeBuffer = renderTarget.clone();
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.y = 30;
+				camera.position.z = 20;
+
+				// scene
+				var quad = createQuadScene( {
+					uniforms: {
+						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
+						mouse: { type: 'v2', value: mouse },
+						time: { type: 'f', value: 0.0 },
+
+						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
+						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+						cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+						cameraNear: { type: 'f', value: camera.near },
+						cameraFar:  { type: 'f', value: camera.far },
+
+						shadowType: { type: 'i', value: config.shadowType },
+						shadowIntensity: { type: 'f', value: config.shadowIntensity },
+						shadowSharpness: { type: 'f', value: config.shadowSharpness },
+					},
+					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
+				} );
+				scene = quad.scene;
+				material = quad.material;
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				//renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( config.resolution, config.resolution );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				canvas = renderer.domElement;
+				container.appendChild( canvas );
+
+				// check gl_FragDepthEXT
+				var gl = canvas.getContext( 'webgl' ) || canvas.getContext( 'experimental-webgl' );
+				var ext = gl.getExtension( 'EXT_frag_depth' );
+				if( ext == null ) {
+					alert( "gl_FragDepthEXT not supported" );
+					return;
+				}
+
+				orbitControls = new THREE.OrbitControls( camera, canvas );
+				orbitControls.enablePan = true;
+				orbitControls.keyPanSpeed = 0.01;
+				orbitControls.enableDamping = false;
+				orbitControls.dampingFactor = 0.015;
+				orbitControls.enableZoom = true;
+				orbitControls.zoomSpeed = 1;
+				orbitControls.rotateSpeed = 0.8;
+				orbitControls.autoRotate = false;
+				orbitControls.autoRotateSpeed = 0.0;
+				orbitControls.target = new THREE.Vector3( 0.0, 10.0, 0.0 );
+
+				// model
+
+				var onProgress = function ( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round(percentComplete, 2) + '% downloaded' );
+					}
+				};
+
+				var onError = function ( xhr ) {
+				};
+
+				var modelFile = 'models/mmd/miku/miku_v2.pmd';
+				var vmdFiles = [ 'models/mmd/vmd/wavefile_v2.vmd' ];
+
+				helper = new THREE.MMDHelper( renderer );
+
+				var loader = new THREE.MMDLoader();
+				loader.setDefaultTexturePath( './models/mmd/default/' );
+
+				loader.load( modelFile, vmdFiles, function ( object ) {
+
+					mesh = object;
+
+					helper.add( mesh );
+					helper.setAnimation( mesh );
+
+					/*
+					 * Note: You must set Physics
+					 *       before you add mesh to scene or any other 3D object.
+					 * Note: Physics calculation is pretty heavy.
+					 *       It may not be acceptable for most mobile devices yet.
+			 		 */
+					if ( ! isMobileDevice() ) {
+
+						helper.setPhysics( mesh );
+
+					}
+
+					helper.unifyAnimationDuration();
+
+					scene.add( mesh );
+
+				}, onProgress, onError );
+
+				//
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				var gui = new dat.GUI();
+				gui.add( config, 'saveImage' ).name( 'Save Image' );
+				gui.add( config, 'camera', [ 'GLSL', 'Orbit'/*, 'Fly'*/ ] ).name( 'Camera' );
+
+				var shadowFolder = gui.addFolder('Shadow');
+				shadowFolder.add( config, 'shadowType', { Hard: 0, Soft1: 1, Soft2: 2 } ).name( 'Type');
+				shadowFolder.add( config, 'shadowIntensity', 0.0, 1.0 ).name( 'Intensity' );
+				shadowFolder.add( config, 'shadowSharpness', 0.0, 100.0 ).name( 'Sharpness' );
+				shadowFolder.open();
+
+				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+
+					if ( value !== 'full' ) {
+
+						canvas.width = value;
+						canvas.height = value;
+
+					}
+					onWindowResize();
+
+				} );
+
+				stats = new Stats();
+				document.body.appendChild( stats.domElement );
+
+				onWindowResize();
+
+			}
+
+			function onWindowResize() {
+
+				if ( config.resolution === 'full' ) {
+
+					canvas.width = window.innerWidth;
+					canvas.height = window.innerHeight;
+
+				}
+
+				camera.aspect = canvas.width / canvas.height;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( canvas.width, canvas.height );
+
+			}
+
+			function animate( timestamp ) {
+
+				requestAnimationFrame( animate );
+				render( timestamp );
+
+			}
+
+			function render( timestamp ) {
+
+				var delta = clock.getDelta();
+
+				stats.begin();
+
+				if ( config.camera === "Fly" ) {
+
+					flyControls.update( delta );
+
+				} else if ( config.camera === "Orbit" ) {
+
+					orbitControls.update();
+
+				}
+
+				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+				material.uniforms.mouse.value = mouse;
+				material.uniforms.time.value = timestamp * 0.001;
+
+				var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
+				var cameraViewInverseMatrix = camera.matrixWorld;
+				var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+				//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
+				cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
+				cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+				material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+
+				material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
+				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+
+				material.uniforms.cameraNear.value = camera.near;
+				material.uniforms.cameraFar.value  = camera.far;
+
+				material.uniforms.shadowType.value = config.shadowType;
+				material.uniforms.shadowIntensity.value = config.shadowIntensity;
+				material.uniforms.shadowSharpness.value = config.shadowSharpness;
+				
+				renderer.render( scene, camera );
+
+				stats.end();
+
+				if ( mesh ) {
+
+					helper.animate( delta );
+					helper.render( scene, camera );
+
+				} else {
+
+					renderer.clear();
+					renderer.render( scene, camera );
+
+				}
+
+			}
+
+			// easy mobile device detection
+			function isMobileDevice () {
+
+				if ( navigator === undefined || navigator.userAgent === undefined ) {
+
+					return true;
+
+				}
+
+				var s = navigator.userAgent;
+
+				if (    s.match( /iPhone/i )
+//				     || s.match( /iPad/i )
+				     || s.match( /iPod/i )
+				     || s.match( /webOS/i )
+				     || s.match( /BlackBerry/i )
+				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
+				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+
+					return true;
+
+				}
+
+				return false;
+
+			}
+
+		</script>
+
+	</body>
+</html>
