@@ -400,20 +400,19 @@ void main(void) {
 
 			var container, stats;
 			var camera, flyControls, orbitControls, renderer;
-			var scene, material;
-			var backScene, readBuffer, writeBuffer;
+			var renderQuad, mmdMesh;
+			var floatQuad, readBuffer, writeBuffer;
 
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
-			var mesh, camera, scene, renderer;
 			var helper;
 
 			var clock = new THREE.Clock();
 
 			var config = {
 				saveImage: function() {
-					renderer.render( scene, camera );
-					if ( mesh ) {
-						helper.render( scene, camera );
+					renderer.render( renderQuad.scene, camera );
+					if ( mmdMesh ) {
+						helper.render( renderQuad.scene, camera );
 					}
 
 					window.open( canvas.toDataURL() );
@@ -473,8 +472,8 @@ void main(void) {
 				camera.position.y = 30;
 				camera.position.z = 20;
 
-				// scene
-				var quad = createQuadScene( {
+				// float quad
+				floatQuad = createQuadScene( {
 					uniforms: {
 						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
 						mouse: { type: 'v2', value: mouse },
@@ -493,15 +492,34 @@ void main(void) {
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
 				} );
-				scene = quad.scene;
-				material = quad.material;
+
+				// render quad
+				renderQuad = createQuadScene( {
+					uniforms: {
+						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
+						mouse: { type: 'v2', value: mouse },
+						time: { type: 'f', value: 0.0 },
+
+						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
+						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+						cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+						cameraNear: { type: 'f', value: camera.near },
+						cameraFar:  { type: 'f', value: camera.far },
+
+						shadowType: { type: 'i', value: config.shadowType },
+						shadowIntensity: { type: 'f', value: config.shadowIntensity },
+						shadowSharpness: { type: 'f', value: config.shadowSharpness },
+					},
+					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
+				} );
 
 				var ambient = new THREE.AmbientLight( 0x666666 );
-				scene.add( ambient );
+				renderQuad.scene.add( ambient );
 
 				var directionalLight = new THREE.DirectionalLight( 0x887766 );
 				directionalLight.position.set( -1, 1, 1 ).normalize();
-				scene.add( directionalLight );
+				renderQuad.scene.add( directionalLight );
 
 				//
 
@@ -554,26 +572,26 @@ void main(void) {
 
 				loader.load( modelFile, vmdFiles, function ( object ) {
 
-					mesh = object;
+					mmdMesh = object;
 
-					helper.add( mesh );
-					helper.setAnimation( mesh );
+					helper.add( mmdMesh );
+					helper.setAnimation( mmdMesh );
 
 					/*
 					 * Note: You must set Physics
-					 *       before you add mesh to scene or any other 3D object.
+					 *       before you add mmdMesh to scene or any other 3D object.
 					 * Note: Physics calculation is pretty heavy.
 					 *       It may not be acceptable for most mobile devices yet.
 			 		 */
 					if ( ! isMobileDevice() ) {
 
-						helper.setPhysics( mesh );
+						helper.setPhysics( mmdMesh );
 
 					}
 
 					helper.unifyAnimationDuration();
 
-					scene.add( mesh );
+					renderQuad.scene.add( mmdMesh );
 
 				}, onProgress, onError );
 
@@ -648,9 +666,9 @@ void main(void) {
 
 				}
 
-				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-				material.uniforms.mouse.value = mouse;
-				material.uniforms.time.value = timestamp * 0.001;
+				renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+				renderQuad.material.uniforms.mouse.value = mouse;
+				renderQuad.material.uniforms.time.value = timestamp * 0.001;
 
 				var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
 				var cameraViewInverseMatrix = camera.matrixWorld;
@@ -658,31 +676,31 @@ void main(void) {
 				//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
 				cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
 				cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
-				material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+				renderQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
 
-				material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+				renderQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
+				renderQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
 
-				material.uniforms.cameraNear.value = camera.near;
-				material.uniforms.cameraFar.value  = camera.far;
+				renderQuad.material.uniforms.cameraNear.value = camera.near;
+				renderQuad.material.uniforms.cameraFar.value  = camera.far;
 
-				material.uniforms.shadowType.value = config.shadowType;
-				material.uniforms.shadowIntensity.value = config.shadowIntensity;
-				material.uniforms.shadowSharpness.value = config.shadowSharpness;
+				renderQuad.material.uniforms.shadowType.value = config.shadowType;
+				renderQuad.material.uniforms.shadowIntensity.value = config.shadowIntensity;
+				renderQuad.material.uniforms.shadowSharpness.value = config.shadowSharpness;
 				
-				renderer.render( scene, camera );
+				renderer.render( renderQuad.scene, camera );
 
 				stats.end();
 
-				if ( mesh ) {
+				if ( mmdMesh ) {
 
 					helper.animate( delta );
-					helper.render( scene, camera );
+					helper.render( renderQuad.scene, camera );
 
 				} else {
 
 					renderer.clear();
-					renderer.render( scene, camera );
+					renderer.render( renderQuad.scene, camera );
 
 				}
 
