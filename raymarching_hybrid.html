@@ -452,7 +452,7 @@ void main(void) {
 
 				//
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				//renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( config.resolution, config.resolution );
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
@@ -594,7 +594,7 @@ void main(void) {
 				camera.aspect = canvas.width / canvas.height;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( canvas.width, canvas.height );
+				helper.setSize( canvas.width, canvas.height );
 
 			}
 
@@ -654,7 +654,6 @@ void main(void) {
 
 				} else {
 
-					renderer.clear();
 					renderer.render( scene, camera );
 
 				}
