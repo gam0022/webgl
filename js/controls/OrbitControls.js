@@ -111,6 +111,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	};
 
+	this.getState = function() {
+		return state;
+	}
+
 	// this method is exposed, but perhaps it would be better if we can make it private...
 	this.update = function() {
 

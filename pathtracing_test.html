@@ -103,7 +103,7 @@ vec3 cosineDirection( float seed, vec3 nor ) {
     float v = hash( 10.873 + seed);
     float a = 6.283185 * v;
 
-    return  sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
+    return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
 }
 
 float udFloor( vec3 p ){
@@ -201,7 +201,6 @@ void main( void ) {
 <script id="render_fragment_shader" type="x-shader/x-fragment">
 precision highp float;
 
-uniform float time;
 uniform int frame;
 uniform vec2 resolution;
 uniform sampler2D buffer;
@@ -222,7 +221,8 @@ void main(void) {
 		<script>
 
 			var container, stats;
-			var camera, orbitControls, renderer;
+			var camera, renderer;
+			var orbitControls, prevOrbitControlsState = -1;
 			var renderQuad;
 			var floatQuad, initBuffer, readBuffer, writeBuffer, frame = 0;
 			var clock = new THREE.Clock();
@@ -424,6 +424,11 @@ void main(void) {
 
 				if ( config.camera === "Orbit" ) {
 					orbitControls.update();
+					var state = orbitControls.getState();
+					if ( state != prevOrbitControlsState && state == -1 ) {
+						frame = 0;
+					}
+					prevOrbitControlsState = state;
 				}
 
 				// float quad
