@@ -43,27 +43,20 @@
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
 		</div>
 
-		<script id="vertex_shader" type="x-shader/x-vertex">
+<script id="vertex_shader" type="x-shader/x-vertex">
+attribute vec3 position;
+void main(void) {
+	gl_Position = vec4( position, 1.0 );
+}
+</script>
 
-			attribute vec3 position;
-
-			void main(void) {
-
-				gl_Position = vec4(position, 1.0);
-
-			}
-
-		</script>
-
-		<script id="fragment_shader" type="x-shader/x-fragment">
-
-#extension GL_EXT_frag_depth : require
-
+<script id="float_fragment_shader" type="x-shader/x-fragment">
 precision highp float;
 
 // uniforms
 uniform float time;
-uniform vec2 mouse;
+uniform int frame;
+uniform sampler2D buffer;
 uniform vec2 resolution;
 
 // camera
@@ -76,354 +69,136 @@ uniform mat4 cameraViewProjectionpMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 
-// shadow
-uniform int shadowType;
-uniform float shadowIntensity;
-uniform float shadowSharpness;
-
 // consts
 const float EPS = 1e-4;
 const float OFFSET = EPS * 10.0;
 const float PI = 3.14159;
-
-
-// globals
+const vec3 backgroundColor = vec3( 1.0 );
 const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
-vec3 cPos, cDir;
 
 struct Intersect {
-	bool isHit;
+    bool hit;
 
-	vec3 position;
-	float distance;
-	vec3 normal;
+    vec3 position;
+    float distance;
+    vec3 normal;
 
-	int material;
-	vec3 color;
+    int material;
+    vec3 color;
 };
 
-const int SPHERE_MATERIAL = 0;
-const int FLOOR_MATERIAL = 1;
-
-// distance functions
-vec3 onRep( vec3 p, float interval ) {
-
-	vec3 q = mod( p, interval ) - 0.5 * interval;
-	q.y = p.y;
-	return q;
-
+float hash( float seed ) {
+    return fract( sin( seed ) * 43758.5453 );
 }
 
-float floorDist( vec3 p ){
+vec3 cosineDirection( float seed, vec3 nor ) {
+    // compute basis from normal
+    // see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
+    // (link provided by nimitz)
+    vec3 tc = vec3( 1.0+nor.z-nor.xy*nor.xy, -nor.x*nor.y)/(1.0+nor.z);
+    vec3 uu = vec3( tc.x, tc.z, -nor.x );
+    vec3 vv = vec3( tc.z, tc.y, -nor.y );
+    
+    float u = hash( 78.233 + seed);
+    float v = hash( 10.873 + seed);
+    float a = 6.283185 * v;
 
-	return dot(p, vec3( 0.0, 1.0, 0.0 ) ) + 0.0;
-
+    return  sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
 }
 
-float sdCappedCylinder( vec3 p, vec2 h )
-{
-  vec2 d = abs(vec2(length(p.xz),p.y)) - h;
-  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+float udFloor( vec3 p ){
+	return dot( p, vec3( 0.0, 1.0, 0.0 ) ) + 1.0;
 }
 
-float sceneDist( vec3 p ) {
-
-	return min(
-		sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) ),
-		floorDist( p )
-	);
-
+float sdSphere( vec3 p, float r ) {
+	return length( p ) - r;
 }
 
-
-// color functions
-vec3 hsv2rgb( vec3 c ) {
-
-	vec4 K = vec4( 1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0 );
-	vec3 p = abs( fract( c.xxx + K.xyz ) * 6.0 - K.www );
-	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
-
-}
-
-float checkeredPattern( vec3 p ) {
-
-	float u = 1.0 - floor( mod( p.x, 2.0 ) );
-	float v = 1.0 - floor( mod( p.z, 2.0 ) );
-
-	if ( ( u == 1.0 && v < 1.0 ) || ( u < 1.0 && v == 1.0 ) ) {
-
-		return 0.2;
-
-	} else {
-
-		return 1.0;
-
-	}
-
-}
-
-Intersect minIntersect( Intersect a, Intersect b ) {
-
-	if ( a.distance < b.distance ) {
-		return a;
-	} else {
-		return b;
-	}
-
+float sceneDistance( vec3 p ) {
+	//return sdSphere( p, 1.0 );
+	return min( udFloor( p ), sdSphere( p, 1.0 ) );
 }
 
 Intersect sceneIntersect( vec3 p ) {
-
-	Intersect a, b;
-	a.distance = sdCappedCylinder( onRep( p, 15.0) , vec2( 3.0, 15.0 ) );
-	a.material = SPHERE_MATERIAL;
-
-	b.distance = floorDist( p );
-	b.material = FLOOR_MATERIAL;
-
-	return minIntersect( a, b );
+	Intersect a;
+	a.distance = sceneDistance( p );
+	a.material = 0;
+	return a;
 }
 
-vec3 getNormal( vec3 p ) {
-
-	return normalize(vec3(
-		sceneDist(p + vec3( EPS, 0.0, 0.0 ) ) - sceneDist(p + vec3( -EPS, 0.0, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, EPS, 0.0 ) ) - sceneDist(p + vec3( 0.0, -EPS, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, 0.0, EPS ) ) - sceneDist(p + vec3( 0.0, 0.0, -EPS ) )
-	));
-
+vec3 calcNormal( vec3 p ) {
+	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
+	return normalize(
+		e.xyy * sceneDistance( p + e.xyy ) + e.yyx * sceneDistance( p + e.yyx ) + 
+			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
-float getHardShadow( vec3 ro, vec3 rd ) {
+Intersect calcRadiance( inout vec3 origin, inout vec3 dir, int bounce, float sa ) {
+	Intersect nearest;
 
-	float dist;
-	float depth = EPS;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		depth += dist;
-
-	}
-
-	return 1.0;
-
-}
-
-float getSoft1Shadow( vec3 ro, vec3 rd ) {
-
-	float dist;
-	float depth = EPS;
-	float bright = 1.0;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		bright = min( bright, shadowSharpness * dist );
-
-		depth += dist;
-
-	}
-
-	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
-
-}
-
-float getSoft2Shadow( vec3 ro, vec3 rd ) {
-
-	float dist;
-	float depth = EPS;
-	float bright = 1.0;
-
-	for ( int i = 0; i < 30; i++ ) {
-
-		dist = sceneDist( ro + rd * depth );
-
-		if ( dist < EPS ) return shadowIntensity;
-
-		bright = min( bright, shadowSharpness * dist / depth );
-		depth += dist;
-
-	}
-
-	return shadowIntensity + ( 1.0 - shadowIntensity ) * bright;
-
-}
-
-float getShadow( vec3 ro, vec3 rd ) {
-
-	if ( shadowType == 0 ) {
-
-		return getHardShadow( ro, rd );
-
-	} else if ( shadowType == 1 ) {
-
-		return getSoft1Shadow( ro, rd );
-
-	} //else if ( shadowType == 2 ) {
-
-		return getSoft2Shadow( ro, rd );
-
-	//}
-
-}
-
-Intersect getRayColor( vec3 origin, vec3 ray ) {
-
-	// marching loop
-	float dist;
-	float depth = 0.0;
+	float d;
+	float distance = 0.0;
 	vec3 p = origin;
-	int count = 0;
-	Intersect nearest;
 
-	for ( int i = 0; i < 128; i++ ){
-
-		dist = sceneDist( p );
-		depth += dist;
-		p = origin + depth * ray;
-
-		count = i;
-		if ( abs(dist) < EPS ) break;
-
+	for ( int i = 0; i < 200; i++ ){
+		d = sceneDistance( p );
+		distance += d;
+		p = origin + distance * dir;
+		if ( abs( d ) < EPS ) break;
 	}
 
-	if ( abs(dist) < EPS ) {
-
+	if ( abs( d ) < EPS ) {
 		nearest = sceneIntersect( p );
-		nearest.normal = getNormal(p);
+		nearest.position = p;
+		nearest.normal = calcNormal( p );
+		nearest.distance = distance;
+
 		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
-		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
-		float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
+		//nearest.color = vec3( 0.5, 0.5, 0.5 ) * diffuse;
+		nearest.color = vec3( 0.5, 0.5, 0.5 );
 
-		if ( nearest.material == FLOOR_MATERIAL ) {
+		nearest.hit = true;
 
-			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
-			
-		} else if ( nearest.material == SPHERE_MATERIAL ) {
-
-			vec3 color = vec3( 1.0, 0.2, 0.2 );
-			nearest.color = color * diffuse * shadow + specular;
-
-		}
-
-		nearest.isHit = true;
-
+		origin = p + OFFSET * nearest.normal;
+		dir = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), nearest.normal);
 	} else {
-
-		nearest.color = vec3( 1.0 );
-		nearest.isHit = false;
-
+		nearest.color = backgroundColor;
+		nearest.hit = false;
 	}
- 	
-	//nearest.color += clamp( 0.002 * depth, 0.0, 0.9 );
-	nearest.position = p;
-	nearest.distance = depth;
+
 	return nearest;
-
 }
 
-void main(void) {
-
-	// fragment position
-	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
-
-	// camera and ray
-	cPos = cameraPosition;
-	//vec4 rayTip = cameraViewProjectionpMatrixInverse * vec4( p.xy, 1.0, 1.0 );
-	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( p.xy, 1.0, 1.0 );
-	//vec4 rayTip = cameraProjectionMatrixInverse * cameraWorldMatrix * vec4( p.xy, 1.0, 1.0 );
-	vec3 ray = normalize( rayTip.xyz );
-
-	vec3 color = vec3( 0.0 );
-	float alpha = 1.0;
-	Intersect nearest;
-	Intersect firstNearest;
-
-	for ( int i = 0; i < 2; i++ ) {
-
-		nearest = getRayColor( cPos, ray );
-
-		color += alpha * nearest.color;
-		alpha *= 0.4;
-		ray = normalize( reflect( ray, nearest.normal ) );
-		cPos = nearest.position + nearest.normal * OFFSET;
-
-		if ( i == 0 ) firstNearest = nearest;
-		if ( !nearest.isHit || nearest.material != SPHERE_MATERIAL ) break;
-
-	}
-
-	if ( firstNearest.isHit ) {
-
-		//float z = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
-		//float normalZ = ( z - cameraNear ) / ( cameraFar - cameraNear );
-		//gl_FragDepthEXT = cameraFar * normalZ / z;
-
-		float viewZ = -( viewMatrix * vec4( firstNearest.position, 1.0 ) ).z;
-		float normalZ = ( viewZ - cameraNear ) / ( cameraFar - cameraNear );
-		float clipZ = cameraFar * normalZ;
-		gl_FragDepthEXT = clipZ / viewZ;
-
-	} else {
-
-		gl_FragDepthEXT = 1.0;
-
-	}
-
-	gl_FragColor = vec4( color, 1.0 );
-
-}
-
-		</script>
-
-		<script id="float_fragment_shader" type="x-shader/x-fragment">
-precision highp float;
-
-// uniforms
-uniform float time;
-uniform sampler2D buffer;
-uniform vec2 mouse;
-uniform vec2 resolution;
-
-// camera
-uniform vec3 cameraPosition;
-uniform mat4 viewMatrix;
-
-uniform mat4 cameraWorldMatrix;
-uniform mat4 cameraProjectionMatrixInverse;
-uniform mat4 cameraViewProjectionpMatrixInverse;
-uniform float cameraNear;
-uniform float cameraFar;
-
-// consts
-const float EPS = 1e-4;
-const float OFFSET = EPS * 10.0;
-const float PI = 3.14159;
-
-void main(void) {
+void main( void ) {
 	// previous color
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
 	vec4 prevColor = texture2D( buffer, uv );
+
+	// sa
+	float sa = hash( dot( gl_FragCoord.xy, vec2(12.9898, 78.233) ) + 1113.1*float(frame) );
 
 	// fragment position
 	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
 
 	// camera and ray
+	vec3 origin = cameraPosition;
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
 	vec3 ray = normalize( rayTip.xyz );
 
-	gl_FragColor = vec4( prevColor.rgb + vec3( 0.5 ), 1.0 );
-}
-		</script>
+	// bounce
+	vec3 color = vec3( 1.0 );
+	for ( int i = 0; i < 3; i++ ) {
+		Intersect nearest = calcRadiance( origin, ray, i, sa );
+		color *= nearest.color;
+		if ( !nearest.hit ) break;
+	}
 
-		<script id="render_fragment_shader" type="x-shader/x-fragment">
+	gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
+	//gl_FragColor = vec4( color, 1.0 );
+}
+</script>
+
+<script id="render_fragment_shader" type="x-shader/x-fragment">
 precision highp float;
 
 uniform float time;
@@ -433,15 +208,14 @@ uniform sampler2D buffer;
 
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
-	vec4 c = texture2D( buffer, uv );
-	gl_FragColor = vec4( c.rgb / float( frame ), 1.0 );
+	vec4 color = texture2D( buffer, uv );
+	gl_FragColor = vec4( color.rgb / float( frame ), 1.0 );
+	//gl_FragColor = vec4( color.rgb, 1.0 );
 }
-		</script>
+</script>
 
 		<script src="js/three.min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
-
-		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
 
@@ -449,28 +223,16 @@ void main(void) {
 
 			var container, stats;
 			var camera, orbitControls, renderer;
-			var renderQuad, mmdMesh;
+			var renderQuad;
 			var floatQuad, initBuffer, readBuffer, writeBuffer, frame = 0;
-
-			var mouse = new THREE.Vector2( 0.5, 0.5 );
-			var helper;
-
 			var clock = new THREE.Clock();
 
 			var config = {
 				saveImage: function() {
 					renderer.render( renderQuad.scene, camera );
-					if ( mmdMesh ) {
-						helper.render( renderQuad.scene, camera );
-					}
-
 					window.open( canvas.toDataURL() );
 				},
 				camera: 'Orbit',
-
-				shadowType: 2,
-				shadowIntensity: 0.3,
-				shadowSharpness: 8.0,
 
 				resolution: '512',
 			};
@@ -543,14 +305,13 @@ void main(void) {
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.y = 30;
-				camera.position.z = 20;
+				camera.position.set( 0, 1, 8 );
+				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
 				// float quad
 				floatQuad = createQuadScene( {
 					uniforms: {
 						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
-						mouse: { type: 'v2', value: mouse },
 						time: { type: 'f', value: 0.0 },
 						frame: { type: 'i', value: frame },
 						buffer: { type: 't', value: readBuffer },
@@ -576,13 +337,6 @@ void main(void) {
 					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent
 				} );
 
-				var ambient = new THREE.AmbientLight( 0x666666 );
-				renderQuad.scene.add( ambient );
-
-				var directionalLight = new THREE.DirectionalLight( 0x887766 );
-				directionalLight.position.set( -1, 1, 1 ).normalize();
-				renderQuad.scene.add( directionalLight );
-
 				renderer = new THREE.WebGLRenderer();
 				//renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( config.resolution, config.resolution );
@@ -590,22 +344,9 @@ void main(void) {
 				canvas = renderer.domElement;
 				container.appendChild( canvas );
 
-				// check gl_FragDepthEXT
-				var gl = canvas.getContext( 'webgl' ) || canvas.getContext( 'experimental-webgl' );
-				var ext = gl.getExtension( 'EXT_frag_depth' );
-				if( ext == null ) {
-					alert( "gl_FragDepthEXT not supported" );
-					return;
-				}
-
 				// check OES_texture_float
-				//if ( ! renderer.extensions.get( "OES_texture_float" ) ) {
-				//	alert( "No OES_texture_float support for float textures." );
-				//	return;
-				//}
-				var ext = gl.getExtension('OES_texture_float');
-				if( ext == null ) {
-					alert('float texture not supported');
+				if ( !renderer.extensions.get( "OES_texture_float" ) ) {
+					alert( "No OES_texture_float support for float textures." );
 					return;
 				}
 
@@ -619,7 +360,7 @@ void main(void) {
 				orbitControls.rotateSpeed = 0.8;
 				orbitControls.autoRotate = false;
 				orbitControls.autoRotateSpeed = 0.0;
-				orbitControls.target = new THREE.Vector3( 0.0, 10.0, 0.0 );
+				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -689,7 +430,6 @@ void main(void) {
 				{
 					// set uniforms
 					floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-					floatQuad.material.uniforms.mouse.value = mouse;
 					floatQuad.material.uniforms.time.value = timestamp * 0.001;
 					floatQuad.material.uniforms.frame.value = frame;
 					floatQuad.material.uniforms.buffer.value = frame === 0 ? initBuffer : readBuffer;
