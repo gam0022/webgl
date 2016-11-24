@@ -87,6 +87,30 @@ struct Intersect {
     vec3 color;
 };
 
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+struct Sphere {
+    float radius;
+    vec3  position;
+    vec3  color;
+};
+
+struct Plane {
+    vec3 position;
+    vec3 normal;
+    vec3 color;
+};
+
+struct Intersection {
+    vec3 hitPoint;
+    vec3 normal;
+    vec3 color;
+    float distance;
+};
+
 float hash( float seed ) {
     return fract( sin( seed ) * 43758.5453 );
 }
@@ -133,17 +157,24 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
-Intersect calcRadiance( inout vec3 origin, inout vec3 dir, int bounce, float sa ) {
+//
+// http://qiita.com/doxas/items/477fda867da467116f8d
+// https://github.com/gam0022/tsukihi/blob/master/object/sphere.h
+//
+
+
+
+Intersect calcRadiance( inout Ray ray, int bounce, float sa ) {
 	Intersect nearest;
 
 	float d;
 	float distance = 0.0;
-	vec3 p = origin;
+	vec3 p = ray.origin;
 
 	for ( int i = 0; i < 200; i++ ){
 		d = sceneDistance( p );
 		distance += d;
-		p = origin + distance * dir;
+		p = ray.origin + distance * ray.direction;
 		if ( abs( d ) < EPS ) break;
 	}
 
@@ -159,8 +190,8 @@ Intersect calcRadiance( inout vec3 origin, inout vec3 dir, int bounce, float sa 
 
 		nearest.hit = true;
 
-		origin = p + OFFSET * nearest.normal;
-		dir = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), nearest.normal);
+		ray.origin = p + OFFSET * nearest.normal;
+		ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), nearest.normal);
 	} else {
 		nearest.color = backgroundColor;
 		nearest.hit = false;
@@ -181,14 +212,15 @@ void main( void ) {
 	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
 
 	// camera and ray
-	vec3 origin = cameraPosition;
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
-	vec3 ray = normalize( rayTip.xyz );
+	Ray ray;
+	ray.origin = cameraPosition;
+	ray.direction = normalize( rayTip.xyz );
 
 	// bounce
 	vec3 color = vec3( 1.0 );
 	for ( int i = 0; i < 3; i++ ) {
-		Intersect nearest = calcRadiance( origin, ray, i, sa );
+		Intersect nearest = calcRadiance( ray, i, sa );
 		color *= nearest.color;
 		if ( !nearest.hit ) break;
 	}
