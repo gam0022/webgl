@@ -208,7 +208,7 @@ uniform sampler2D buffer;
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
 	vec4 color = texture2D( buffer, uv );
-	gl_FragColor = vec4( color.rgb / float( frame ), 1.0 );
+	gl_FragColor = vec4( color.rgb / float( frame + 1 ), 1.0 );
 	//gl_FragColor = vec4( color.rgb, 1.0 );
 }
 </script>
@@ -425,7 +425,7 @@ void main(void) {
 				if ( config.camera === "Orbit" ) {
 					orbitControls.update();
 					var state = orbitControls.getState();
-					if ( state != prevOrbitControlsState && state == -1 ) {
+					if ( state !== -1 ) {
 						frame = 0;
 					}
 					prevOrbitControlsState = state;
