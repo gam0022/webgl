@@ -314,7 +314,7 @@ void main(void) {
 						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
 						time: { type: 'f', value: 0.0 },
 						frame: { type: 'i', value: frame },
-						buffer: { type: 't', value: readBuffer },
+						buffer: { type: 't', value: readBuffer.texture },
 
 						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
 						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
@@ -331,7 +331,7 @@ void main(void) {
 					uniforms: {
 						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
 						frame: { type: 'i', value: frame },
-						buffer: { type: 't', value: writeBuffer },
+						buffer: { type: 't', value: writeBuffer.texture },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent
@@ -437,7 +437,7 @@ void main(void) {
 					floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 					floatQuad.material.uniforms.time.value = timestamp * 0.001;
 					floatQuad.material.uniforms.frame.value = frame;
-					floatQuad.material.uniforms.buffer.value = frame === 0 ? initBuffer : readBuffer;
+					floatQuad.material.uniforms.buffer.value = frame === 0 ? initBuffer : readBuffer.texture;
 
 					// set camera uniforms
 					{
@@ -463,7 +463,7 @@ void main(void) {
 				{
 					renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 					renderQuad.material.uniforms.frame.value = frame;
-					renderQuad.material.uniforms.buffer.value = writeBuffer;
+					renderQuad.material.uniforms.buffer.value = writeBuffer.texture;
 
 					renderer.render( renderQuad.scene, camera );
 				}
