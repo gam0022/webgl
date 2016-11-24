@@ -70,64 +70,56 @@ uniform float cameraNear;
 uniform float cameraFar;
 
 // consts
+const float INF = 1e+10;
 const float EPS = 1e-4;
 const float OFFSET = EPS * 10.0;
-const float PI = 3.14159;
+const float PI = 3.14159265359;
 const vec3 backgroundColor = vec3( 1.0 );
-const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
 
-struct Intersect {
-    bool hit;
+struct Intersection {
+	bool hit;
+	vec3 position;
+	vec3 normal;
+	float distance;
 
-    vec3 position;
-    float distance;
-    vec3 normal;
-
-    int material;
-    vec3 color;
+	int material;
+	vec3 color;
 };
 
 struct Ray {
-    vec3 origin;
-    vec3 direction;
+	vec3 origin;
+	vec3 direction;
 };
 
 struct Sphere {
-    float radius;
-    vec3  position;
-    vec3  color;
+	float radius;
+	vec3 position;
+	vec3 color;
 };
 
 struct Plane {
-    vec3 position;
-    vec3 normal;
-    vec3 color;
-};
-
-struct Intersection {
-    vec3 hitPoint;
-    vec3 normal;
-    vec3 color;
-    float distance;
+	vec3 position;
+	vec3 normal;
+	vec3 color;
 };
 
 float hash( float seed ) {
-    return fract( sin( seed ) * 43758.5453 );
+	return fract( sin( seed ) * 43758.5453 );
 }
 
 vec3 cosineDirection( float seed, vec3 nor ) {
-    // compute basis from normal
-    // see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
-    // (link provided by nimitz)
-    vec3 tc = vec3( 1.0+nor.z-nor.xy*nor.xy, -nor.x*nor.y)/(1.0+nor.z);
-    vec3 uu = vec3( tc.x, tc.z, -nor.x );
-    vec3 vv = vec3( tc.z, tc.y, -nor.y );
-    
-    float u = hash( 78.233 + seed);
-    float v = hash( 10.873 + seed);
-    float a = 6.283185 * v;
+	// compute basis from normal
+	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
+	// (link provided by nimitz)
+	vec3 tc = vec3( 1.0+nor.z-nor.xy*nor.xy, -nor.x*nor.y)/(1.0+nor.z);
+	vec3 uu = vec3( tc.x, tc.z, -nor.x );
+	vec3 vv = vec3( tc.z, tc.y, -nor.y );
 
-    return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
+	float u = hash( 78.233 + seed);
+	float v = hash( 10.873 + seed);
+	float a = 6.283185 * v;
+
+	return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
 }
 
 float udFloor( vec3 p ){
@@ -143,18 +135,23 @@ float sceneDistance( vec3 p ) {
 	return min( udFloor( p ), sdSphere( p, 1.0 ) );
 }
 
-Intersect sceneIntersect( vec3 p ) {
-	Intersect a;
-	a.distance = sceneDistance( p );
-	a.material = 0;
-	return a;
-}
-
 vec3 calcNormal( vec3 p ) {
 	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
 	return normalize(
 		e.xyy * sceneDistance( p + e.xyy ) + e.yyx * sceneDistance( p + e.yyx ) + 
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
+}
+
+void sceneIntersect( inout Intersection intersection, vec3 p ) {
+	float distance = sceneDistance( p );
+	if ( distance < intersection.distance ) {
+		intersection.hit = true;
+		intersection.position = p;
+		intersection.normal = calcNormal( p );
+		intersection.distance = distance;
+		intersection.material = 0;
+		intersection.color = vec3( 0.5, 0.5, 0.5 );
+	}
 }
 
 //
@@ -164,8 +161,8 @@ vec3 calcNormal( vec3 p ) {
 
 
 
-Intersect calcRadiance( inout Ray ray, int bounce, float sa ) {
-	Intersect nearest;
+void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
+	intersection.distance = INF;
 
 	float d;
 	float distance = 0.0;
@@ -179,25 +176,13 @@ Intersect calcRadiance( inout Ray ray, int bounce, float sa ) {
 	}
 
 	if ( abs( d ) < EPS ) {
-		nearest = sceneIntersect( p );
-		nearest.position = p;
-		nearest.normal = calcNormal( p );
-		nearest.distance = distance;
-
-		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
-		//nearest.color = vec3( 0.5, 0.5, 0.5 ) * diffuse;
-		nearest.color = vec3( 0.5, 0.5, 0.5 );
-
-		nearest.hit = true;
-
-		ray.origin = p + OFFSET * nearest.normal;
-		ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), nearest.normal);
+		sceneIntersect( intersection, p );
+		ray.origin = p + OFFSET * intersection.normal;
+		ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), intersection.normal);
 	} else {
-		nearest.color = backgroundColor;
-		nearest.hit = false;
+		intersection.color = backgroundColor;
+		intersection.hit = false;
 	}
-
-	return nearest;
 }
 
 void main( void ) {
@@ -218,11 +203,12 @@ void main( void ) {
 	ray.direction = normalize( rayTip.xyz );
 
 	// bounce
+	Intersection intersection;
 	vec3 color = vec3( 1.0 );
 	for ( int i = 0; i < 3; i++ ) {
-		Intersect nearest = calcRadiance( ray, i, sa );
-		color *= nearest.color;
-		if ( !nearest.hit ) break;
+		calcRadiance( intersection, ray, i, sa );
+		color *= intersection.color;
+		if ( !intersection.hit ) break;
 	}
 
 	gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
