@@ -142,16 +142,32 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
-void sceneIntersect( inout Intersection intersection, vec3 p ) {
-	float distance = sceneDistance( p );
-	if ( distance < intersection.distance ) {
-		intersection.hit = true;
-		intersection.position = p;
-		intersection.normal = calcNormal( p );
-		intersection.distance = distance;
-		intersection.material = 0;
-		intersection.color = vec3( 0.5, 0.5, 0.5 );
+void intersectDistanceFucntion( inout Intersection intersection, inout Ray ray ) {
+	float d;
+	float distance = 0.0;
+	vec3 p = ray.origin;
+
+	for ( int i = 0; i < 200; i++ ) {
+		d = sceneDistance( p );
+		distance += d;
+		p = ray.origin + distance * ray.direction;
+		if ( abs( d ) < EPS ) break;
 	}
+
+	if ( abs( d ) < EPS ) {
+		if ( distance < intersection.distance ) {
+			intersection.hit = true;
+			intersection.position = p;
+			intersection.normal = calcNormal( p );
+			intersection.distance = d;
+			intersection.material = 0;
+			intersection.color = vec3( 0.5, 0.5, 0.5 );
+		}
+	}
+}
+
+void intersectScene( inout Intersection intersection, inout Ray ray ) {
+	intersectDistanceFucntion( intersection, ray );
 }
 
 //
@@ -162,26 +178,15 @@ void sceneIntersect( inout Intersection intersection, vec3 p ) {
 
 
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
+	intersection.hit = false;
 	intersection.distance = INF;
+	intersection.color = backgroundColor;
 
-	float d;
-	float distance = 0.0;
-	vec3 p = ray.origin;
+	intersectScene( intersection, ray );
 
-	for ( int i = 0; i < 200; i++ ){
-		d = sceneDistance( p );
-		distance += d;
-		p = ray.origin + distance * ray.direction;
-		if ( abs( d ) < EPS ) break;
-	}
-
-	if ( abs( d ) < EPS ) {
-		sceneIntersect( intersection, p );
-		ray.origin = p + OFFSET * intersection.normal;
+	if ( intersection.hit ) {
+		ray.origin = intersection.position + OFFSET * intersection.normal;
 		ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), intersection.normal);
-	} else {
-		intersection.color = backgroundColor;
-		intersection.hit = false;
 	}
 }
 
