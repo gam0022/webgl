@@ -76,14 +76,19 @@ const float OFFSET = EPS * 10.0;
 const float PI = 3.14159265359;
 const vec3 backgroundColor = vec3( 1.0 );
 
+struct Material {
+	int type;
+	vec3 color;
+};
+
+#define MATERIAL_TYPE_DIFFUSE 0
+
 struct Intersection {
 	bool hit;
 	vec3 position;
-	vec3 normal;
 	float distance;
-
-	int material;
-	vec3 color;
+	vec3 normal;
+	Material material;
 };
 
 struct Ray {
@@ -94,13 +99,13 @@ struct Ray {
 struct Sphere {
 	float radius;
 	vec3 position;
-	vec3 color;
+	Material material;
 };
 
 struct Plane {
 	vec3 position;
 	vec3 normal;
-	vec3 color;
+	Material material;
 };
 
 float hash( float seed ) {
@@ -142,7 +147,7 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
-void intersectDistanceFucntion( inout Intersection intersection, inout Ray ray ) {
+void intersectDistanceFucntion( inout Intersection intersection, inout Ray ray, Material material ) {
 	float d;
 	float distance = 0.0;
 	vec3 p = ray.origin;
@@ -160,8 +165,7 @@ void intersectDistanceFucntion( inout Intersection intersection, inout Ray ray )
 			intersection.position = p;
 			intersection.normal = calcNormal( p );
 			intersection.distance = d;
-			intersection.material = 0;
-			intersection.color = vec3( 0.5, 0.5, 0.5 );
+			intersection.material = material;
 		}
 	}
 }
@@ -171,25 +175,28 @@ void intersectPlane( inout Intersection intersection, inout Ray ray, inout Plane
     float v = dot( ray.direction, plane.normal );
     float t = -( dot( ray.origin, plane.normal ) + d ) / v;
 
-    if(t > EPS && t < intersection.distance){
-        intersection.hit = true;
-        intersection.position = ray.origin + ray.direction * t;
-        intersection.normal = plane.normal;
-        intersection.distance = t;
-		intersection.material = 0;
-        intersection.color = plane.color;
-    }
+	if(t > EPS && t < intersection.distance){
+		intersection.hit = true;
+		intersection.position = ray.origin + ray.direction * t;
+		intersection.normal = plane.normal;
+		intersection.distance = t;
+		intersection.material = plane.material;
+	}
 }
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 
 	Plane plane;
-	plane.color = vec3( 0.5 );
+	plane.material.type = MATERIAL_TYPE_DIFFUSE;
+	plane.material.color = vec3( 0.5 );
 	plane.position = vec3( 0.0, -1.0, 0.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
 	intersectPlane( intersection, ray, plane );
 
-	intersectDistanceFucntion( intersection, ray );
+	Material distanceMaterial;
+	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
+	distanceMaterial.color = vec3( 0.8, 0.4, 0.4 );
+	intersectDistanceFucntion( intersection, ray, distanceMaterial );
 }
 
 //
@@ -202,7 +209,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
 	intersection.hit = false;
 	intersection.distance = INF;
-	intersection.color = backgroundColor;
+	intersection.material.color = backgroundColor;
 
 	intersectScene( intersection, ray );
 
@@ -234,7 +241,7 @@ void main( void ) {
 	vec3 color = vec3( 1.0 );
 	for ( int i = 0; i < 3; i++ ) {
 		calcRadiance( intersection, ray, i, sa );
-		color *= intersection.color;
+		color *= intersection.material.color;
 		if ( !intersection.hit ) break;
 	}
 
