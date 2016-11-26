@@ -131,8 +131,8 @@ float sdSphere( vec3 p, float r ) {
 }
 
 float sceneDistance( vec3 p ) {
-	//return sdSphere( p, 1.0 );
-	return min( udFloor( p ), sdSphere( p, 1.0 ) );
+	return sdSphere( p, 1.0 );
+	//return min( udFloor( p ), sdSphere( p, 1.0 ) );
 }
 
 vec3 calcNormal( vec3 p ) {
@@ -166,7 +166,29 @@ void intersectDistanceFucntion( inout Intersection intersection, inout Ray ray )
 	}
 }
 
+void intersectPlane( inout Intersection intersection, inout Ray ray, inout Plane plane ){
+    float d = -dot( plane.position, plane.normal );
+    float v = dot( ray.direction, plane.normal );
+    float t = -( dot( ray.origin, plane.normal ) + d ) / v;
+
+    if(t > EPS && t < intersection.distance){
+        intersection.hit = true;
+        intersection.position = ray.origin + ray.direction * t;
+        intersection.normal = plane.normal;
+        intersection.distance = t;
+		intersection.material = 0;
+        intersection.color = plane.color;
+    }
+}
+
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
+
+	Plane plane;
+	plane.color = vec3( 0.5 );
+	plane.position = vec3( 0.0, -1.0, 0.0 );
+	plane.normal = vec3( 0.0, 1.0, 0.0 );
+	intersectPlane( intersection, ray, plane );
+
 	intersectDistanceFucntion( intersection, ray );
 }
 
