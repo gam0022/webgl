@@ -373,23 +373,15 @@ void main(void) {
 				});
 			}
 
-			function init() {
-
-				initTexture  = createDataTexture(  config.resolution, config.resolution );
-				readBuffer  = createRenderTarget( config.resolution, config.resolution );
+			function initBuffers() {
+				initTexture  = createDataTexture( canvas.width, canvas.height );
+				readBuffer  = createRenderTarget( canvas.width, canvas.height );
 				writeBuffer = readBuffer.clone();
-
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
-
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.set( 0, 1, 8 );
-				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
 				// float quad
 				floatQuad = createQuadScene( {
 					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
+						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
 						time: { type: 'f', value: 0.0 },
 						frame: { type: 'i', value: frame },
 						buffer: { type: 't', value: readBuffer.texture },
@@ -407,13 +399,23 @@ void main(void) {
 				// render quad
 				renderQuad = createQuadScene( {
 					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
+						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
 						frame: { type: 'i', value: frame },
 						buffer: { type: 't', value: writeBuffer.texture },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent
 				} );
+			}
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.set( 0, 1, 8 );
+				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
 				renderer = new THREE.WebGLRenderer();
 				//renderer.setPixelRatio( window.devicePixelRatio );
@@ -454,12 +456,6 @@ void main(void) {
 
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
-					if ( value !== 'full' ) {
-
-						canvas.width = value;
-						canvas.height = value;
-
-					}
 					onWindowResize();
 
 				} );
@@ -478,12 +474,19 @@ void main(void) {
 					canvas.width = window.innerWidth;
 					canvas.height = window.innerHeight;
 
+				} else {
+
+					canvas.width = config.resolution;
+					canvas.height = config.resolution;
+
 				}
 
 				camera.aspect = canvas.width / canvas.height;
 				camera.updateProjectionMatrix();
 
 				renderer.setSize( canvas.width, canvas.height );
+				initBuffers();
+				frame = 0;
 
 			}
 
