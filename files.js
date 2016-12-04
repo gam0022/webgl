@@ -9,5 +9,8 @@ var files = {
   ],
   "raytracing": [
     "raytracing_gem",
+  ],
+  "emscripten": [
+    "emscripten_tsukihi",
   ]
 };
