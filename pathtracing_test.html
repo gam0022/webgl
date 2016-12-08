@@ -74,6 +74,9 @@ const float OFFSET = EPS * 10.0;
 const float PI = 3.14159265359;
 const vec3 backgroundColor = vec3( 1.0 );
 
+// global
+//vec4 state;
+
 struct Ray {
 	vec3 origin;
 	vec3 direction;
@@ -105,8 +108,22 @@ struct Plane {
 	Material material;
 };
 
-float hash( float seed ) {
-	return fract( sin( seed ) * 43758.5453 );
+float hash(float x) {
+    return fract(sin(x)*43758.5453123);
+}
+
+float GPURnd() {
+	const vec4 q = vec4(   1225.0,    1585.0,    2457.0,    2098.0);
+	const vec4 r = vec4(   1112.0,     367.0,      92.0,     265.0);
+	const vec4 a = vec4(   3423.0,    2646.0,    1707.0,    1999.0);
+	const vec4 m = vec4(4194287.0, 4194277.0, 4194191.0, 4194167.0);
+
+	vec4 beta = floor(state / q);
+	vec4 p = a * (state - beta * q) - beta * r;
+	beta = (sign(-p) + vec4(1.0)) * vec4(0.5) * m;
+	state = (p + beta);
+
+	return fract(dot(state / m, vec4(1.0, -1.0, 1.0, -1.0)));
 }
 
 vec3 cosineDirection( float seed, vec3 nor ) {
@@ -117,6 +134,8 @@ vec3 cosineDirection( float seed, vec3 nor ) {
 	vec3 uu = vec3( tc.x, tc.z, -nor.x );
 	vec3 vv = vec3( tc.z, tc.y, -nor.y );
 
+	//float u = GPURnd();//hash( 78.233 + seed);
+	//float v = GPURnd();//hash( 10.873 + seed);
 	float u = hash( 78.233 + seed);
 	float v = hash( 10.873 + seed);
 	float a = 6.283185 * v;
@@ -260,6 +279,12 @@ void main( void ) {
 	Ray ray;
 	ray.origin = cameraPosition;
 	ray.direction = normalize( rayTip.xyz );
+
+	//// init state for GPURnd
+	//state.x = hash(uv.x);
+	//state.y = hash(uv.y + state.x);
+	//state.z = hash(state.x + state.y);
+	//state.w = hash(time + dot(state.xyz, vec3(1.0)));
 
 	// bounce
 	Intersection intersection;
