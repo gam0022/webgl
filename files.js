@@ -12,5 +12,8 @@ var files = {
   ],
   "emscripten": [
     "emscripten_tsukihi",
-  ]
+  ],
+  "misc": [
+    "misc_superellipsoid",
+  ],
 };
