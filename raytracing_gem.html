@@ -404,7 +404,7 @@ http://opensource.org/licenses/mit-license.php
 				window.addEventListener( 'resize', onWindowResize );
 				document.body.appendChild( canvas );
 
-				var gl = canvas.getContext('webgl') || c.getContext('experimental-webgl');
+				var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 				var ext = gl.getExtension('OES_texture_float');
 				if( ext == null ) {
 					alert('float texture not supported');
