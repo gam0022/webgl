@@ -44,21 +44,111 @@
 			var cubeMesh, sphereMesh;
 			var sphereMaterial;
 			var refract;
+			var cubeMaterial, equirectMaterial;
+
+			var params = {
+				r: 0.9,
+				t: 0.9,
+				Cube: function () {
+					cubeMesh.material = cubeMaterial;
+					cubeMesh.visible = true;
+					sphereMaterial.envMap = textureCube;
+					sphereMaterial.needsUpdate = true;
+				},
+				Equirectangular: function () {
+					cubeMesh.material = equirectMaterial;
+					cubeMesh.visible = true;
+					sphereMaterial.envMap = textureEquirec;
+					sphereMaterial.needsUpdate = true;
+				},
+				Spherical: function () {
+					cubeMesh.visible = false;
+					sphereMaterial.envMap = textureSphere;
+					sphereMaterial.needsUpdate = true;
+				},
+				Refraction: false
+			};
 
 			init();
 			animate();
+
+			function createMesh() {
+				if ( sphereMesh ) {
+					scene.remove( sphereMesh );
+				}
+
+				var klein = function ( v, u ) {
+
+					u *= Math.PI;
+					v *= 2 * Math.PI;
+
+					u = u * 2;
+					var x, y, z;
+					if ( u < Math.PI ) {
+
+						x = 3 * Math.cos( u ) * ( 1 + Math.sin( u ) ) + ( 2 * ( 1 - Math.cos( u ) / 2 ) ) * Math.cos( u ) * Math.cos( v );
+						z = - 8 * Math.sin( u ) - 2 * ( 1 - Math.cos( u ) / 2 ) * Math.sin( u ) * Math.cos( v );
+
+					} else {
+
+						x = 3 * Math.cos( u ) * ( 1 + Math.sin( u ) ) + ( 2 * ( 1 - Math.cos( u ) / 2 ) ) * Math.cos( v + Math.PI );
+						z = - 8 * Math.sin( u );
+
+					}
+
+					y = - 2 * ( 1 - Math.cos( u ) / 2 ) * Math.sin( v );
+
+					return new THREE.Vector3( x, y, z );
+
+				};
+
+				var superellipsoid = function( v, u ) {
+					var uu = ( u * 2.0 - 1.0 ) * Math.PI;
+					var vv = ( v * 2.0 - 1.0 ) * Math.PI * 0.5;
+
+					var A = 3, B = 3, C = 3;
+
+					var c = function( w, m ) {
+						var cos = Math.cos( w );
+						return Math.sign( cos ) * Math.pow( Math.abs( cos ), m );
+					};
+					var s = function( w, m ) {
+						var sin = Math.sin( w );
+						return Math.sign( sin ) * Math.pow( Math.abs( sin ), m )
+					};
+
+					return new THREE.Vector3(
+						A * c( vv, 2.0 / params.t ) * c( uu, 2.0 / params.r ),
+						B * c( vv, 2.0 / params.t ) * s( uu, 2.0 / params.r ),
+						C * s( vv, 2.0 / params.t )
+					);
+				};
+
+				var geometry = new THREE.ParametricGeometry( superellipsoid, 50, 50 );
+
+				sphereMaterial = new THREE.MeshLambertMaterial( { envMap: textureCube } );
+				//sphereMaterial = new THREE.MeshPhongMaterial( {
+				//	color: 0x156289,
+				//	emissive: 0x072534,
+				//	side: THREE.DoubleSide,
+				//} )
+
+				sphereMesh = new THREE.Mesh( geometry, sphereMaterial );
+
+				scene.add( sphereMesh );
+			}
 
 			function init() {
 
 				// CAMERAS
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 100000 );
-				camera.position.set( 0, 0, 1000 );
-				cameraCube = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 100000 );
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set( 0, 0, 10 );
+				cameraCube = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
 
 				controls = new THREE.OrbitControls( camera );
-				controls.minDistance = 500;
-				controls.maxDistance = 2500;
+				controls.minDistance = 1;
+				controls.maxDistance = 250;
 
 				// SCENE
 
@@ -69,6 +159,19 @@
 
 				var ambient = new THREE.AmbientLight( 0xffffff );
 				scene.add( ambient );
+
+				var lights = [];
+				lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+				lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+				lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+
+				lights[ 0 ].position.set( 0, 200, 0 );
+				lights[ 1 ].position.set( 100, 200, 100 );
+				lights[ 2 ].position.set( - 100, - 200, - 100 );
+
+				scene.add( lights[ 0 ] );
+				scene.add( lights[ 1 ] );
+				scene.add( lights[ 2 ] );
 
 				// Textures
 
@@ -95,7 +198,7 @@
 
 				var equirectShader = THREE.ShaderLib[ "equirect" ];
 
-				var equirectMaterial = new THREE.ShaderMaterial( {
+				equirectMaterial = new THREE.ShaderMaterial( {
 					fragmentShader: equirectShader.fragmentShader,
 					vertexShader: equirectShader.vertexShader,
 					uniforms: equirectShader.uniforms,
@@ -106,7 +209,7 @@
 				equirectMaterial.uniforms[ "tEquirect" ].value = textureEquirec;
 
 				var cubeShader = THREE.ShaderLib[ "cube" ];
-				var cubeMaterial = new THREE.ShaderMaterial( {
+				cubeMaterial = new THREE.ShaderMaterial( {
 					fragmentShader: cubeShader.fragmentShader,
 					vertexShader: cubeShader.vertexShader,
 					uniforms: cubeShader.uniforms,
@@ -123,11 +226,7 @@
 
 				//
 
-				var geometry = new THREE.SphereGeometry( 400.0, 24, 24 );
-				sphereMaterial = new THREE.MeshLambertMaterial( { envMap: textureCube } );
-				sphereMesh = new THREE.Mesh( geometry, sphereMaterial );
-
-				scene.add( sphereMesh );
+				createMesh();
 
 				//
 
@@ -140,28 +239,13 @@
 
 				//
 
-				var params = {
-					Cube: function () {
-						cubeMesh.material = cubeMaterial;
-						cubeMesh.visible = true;
-						sphereMaterial.envMap = textureCube;
-						sphereMaterial.needsUpdate = true;
-					},
-					Equirectangular: function () {
-						cubeMesh.material = equirectMaterial;
-						cubeMesh.visible = true;
-						sphereMaterial.envMap = textureEquirec;
-						sphereMaterial.needsUpdate = true;
-					},
-					Spherical: function () {
-							cubeMesh.visible = false;
-						sphereMaterial.envMap = textureSphere;
-						sphereMaterial.needsUpdate = true;
-					},
-					Refraction: false
-				};
-
 				var gui = new dat.GUI();
+				gui.add( params, 'r', 0.01, 10.0 ).onChange( function( value ) {
+					createMesh();
+				} );
+				gui.add( params, 't', 0.01, 10.0 ).onChange( function( value ) {
+					createMesh();
+				} );
 				gui.add( params, 'Cube' );
 				gui.add( params, 'Equirectangular' );
 				gui.add( params, 'Spherical' );
