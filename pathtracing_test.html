@@ -329,7 +329,7 @@ void main(void) {
 
 			var container, stats;
 			var camera, renderer;
-			var orbitControls, prevOrbitControlsState = -1, prevCameraMatrixWorld;
+			var orbitControls, prevCameraMatrixWorld;
 			var renderQuad, textureCube;
 			var floatQuad, initTexture, readBuffer, writeBuffer;
 			var frame = 0;
@@ -558,11 +558,9 @@ void main(void) {
 
 				if ( config.camera === "Orbit" ) {
 					orbitControls.update();
-					var state = orbitControls.getState();
 					if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
 						frame = 0;
 					}
-					prevOrbitControlsState = state;
 					prevCameraMatrixWorld = camera.matrixWorld.clone();
 				}
 
