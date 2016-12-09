@@ -41,8 +41,8 @@
 			var controls, camera, scene, renderer;
 			var cameraCube, sceneCube;
 			var textureEquirec, textureCube, textureSphere;
-			var cubeMesh, sphereMesh;
-			var sphereMaterial;
+			var cubeMesh, superellipsoidMesh;
+			var superellipsoidMaterial;
 			var refract;
 			var cubeMaterial, equirectMaterial;
 
@@ -52,19 +52,19 @@
 				Cube: function () {
 					cubeMesh.material = cubeMaterial;
 					cubeMesh.visible = true;
-					sphereMaterial.envMap = textureCube;
-					sphereMaterial.needsUpdate = true;
+					superellipsoidMaterial.envMap = textureCube;
+					superellipsoidMaterial.needsUpdate = true;
 				},
 				Equirectangular: function () {
 					cubeMesh.material = equirectMaterial;
 					cubeMesh.visible = true;
-					sphereMaterial.envMap = textureEquirec;
-					sphereMaterial.needsUpdate = true;
+					superellipsoidMaterial.envMap = textureEquirec;
+					superellipsoidMaterial.needsUpdate = true;
 				},
 				Spherical: function () {
 					cubeMesh.visible = false;
-					sphereMaterial.envMap = textureSphere;
-					sphereMaterial.needsUpdate = true;
+					superellipsoidMaterial.envMap = textureSphere;
+					superellipsoidMaterial.needsUpdate = true;
 				},
 				Refraction: false
 			};
@@ -72,9 +72,9 @@
 			init();
 			animate();
 
-			function createMesh() {
-				if ( sphereMesh ) {
-					scene.remove( sphereMesh );
+			function createSuperellipsoidMesh() {
+				if ( superellipsoidMesh ) {
+					scene.remove( superellipsoidMesh );
 				}
 
 				var klein = function ( v, u ) {
@@ -102,11 +102,9 @@
 
 				};
 
-				var superellipsoid = function( v, u ) {
+				var superellipsoid = function( u, v ) {
 					var uu = ( u * 2.0 - 1.0 ) * Math.PI;
 					var vv = ( v * 2.0 - 1.0 ) * Math.PI * 0.5;
-
-					var A = 3, B = 3, C = 3;
 
 					var c = function( w, m ) {
 						var cos = Math.cos( w );
@@ -118,34 +116,27 @@
 					};
 
 					return new THREE.Vector3(
-						A * c( vv, 2.0 / params.t ) * c( uu, 2.0 / params.r ),
-						B * c( vv, 2.0 / params.t ) * s( uu, 2.0 / params.r ),
-						C * s( vv, 2.0 / params.t )
+						c( vv, 2.0 / params.t ) * c( uu, 2.0 / params.r ),
+						c( vv, 2.0 / params.t ) * s( uu, 2.0 / params.r ),
+						s( vv, 2.0 / params.t )
 					);
 				};
 
 				var geometry = new THREE.ParametricGeometry( superellipsoid, 50, 50 );
 
-				sphereMaterial = new THREE.MeshLambertMaterial( { envMap: textureCube } );
-				//sphereMaterial = new THREE.MeshPhongMaterial( {
-				//	color: 0x156289,
-				//	emissive: 0x072534,
-				//	side: THREE.DoubleSide,
-				//} )
+				superellipsoidMaterial = new THREE.MeshLambertMaterial( { envMap: textureCube } );
+				superellipsoidMesh = new THREE.Mesh( geometry, superellipsoidMaterial );
 
-				sphereMesh = new THREE.Mesh( geometry, sphereMaterial );
-
-				scene.add( sphereMesh );
+				scene.add( superellipsoidMesh );
 			}
 
 			function init() {
 
 				// CAMERAS
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-				camera.position.set( 0, 0, 10 );
-				cameraCube = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 1000 );
+				camera.position.set( 0, 0, 3 );
+				cameraCube = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 1000 );
 				controls = new THREE.OrbitControls( camera );
 				controls.minDistance = 1;
 				controls.maxDistance = 250;
@@ -159,19 +150,6 @@
 
 				var ambient = new THREE.AmbientLight( 0xffffff );
 				scene.add( ambient );
-
-				var lights = [];
-				lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-				lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-				lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-
-				lights[ 0 ].position.set( 0, 200, 0 );
-				lights[ 1 ].position.set( 100, 200, 100 );
-				lights[ 2 ].position.set( - 100, - 200, - 100 );
-
-				scene.add( lights[ 0 ] );
-				scene.add( lights[ 1 ] );
-				scene.add( lights[ 2 ] );
 
 				// Textures
 
@@ -226,7 +204,7 @@
 
 				//
 
-				createMesh();
+				createSuperellipsoidMesh();
 
 				//
 
@@ -241,10 +219,10 @@
 
 				var gui = new dat.GUI();
 				gui.add( params, 'r', 0.01, 10.0 ).onChange( function( value ) {
-					createMesh();
+					createSuperellipsoidMesh();
 				} );
 				gui.add( params, 't', 0.01, 10.0 ).onChange( function( value ) {
-					createMesh();
+					createSuperellipsoidMesh();
 				} );
 				gui.add( params, 'Cube' );
 				gui.add( params, 'Equirectangular' );
@@ -263,7 +241,7 @@
 
 					}
 
-					sphereMaterial.needsUpdate = true;
+					superellipsoidMaterial.needsUpdate = true;
 
 				} );
 				gui.open();
