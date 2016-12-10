@@ -107,7 +107,7 @@ struct Sphere {
 	Material material;
 };
 
-struct Plane {
+struct InfinitePlane {
 	vec3 position;
 	vec3 normal;
 	Material material;
@@ -197,7 +197,7 @@ void intersectDistanceFucntion( inout Intersection intersection, Ray ray, Materi
 	}
 }
 
-void intersectPlane( inout Intersection intersection, Ray ray, Plane plane ){
+void intersectInfinitePlane( inout Intersection intersection, Ray ray, InfinitePlane plane ){
     float d = -dot( plane.position, plane.normal );
     float v = dot( ray.direction, plane.normal );
     float t = -( dot( ray.origin, plane.normal ) + d ) / v;
@@ -228,12 +228,12 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 }
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
-	Plane plane;
+	InfinitePlane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
 	plane.material.color = vec3( 0.6 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
-	intersectPlane( intersection, ray, plane );
+	intersectInfinitePlane( intersection, ray, plane );
 
 	Material distanceMaterial;
 	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
