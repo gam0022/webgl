@@ -113,6 +113,13 @@ struct InfinitePlane {
 	Material material;
 };
 
+struct Plane {
+	vec3 position;
+	vec3 normal;
+	vec2 size;
+	Material material;
+};
+
 float hash(float x) {
     return fract(sin(x)*43758.5453123);
 }
@@ -202,9 +209,28 @@ void intersectInfinitePlane( inout Intersection intersection, Ray ray, InfiniteP
     float v = dot( ray.direction, plane.normal );
     float t = -( dot( ray.origin, plane.normal ) + d ) / v;
 
-	if(t > EPS && t < intersection.distance){
+	if( t > EPS && t < intersection.distance ) {
 		intersection.hit = true;
 		intersection.position = ray.origin + ray.direction * t;
+		intersection.normal = plane.normal;
+		intersection.distance = t;
+		intersection.material = plane.material;
+	}
+}
+
+void intersectPlane( inout Intersection intersection, Ray ray, Plane plane ){
+    float d = -dot( plane.position, plane.normal );
+    float v = dot( ray.direction, plane.normal );
+    float t = -( dot( ray.origin, plane.normal ) + d ) / v;
+
+	vec3 position = ray.origin + ray.direction * t;
+	vec3 diff = position - plane.position;
+
+	if( t > EPS && t < intersection.distance &&
+		// TODO: normal に直行する成分だけを抜き出したい
+		abs( diff.x ) <= plane.size.x && abs( diff.z ) <= plane.size.y ) {
+		intersection.hit = true;
+		intersection.position = position;
 		intersection.normal = plane.normal;
 		intersection.distance = t;
 		intersection.material = plane.material;
@@ -228,12 +254,13 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 }
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
-	InfinitePlane plane;
+	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
 	plane.material.color = vec3( 0.6 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
+	plane.size = vec2( 5.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
-	intersectInfinitePlane( intersection, ray, plane );
+	intersectPlane( intersection, ray, plane );
 
 	Material distanceMaterial;
 	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
