@@ -87,12 +87,17 @@ struct Ray {
 	vec3 direction;
 };
 
+// material
 struct Material {
 	int type;
 	vec3 color;
 };
 #define MATERIAL_TYPE_DIFFUSE 0
+#define MATERIAL_TYPE_SPECULAR 1
+#define MATERIAL_TYPE_REFRACTION 2
+#define MATERIAL_TYPE_GLOSSY 3
 
+// primitive
 struct Intersection {
 	bool hit;
 	vec3 position;
@@ -119,6 +124,7 @@ struct Plane {
 	vec2 size;
 	Material material;
 };
+
 
 float hash(float x) {
     return fract(sin(x)*43758.5453123);
@@ -273,6 +279,12 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	sphere.position = vec3( 0.0, 1.0, 1.0 );
 	sphere.radius = 1.0;
 	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_SPECULAR;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( -2.0, 0.7, 2.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
 }
 
 //
@@ -288,8 +300,13 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 	intersectScene( intersection, ray );
 
 	if ( intersection.hit ) {
-		ray.origin = intersection.position + OFFSET * intersection.normal;
-		ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), intersection.normal);
+		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
+			ray.origin = intersection.position + OFFSET * intersection.normal;
+			ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), intersection.normal);
+		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
+			ray.origin = intersection.position + OFFSET * intersection.normal;
+			ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
+		}
 	} else {
 		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
 	}
