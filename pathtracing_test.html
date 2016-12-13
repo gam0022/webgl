@@ -262,7 +262,7 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
-	plane.material.color = vec3( 0.6 );
+	plane.material.color = vec3( 0.9 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.size = vec2( 5.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
@@ -356,7 +356,7 @@ void main( void ) {
 	// bounce
 	Intersection intersection;
 	vec3 color = vec3( 1.0 );
-	for ( int i = 0; i < 7; i++ ) {
+	for ( int i = 0; i < 10; i++ ) {
 		calcRadiance( intersection, ray, i, sa );
 		color *= intersection.material.color;
 		if ( !intersection.hit ) break;
