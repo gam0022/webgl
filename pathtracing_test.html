@@ -280,9 +280,15 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	sphere.radius = 1.0;
 	intersectSphere( intersection, ray, sphere );
 
+	sphere.material.type = MATERIAL_TYPE_REFRACTION;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( -2.0, 0.7, 3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
 	sphere.material.type = MATERIAL_TYPE_SPECULAR;
 	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( -2.0, 0.7, 2.0 );
+	sphere.position = vec3( -3.0, 0.7, -1.0 );
 	sphere.radius = 0.7;
 	intersectSphere( intersection, ray, sphere );
 }
@@ -306,6 +312,18 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.origin = intersection.position + OFFSET * intersection.normal;
 			ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
+		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
+			float refractiveIndex = 1.6;
+			float invRefractiveIndex = 1.0 / refractiveIndex;
+			vec3 tmpDir = ray.direction;
+			bool isIncoming = dot( tmpDir, intersection.normal ) < 0.0;
+			vec3 orientingNormal = isIncoming ? intersection.normal : -intersection.normal;
+			ray.origin = intersection.position - OFFSET * intersection.normal;
+			ray.direction = refract( tmpDir, orientingNormal, isIncoming ? invRefractiveIndex : refractiveIndex );
+			if ( ray.direction == vec3( 0.0 ) ) {
+				ray.direction = reflect( tmpDir, orientingNormal );
+				ray.origin = intersection.position + OFFSET * intersection.normal;
+			}
 		}
 	} else {
 		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
