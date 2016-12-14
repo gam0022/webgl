@@ -77,6 +77,7 @@ const float INF = 1e+10;
 const float EPS = 1e-4;
 const float OFFSET = EPS * 10.0;
 const float PI = 3.14159265359;
+const float PI2 = 6.28318530718;
 const vec3 backgroundColor = vec3( 1.0 );
 
 // global
@@ -144,21 +145,21 @@ float GPURnd() {
 	return fract(dot(state / m, vec4(1.0, -1.0, 1.0, -1.0)));
 }
 
-vec3 cosineDirection( float seed, vec3 nor ) {
+vec3 cosineDirection( float seed, vec3 normal ) {
 	// compute basis from normal
 	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
 	// (link provided by nimitz)
-	vec3 tc = vec3( 1.0+nor.z-nor.xy*nor.xy, -nor.x*nor.y)/(1.0+nor.z);
-	vec3 uu = vec3( tc.x, tc.z, -nor.x );
-	vec3 vv = vec3( tc.z, tc.y, -nor.y );
+	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
+	vec3 uu = vec3( tc.x, tc.z, -normal.x );
+	vec3 vv = vec3( tc.z, tc.y, -normal.y );
 
 	//float u = GPURnd();//hash( 78.233 + seed);
 	//float v = GPURnd();//hash( 10.873 + seed);
 	float u = hash( 78.233 + seed);
 	float v = hash( 10.873 + seed);
-	float a = 6.283185 * v;
+	float a = PI2 * v;
 
-	return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * nor;
+	return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * normal;
 }
 
 float udFloor( vec3 p ){
