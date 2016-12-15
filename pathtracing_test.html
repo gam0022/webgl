@@ -751,13 +751,11 @@ void main(void) {
 
 				stats.begin();
 
-				if ( config.camera === "Orbit" ) {
-					orbitControls.update();
-					if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
-						frame = 0;
-					}
-					prevCameraMatrixWorld = camera.matrixWorld.clone();
+				orbitControls.update();
+				if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
+					frame = 0;
 				}
+				prevCameraMatrixWorld = camera.matrixWorld.clone();
 
 				// float quad
 				{
