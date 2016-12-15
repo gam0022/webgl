@@ -53,7 +53,9 @@ void main(void) {
 
 precision highp float;
 
+//
 // uniforms
+//
 uniform float time;
 uniform int frame;
 uniform sampler2D buffer;
@@ -72,6 +74,7 @@ uniform mat4 cameraViewProjectionpMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 
+
 // consts
 const float INF = 1e+10;
 const float EPS = 1e-4;
@@ -80,9 +83,8 @@ const float PI = 3.14159265359;
 const float PI2 = 6.28318530718;
 const vec3 backgroundColor = vec3( 1.0 );
 
-// global
-vec4 state;
 
+// ray
 struct Ray {
 	vec3 origin;
 	vec3 direction;
@@ -98,7 +100,9 @@ struct Material {
 #define MATERIAL_TYPE_REFRACTION 2
 #define MATERIAL_TYPE_GGX 3
 
-// primitive
+//
+// Primitive
+//
 struct Intersection {
 	bool hit;
 	vec3 position;
@@ -127,10 +131,14 @@ struct Plane {
 };
 
 
-float hash(float x) {
-    return fract(sin(x)*43758.5453123);
+//
+// Random
+//
+float hash( float x ) {
+    return fract( sin( x ) * 43758.5453123 );
 }
 
+vec4 state;
 float GPURnd() {
 	const vec4 q = vec4(   1225.0,    1585.0,    2457.0,    2098.0);
 	const vec4 r = vec4(   1112.0,     367.0,      92.0,     265.0);
@@ -146,31 +154,31 @@ float GPURnd() {
 }
 
 vec2 Hammersley( float seed ) {
-	float u = hash( 78.233 + seed);
-	float v = hash( 10.873 + seed);
+	float u = hash( 78.233 + seed );
+	float v = hash( 10.873 + seed );
 	return vec2( u, v );
 }
 
-vec3 cosineDirection( float seed, vec3 normal ) {
+//
+// BRDF
+//
+
+// cos分布による重点サンプリング
+vec3 cosineDirection( vec2 Xi, vec3 normal ) {
 	// compute basis from normal
 	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
 	// (link provided by nimitz)
 	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
 	vec3 uu = vec3( tc.x, tc.z, -normal.x );
 	vec3 vv = vec3( tc.z, tc.y, -normal.y );
-
-	//float u = GPURnd();//hash( 78.233 + seed);
-	//float v = GPURnd();//hash( 10.873 + seed);
-	float u = hash( 78.233 + seed);
-	float v = hash( 10.873 + seed);
-	float a = PI2 * v;
-
-	return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * normal;
+	float a = PI2 * Xi.y;
+	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
 }
 
 // http://project-asura.com/blog/?p=3124
 // Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
-vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
+// おそらくcos分布による重点サンプリングだと思っている…
+vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	float a = Roughness * Roughness;
 
 	float Phi = 2.0 * PI * Xi.x;
@@ -189,6 +197,10 @@ vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
+
+//
+// Distance Functoion
+//
 float udFloor( vec3 p ){
 	return dot( p, vec3( 0.0, 1.0, 0.0 ) ) + 1.0;
 }
@@ -215,6 +227,10 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
+
+//
+// Intersect
+//
 void intersectDistanceFucntion( inout Intersection intersection, Ray ray, Material material ) {
 	float d;
 	float distance = 0.0;
@@ -322,12 +338,6 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	intersectSphere( intersection, ray, sphere );
 }
 
-//
-// http://qiita.com/doxas/items/477fda867da467116f8d
-// https://github.com/gam0022/tsukihi/blob/master/object/sphere.h
-//
-
-
 
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
 	intersection.hit = false;
@@ -335,30 +345,29 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 	intersectScene( intersection, ray );
 
 	float seed = 76.2 + 73.1 * float( bounce ) + sa + 17.7 * float( frame );
+	vec2 Xi = Hammersley( seed );
+	ray.origin = intersection.position + OFFSET * intersection.normal;
 
 	if ( intersection.hit ) {
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
-			ray.origin = intersection.position + OFFSET * intersection.normal;
-			ray.direction = cosineDirection(seed, intersection.normal);
+			ray.direction = cosineDirection( Xi, intersection.normal);
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
-			ray.origin = intersection.position + OFFSET * intersection.normal;
-			ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
+			ray.direction = reflect( ray.direction, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
 			float refractiveIndex = 1.6;
 			float invRefractiveIndex = 1.0 / refractiveIndex;
-			vec3 tmpDir = ray.direction;
-			bool isIncoming = dot( tmpDir, intersection.normal ) < 0.0;
+			vec3 rayDirection = ray.direction;
+			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
 			vec3 orientingNormal = isIncoming ? intersection.normal : -intersection.normal;
-			ray.origin = intersection.position - OFFSET * intersection.normal;
-			ray.direction = refract( tmpDir, orientingNormal, isIncoming ? invRefractiveIndex : refractiveIndex );
+			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? invRefractiveIndex : refractiveIndex );
 			if ( ray.direction == vec3( 0.0 ) ) {
-				ray.direction = reflect( tmpDir, orientingNormal );
-				ray.origin = intersection.position + OFFSET * intersection.normal;
+				// 完全反射のケース
+				ray.direction = reflect( rayDirection, orientingNormal );
+			} else {
+				ray.origin = intersection.position - OFFSET * intersection.normal;
 			}
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
-			vec2 Xi = Hammersley( seed );
-			vec3 H = ImportanceSampleGGX( Xi, 0.3, intersection.normal );
-			ray.origin = intersection.position + OFFSET * intersection.normal;
+			vec3 H = importanceSampleGGX( Xi, 0.3, intersection.normal );
 			ray.direction = reflect( ray.direction, H );
 		}
 	} else {
