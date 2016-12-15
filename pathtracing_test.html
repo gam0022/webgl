@@ -100,6 +100,7 @@ struct Material {
 #define MATERIAL_TYPE_SPECULAR 1
 #define MATERIAL_TYPE_REFRACTION 2
 #define MATERIAL_TYPE_GGX 3
+#define MATERIAL_TYPE_GGX_REFRACTION  4
 
 //
 // Primitive
@@ -331,8 +332,20 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 
 	sphere.material.type = MATERIAL_TYPE_REFRACTION;
 	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( 2.0, 0.7, 3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_GGX_REFRACTION;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
 	sphere.position = vec3( -2.0, 0.7, 3.0 );
 	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
+	sphere.material.color = vec3( 0.5, 0.25, 0.3 );
+	sphere.position = vec3( -2.0, 0.7, 3.0 );
+	sphere.radius = 0.2;
 	intersectSphere( intersection, ray, sphere );
 
 	sphere.material.type = MATERIAL_TYPE_SPECULAR;
@@ -386,6 +399,21 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
 			vec3 H = importanceSampleGGX( Xi, 0.3, intersection.normal );
 			ray.direction = reflect( ray.direction, H );
+		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
+			vec3 H = importanceSampleGGX( Xi, 0.3, intersection.normal );
+
+			float refractiveIndex = 1.6;
+			float invRefractiveIndex = 1.0 / refractiveIndex;
+			vec3 rayDirection = ray.direction;
+			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
+			vec3 orientingNormal = isIncoming ? H : -H;
+			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? invRefractiveIndex : refractiveIndex );
+			if ( ray.direction == vec3( 0.0 ) ) {
+				// 完全反射のケース
+				ray.direction = reflect( rayDirection, orientingNormal );
+			} else {
+				ray.origin = intersection.position - OFFSET * intersection.normal;
+			}
 		}
 	} else {
 		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
