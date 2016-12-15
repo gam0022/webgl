@@ -96,7 +96,7 @@ struct Material {
 #define MATERIAL_TYPE_DIFFUSE 0
 #define MATERIAL_TYPE_SPECULAR 1
 #define MATERIAL_TYPE_REFRACTION 2
-#define MATERIAL_TYPE_GLOSSY 3
+#define MATERIAL_TYPE_GGX 3
 
 // primitive
 struct Intersection {
@@ -145,6 +145,12 @@ float GPURnd() {
 	return fract(dot(state / m, vec4(1.0, -1.0, 1.0, -1.0)));
 }
 
+vec2 Hammersley( float seed ) {
+	float u = hash( 78.233 + seed);
+	float v = hash( 10.873 + seed);
+	return vec2( u, v );
+}
+
 vec3 cosineDirection( float seed, vec3 normal ) {
 	// compute basis from normal
 	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
@@ -160,6 +166,27 @@ vec3 cosineDirection( float seed, vec3 normal ) {
 	float a = PI2 * v;
 
 	return sqrt( u ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - u ) * normal;
+}
+
+// http://project-asura.com/blog/?p=3124
+// Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
+vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
+	float a = Roughness * Roughness;
+
+	float Phi = 2.0 * PI * Xi.x;
+	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y ) );
+	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
+
+	vec3 H;
+	H.x = SinTheta * cos( Phi );
+	H.y = SinTheta * sin( Phi );
+	H.z = CosTheta;
+
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+	vec3 TangentX = normalize( cross( UpVector , N ) );
+	vec3 TangentY = cross( N, TangentX );
+	// Tangent to world space
+	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
 float udFloor( vec3 p ){
@@ -288,6 +315,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	intersectSphere( intersection, ray, sphere );
 
 	sphere.material.type = MATERIAL_TYPE_SPECULAR;
+	sphere.material.type = MATERIAL_TYPE_GGX;
 	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
 	sphere.position = vec3( -3.0, 0.7, -1.0 );
 	sphere.radius = 0.7;
@@ -306,10 +334,12 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 	intersection.distance = INF;
 	intersectScene( intersection, ray );
 
+	float seed = 76.2 + 73.1 * float( bounce ) + sa + 17.7 * float( frame );
+
 	if ( intersection.hit ) {
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
 			ray.origin = intersection.position + OFFSET * intersection.normal;
-			ray.direction = cosineDirection(76.2 + 73.1*float(bounce) + sa + 17.7*float(frame), intersection.normal);
+			ray.direction = cosineDirection(seed, intersection.normal);
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.origin = intersection.position + OFFSET * intersection.normal;
 			ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
@@ -325,6 +355,11 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 				ray.direction = reflect( tmpDir, orientingNormal );
 				ray.origin = intersection.position + OFFSET * intersection.normal;
 			}
+		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
+			vec2 Xi = Hammersley( seed );
+			vec3 H = ImportanceSampleGGX( Xi, 0.3, intersection.normal );
+			ray.origin = intersection.position + OFFSET * intersection.normal;
+			ray.direction = reflect( ray.direction, H );
 		}
 	} else {
 		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
