@@ -534,7 +534,6 @@ void main(void) {
 					renderer.render( renderQuad.scene, camera );
 					window.open( canvas.toDataURL() );
 				},
-				camera: 'Orbit',
 				resolution: '512',
 
 				roughness: 0.5,
@@ -697,14 +696,6 @@ void main(void) {
 
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
-				gui.add( config, 'camera', [ 'GLSL', 'Orbit' ] ).name( 'Camera' );
-
-				// var shadowFolder = gui.addFolder('Shadow');
-				// shadowFolder.add( config, 'shadowType', { Hard: 0, Soft1: 1, Soft2: 2 } ).name( 'Type');
-				// shadowFolder.add( config, 'shadowIntensity', 0.0, 1.0 ).name( 'Intensity' );
-				// shadowFolder.add( config, 'shadowSharpness', 0.0, 100.0 ).name( 'Sharpness' );
-				// shadowFolder.open();
-
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 					onWindowResize();
 				} );
@@ -712,7 +703,6 @@ void main(void) {
 				gui.add( config, 'roughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
 					frame = 0;
 				} );
-
 				gui.add( config, 'refractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
 					frame = 0;
 				} );
