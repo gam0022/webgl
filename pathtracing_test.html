@@ -74,6 +74,9 @@ uniform mat4 cameraViewProjectionpMatrixInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 
+// material params
+uniform float gRoughness;
+
 
 // consts
 const float INF = 1e+10;
@@ -414,11 +417,9 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 				ray.origin = intersection.position - OFFSET * intersection.normal;
 			}
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
-			float Roughness = 0.5;
-
 			vec3 N = intersection.normal;
 			vec3 V = -ray.direction;
-			vec3 H = importanceSampleGGX( Xi, Roughness, N );
+			vec3 H = importanceSampleGGX( Xi, gRoughness, N );
 			vec3 L = reflect( ray.direction, H );
 			//vec3 L = 2.0 * dot( V, H ) * H - V;
 
@@ -428,7 +429,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 			float VoH = saturate( dot( V, H ) );// x x
 
 			if( NoL > 0.0 ) {
-				float G = GGX_G( Roughness, NoV, NoL );
+				float G = GGX_G( gRoughness, NoV, NoL );
 				float Fc = pow( 1.0 - VoH, 5.0 );
 				vec3 F = (1.0 - Fc) * SpecularColor + Fc;
 				intersection.material.color *= F * G * VoH / ( NoH * NoV );
@@ -436,7 +437,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 
 			ray.direction = L;
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
-			vec3 H = importanceSampleGGX( Xi, 0.3, intersection.normal );
+			vec3 H = importanceSampleGGX( Xi, gRoughness, intersection.normal );
 
 			float refractiveIndex = 1.6;
 			float invRefractiveIndex = 1.0 / refractiveIndex;
@@ -535,6 +536,7 @@ void main(void) {
 				camera: 'Orbit',
 
 				resolution: '512',
+				roughness: 0.5,
 			};
 
 			init();
@@ -614,6 +616,8 @@ void main(void) {
 						cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
 						cameraNear: { type: 'f', value: camera.near },
 						cameraFar:  { type: 'f', value: camera.far },
+
+						gRoughness: { type: 'f', value: config.roughness },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'float_fragment_shader' ).textContent
@@ -699,9 +703,11 @@ void main(void) {
 				// shadowFolder.open();
 
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
-
 					onWindowResize();
+				} );
 
+				gui.add( config, 'roughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
+					frame = 0;
 				} );
 
 				stats = new Stats();
@@ -780,6 +786,7 @@ void main(void) {
 						floatQuad.material.uniforms.cameraNear.value = camera.near;
 						floatQuad.material.uniforms.cameraFar.value  = camera.far;
 					}
+					floatQuad.material.uniforms.gRoughness.value = config.roughness;
 
 					renderer.render( floatQuad.scene, camera, writeBuffer );
 				}
