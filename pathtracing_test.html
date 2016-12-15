@@ -76,6 +76,7 @@ uniform float cameraFar;
 
 // material params
 uniform float gRoughness;
+uniform float gRefractiveIndex;
 
 
 // consts
@@ -439,7 +440,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
 			vec3 H = importanceSampleGGX( Xi, gRoughness, intersection.normal );
 
-			float refractiveIndex = 1.6;
+			float refractiveIndex = gRefractiveIndex;
 			float invRefractiveIndex = 1.0 / refractiveIndex;
 			vec3 rayDirection = ray.direction;
 			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
@@ -534,9 +535,10 @@ void main(void) {
 					window.open( canvas.toDataURL() );
 				},
 				camera: 'Orbit',
-
 				resolution: '512',
+
 				roughness: 0.5,
+				refractiveIndex: 1.6,
 			};
 
 			init();
@@ -618,6 +620,7 @@ void main(void) {
 						cameraFar:  { type: 'f', value: camera.far },
 
 						gRoughness: { type: 'f', value: config.roughness },
+						gRefractiveIndex: { type: 'f', value: config.refractiveIndex },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'float_fragment_shader' ).textContent
@@ -710,6 +713,10 @@ void main(void) {
 					frame = 0;
 				} );
 
+				gui.add( config, 'refractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+					frame = 0;
+				} );
+
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
 
@@ -787,6 +794,7 @@ void main(void) {
 						floatQuad.material.uniforms.cameraFar.value  = camera.far;
 					}
 					floatQuad.material.uniforms.gRoughness.value = config.roughness;
+					floatQuad.material.uniforms.gRefractiveIndex.value = config.refractiveIndex;
 
 					renderer.render( floatQuad.scene, camera, writeBuffer );
 				}
