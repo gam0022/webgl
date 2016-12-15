@@ -94,6 +94,7 @@ struct Ray {
 struct Material {
 	int type;
 	vec3 color;
+	vec3 emission;
 };
 #define MATERIAL_TYPE_DIFFUSE 0
 #define MATERIAL_TYPE_SPECULAR 1
@@ -181,7 +182,7 @@ vec3 cosineDirection( vec2 Xi, vec3 normal ) {
 vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	float a = Roughness * Roughness;
 
-	float Phi = 2.0 * PI * Xi.x;
+	float Phi = PI2 * Xi.x;
 	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y ) );
 	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
 
@@ -307,6 +308,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
 	plane.material.color = vec3( 0.9 );
+	plane.material.emission = vec3( 0.0 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.size = vec2( 5.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
@@ -315,9 +317,12 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Material distanceMaterial;
 	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
 	distanceMaterial.color = vec3( 0.4, 0.4, 0.8 );
+	distanceMaterial.emission = vec3( 0.0 );
 	intersectDistanceFucntion( intersection, ray, distanceMaterial );
 
 	Sphere sphere;
+	sphere.material.emission = vec3( 0.0 );
+
 	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
 	sphere.material.color = vec3( 0.8, 0.4, 0.4 );
 	sphere.position = vec3( 0.0, 1.0, 1.0 );
@@ -331,10 +336,22 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	intersectSphere( intersection, ray, sphere );
 
 	sphere.material.type = MATERIAL_TYPE_SPECULAR;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( 3.0, 0.7, -3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
 	sphere.material.type = MATERIAL_TYPE_GGX;
 	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
 	sphere.position = vec3( -3.0, 0.7, -1.0 );
 	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
+	sphere.material.color = vec3( 0.0 );
+	sphere.material.emission = vec3( 20.0 );
+	sphere.position = vec3( 0.0, 5.0, 0.0 );
+	sphere.radius = 1.0;
 	intersectSphere( intersection, ray, sphere );
 }
 
@@ -372,6 +389,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 		}
 	} else {
 		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
+		intersection.material.emission = vec3( 0.0 );
 	}
 }
 
@@ -403,7 +421,7 @@ void main( void ) {
 	vec3 color = vec3( 1.0 );
 	for ( int i = 0; i < 10; i++ ) {
 		calcRadiance( intersection, ray, i, sa );
-		color *= intersection.material.color;
+		color *= intersection.material.emission + intersection.material.color;
 		if ( !intersection.hit ) break;
 	}
 
