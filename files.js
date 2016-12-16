@@ -10,6 +10,9 @@ var files = {
   "raytracing": [
     "raytracing_gem",
   ],
+  "pathtracing": [
+    "pathtracing_sandbox",
+  ],
   "emscripten": [
     "emscripten_tsukihi",
   ],
