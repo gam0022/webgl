@@ -330,7 +330,7 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
 	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
-	if( 0.0 <= tmax && tmin <= tmax ) {
+	if( tmin <= tmax && 0.0 <= tmin ) {
 		intersection.hit = true;
 		intersection.position = ray.origin + ray.direction * tmin;
 		intersection.distance = tmin;
@@ -369,6 +369,11 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	aabb.material.emission = vec3( 0.0 );
 	aabb.lb = vec3( -5.0, -0.1, -5.0 );
 	aabb.rt = vec3( 5.0, 0.0, 5.0 );
+	intersectAABB( intersection, ray, aabb );
+
+	aabb.material.type = MATERIAL_TYPE_GGX_REFRACTION;
+	aabb.lb = vec3( -4.0, 0.0, -4.0 );
+	aabb.rt = vec3( -3.0, 1.0, -3.0 );
 	intersectAABB( intersection, ray, aabb );
 
 	Material distanceMaterial;
