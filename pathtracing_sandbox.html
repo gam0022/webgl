@@ -143,6 +143,11 @@ struct Plane {
 	Material material;
 };
 
+struct AABB {
+	vec3 lb;
+	vec3 rt;
+	Material material;
+};
 
 //
 // Random
@@ -326,6 +331,30 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 	}
 }
 
+// http://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms
+void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
+	vec3 dirfrac;
+	dirfrac.x = 1.0 / ray.direction.x;
+	dirfrac.y = 1.0 / ray.direction.y;
+	dirfrac.z = 1.0 / ray.direction.z;
+	float t1 = (aabb.lb.x - ray.origin.x)*dirfrac.x;
+	float t2 = (aabb.rt.x - ray.origin.x)*dirfrac.x;
+	float t3 = (aabb.lb.y - ray.origin.y)*dirfrac.y;
+	float t4 = (aabb.rt.y - ray.origin.y)*dirfrac.y;
+	float t5 = (aabb.lb.z - ray.origin.z)*dirfrac.z;
+	float t6 = (aabb.rt.z - ray.origin.z)*dirfrac.z;
+
+	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+	if( 0.0 <= tmax && tmin <= tmax ) {
+		intersection.hit = true;
+		intersection.position = ray.origin + ray.direction * tmin;
+		intersection.normal = vec3( 0.0, 1.0, 0.0 );
+		intersection.distance = tmin;
+		intersection.material = aabb.material;
+	}
+}
+
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
@@ -334,7 +363,15 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.size = vec2( 5.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
-	intersectPlane( intersection, ray, plane );
+	//intersectPlane( intersection, ray, plane );
+
+	AABB aabb;
+	aabb.material.type = MATERIAL_TYPE_DIFFUSE;
+	aabb.material.color = vec3( 0.9 );
+	aabb.material.emission = vec3( 0.0 );
+	aabb.lb = vec3( 5.0, -1.0, 5.0 );
+	aabb.rt = vec3( -5.0, 0.0, -5.0 );
+	intersectAABB( intersection, ray, aabb );
 
 	Material distanceMaterial;
 	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
