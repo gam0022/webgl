@@ -330,7 +330,7 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
 	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
-	if( tmin <= tmax && 0.0 <= tmin ) {
+	if( tmin <= tmax && 0.0 <= tmin && tmin < intersection.distance ) {
 		intersection.hit = true;
 		intersection.position = ray.origin + ray.direction * tmin;
 		intersection.distance = tmin;
