@@ -150,6 +150,14 @@ struct AABB {
 };
 
 //
+// Util
+//
+
+bool equals( float x, float y ) {
+	return abs( x - y ) < EPS;
+}
+
+//
 // Random
 //
 float hash( float x ) {
@@ -337,6 +345,7 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 	dirfrac.x = 1.0 / ray.direction.x;
 	dirfrac.y = 1.0 / ray.direction.y;
 	dirfrac.z = 1.0 / ray.direction.z;
+
 	float t1 = (aabb.lb.x - ray.origin.x)*dirfrac.x;
 	float t2 = (aabb.rt.x - ray.origin.x)*dirfrac.x;
 	float t3 = (aabb.lb.y - ray.origin.y)*dirfrac.y;
@@ -346,31 +355,47 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 
 	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
 	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
 	if( 0.0 <= tmax && tmin <= tmax ) {
 		intersection.hit = true;
 		intersection.position = ray.origin + ray.direction * tmin;
-		intersection.normal = vec3( 0.0, 1.0, 0.0 );
 		intersection.distance = tmin;
 		intersection.material = aabb.material;
+
+		// 交点座標から法線を求める
+		// 高速化のためにY軸から先に判定する
+		if( equals( intersection.position.y, aabb.rt.y ) ) {
+			intersection.normal = vec3( 0.0, 1.0, 0.0 );
+		} else if( equals( intersection.position.y, aabb.lb.y ) ) {
+			intersection.normal = vec3( 0.0, -1.0, 0.0 );
+		} else if( equals( intersection.position.x, aabb.lb.x ) ) {
+			intersection.normal = vec3( -1.0, 0.0, 0.0 );
+		} else if( equals( intersection.position.x, aabb.rt.x ) ) {
+			intersection.normal = vec3( 1.0, 0.0, 0.0 );
+		} else if( equals( intersection.position.z, aabb.lb.z ) ) {
+			intersection.normal = vec3( 0.0, 0.0, -1.0 );
+		} else if( equals( intersection.position.z, aabb.rt.z ) ) {
+			intersection.normal = vec3( 0.0, 0.0, 1.0 );
+		}
 	}
 }
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
-	Plane plane;
-	plane.material.type = MATERIAL_TYPE_DIFFUSE;
-	plane.material.color = vec3( 0.9 );
-	plane.material.emission = vec3( 0.0 );
-	plane.position = vec3( 0.0, 0.0, 0.0 );
-	plane.size = vec2( 5.0 );
-	plane.normal = vec3( 0.0, 1.0, 0.0 );
+	//Plane plane;
+	//plane.material.type = MATERIAL_TYPE_DIFFUSE;
+	//plane.material.color = vec3( 0.9 );
+	//plane.material.emission = vec3( 0.0 );
+	//plane.position = vec3( 0.0, 0.0, 0.0 );
+	//plane.size = vec2( 5.0 );
+	//plane.normal = vec3( 0.0, 1.0, 0.0 );
 	//intersectPlane( intersection, ray, plane );
 
 	AABB aabb;
-	aabb.material.type = MATERIAL_TYPE_DIFFUSE;
+	aabb.material.type = MATERIAL_TYPE_GGX;
 	aabb.material.color = vec3( 0.9 );
 	aabb.material.emission = vec3( 0.0 );
-	aabb.lb = vec3( 5.0, -1.0, 5.0 );
-	aabb.rt = vec3( -5.0, 0.0, -5.0 );
+	aabb.lb = vec3( -5.0, -0.1, -5.0 );
+	aabb.rt = vec3( 5.0, 0.0, 5.0 );
 	intersectAABB( intersection, ray, aabb );
 
 	Material distanceMaterial;
