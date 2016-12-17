@@ -686,6 +686,17 @@ void main(void) {
 				textureCube.mapping = THREE.CubeReflectionMapping;
 			}
 
+			function updateSelectedObject( value, key1, key2 ) {
+				if ( !editor.transformControls.object ) {
+					alert( "先に Object を選択してください" );
+					return;
+				}
+
+				editor.transformControls.object.userData[ key1 ][ key2 ] = value;
+				createDynamicObjects();
+				frame = 0;
+			}
+
 			function init() {
 
 				container = document.createElement( 'div' );
@@ -748,36 +759,15 @@ void main(void) {
 					"MATERIAL_TYPE_GGX",
 					"MATERIAL_TYPE_GGX_REFRACTION",
 				] ).name( 'Material Type' ).onChange( function( value ) {
-					if ( !editor.transformControls.object ) {
-						alert( "先に Object を選択してください" );
-						return;
-					}
-
-					editor.transformControls.object.userData.material.type = value;
-					createDynamicObjects();
-					frame = 0;
+					updateSelectedObject( value, "material", "type" );
 				} );
 
 				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-					if ( !editor.transformControls.object ) {
-						alert( "先に Object を選択してください" );
-						return;
-					}
-
-					editor.transformControls.object.userData.material.roughness = value;
-					createDynamicObjects();
-					frame = 0;
+					updateSelectedObject( value, "material", "roughness" );
 				} );
 
 				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-					if ( !editor.transformControls.object ) {
-						alert( "先に Object を選択してください" );
-						return;
-					}
-
-					editor.transformControls.object.userData.material.refractiveIndex = value;
-					createDynamicObjects();
-					frame = 0;
+					updateSelectedObject( value, "material", "refractiveIndex" );
 				} );
 				selectedObjectFolder.open();
 
