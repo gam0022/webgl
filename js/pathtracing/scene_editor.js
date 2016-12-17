@@ -109,13 +109,29 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	}
 }
 
+SceneEditor.prototype.castFloat = function( value ) {
+	return "float( " + value + " )";
+}
+
 SceneEditor.prototype.createShaderFromHex = function( hex ) {
 	var color = new THREE.Color( hex );
-	return "vec3(" + color.r + ", " + color.g + ", " + color.b + " )";
+	return "vec3(" + this.castFloat( color.r ) + ", " + this.castFloat( color.g ) + ", " + this.castFloat( color.b ) + " )";
 }
 
 SceneEditor.prototype.createShaderFromVector3 = function( vector ) {
-	return "vec3(" + vector.x + ", " + vector.y + ", " + vector.z + " )";
+	return "vec3(" + this.castFloat( vector.x ) + ", " + this.castFloat( vector.y ) + ", " + this.castFloat( vector.z ) + " )";
+}
+
+SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
+	var shader = "";
+	shader += [
+		basename + ".material.type = " + mesh.userData.material.type + ";",
+		basename + ".material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
+		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
+		basename + ".material.roughness = " + this.castFloat( mesh.userData.material.roughness )  + ";",
+		basename + ".material.refractiveIndex = " + this.castFloat( mesh.userData.material.refractiveIndex ) + ";",
+	].join( "\n" );
+	return shader;
 }
 
 SceneEditor.prototype.createSceneIntersectShaders = function() {
@@ -125,13 +141,9 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 		switch( mesh.userData.type ) {
 			case "Sphere":
 				shader += [
-					"sphere.material.type = " + mesh.userData.material.type + ";",
-					"sphere.material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
-					"sphere.material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
-					"sphere.material.roughness = float( " + mesh.userData.material.roughness + " );",
-					"sphere.material.refractiveIndex = float( " + mesh.userData.material.refractiveIndex + " );",
+					this.createMaterialShaders( mesh, "sphere" ),
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
-					"sphere.radius = float( " + ( 0.5 * mesh.scale.y ) + " );",
+					"sphere.radius = " + this.castFloat( 0.5 * mesh.scale.y ) + ";",
 					"intersectSphere( intersection, ray, sphere );",
 				].join( "\n" );
 				break;
