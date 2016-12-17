@@ -583,6 +583,8 @@ void main(void) {
 
 				// Material
 				materialType: "MATERIAL_TYPE_DIFFUSE",
+				materialColor: "#ffffff",
+				materialEmission: "#000000",
 				materialRoughness: 0.2,
 				materialRefractiveIndex: 1.6,
 			};
@@ -697,6 +699,45 @@ void main(void) {
 				frame = 0;
 			}
 
+			function initGUI() {
+				var gui = new dat.GUI();
+				gui.add( config, 'saveImage' ).name( 'Save Image' );
+				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+					onWindowResize();
+				} );
+
+				gui.add( config, 'transformMode' ).name( "Translate/Scale" );
+
+				// Object
+				var selectedObjectFolder = gui.addFolder( "Selected Object" );
+				selectedObjectFolder.add( config, 'materialType', [
+					"MATERIAL_TYPE_DIFFUSE",
+					"MATERIAL_TYPE_SPECULAR",
+					"MATERIAL_TYPE_REFRACTION",
+					"MATERIAL_TYPE_GGX",
+					"MATERIAL_TYPE_GGX_REFRACTION",
+				] ).name( 'Material Type' ).onChange( function( value ) {
+					updateSelectedObject( value, "material", "type" );
+				} );
+
+				selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
+					updateSelectedObject( value, "material", "color" );
+				} );
+
+				selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
+					updateSelectedObject( value, "material", "emission" );
+				} );
+
+				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
+					updateSelectedObject( value, "material", "roughness" );
+				} );
+
+				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+					updateSelectedObject( value, "material", "refractiveIndex" );
+				} );
+				selectedObjectFolder.open();
+			}
+
 			function init() {
 
 				container = document.createElement( 'div' );
@@ -739,37 +780,7 @@ void main(void) {
 				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
 
-				//
-				// datGUI
-				//
-				var gui = new dat.GUI();
-				gui.add( config, 'saveImage' ).name( 'Save Image' );
-				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
-					onWindowResize();
-				} );
-
-				gui.add( config, 'transformMode' ).name( "Translate/Scale" );
-
-				// Object
-				var selectedObjectFolder = gui.addFolder( "Selected Object" );
-				selectedObjectFolder.add( config, 'materialType', [
-					"MATERIAL_TYPE_DIFFUSE",
-					"MATERIAL_TYPE_SPECULAR",
-					"MATERIAL_TYPE_REFRACTION",
-					"MATERIAL_TYPE_GGX",
-					"MATERIAL_TYPE_GGX_REFRACTION",
-				] ).name( 'Material Type' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "type" );
-				} );
-
-				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "roughness" );
-				} );
-
-				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "refractiveIndex" );
-				} );
-				selectedObjectFolder.open();
+				initGUI();
 
 				// Stats
 				stats = new Stats();
