@@ -48,7 +48,7 @@ void main(void) {
 }
 </script>
 
-<script id="float_fragment_shader" type="x-shader/x-fragment">
+<script id="float_fragment_shader_p1" type="x-shader/x-fragment">
 #extension GL_EXT_shader_texture_lod : enable
 
 precision highp float;
@@ -353,7 +353,7 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 		}
 	}
 }
-
+/*
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
@@ -428,8 +428,10 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	sphere.radius = 1.0;
 	//intersectSphere( intersection, ray, sphere );
 }
+*/
+</script>
 
-
+<script id="float_fragment_shader_p2" type="x-shader/x-fragment">
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
 	intersection.hit = false;
 	intersection.distance = INF;
@@ -562,16 +564,17 @@ void main(void) {
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
 
+		<script src="js/pathtracing/scene_editor.js"></script>
+
 		<script>
 
 			var container, stats;
 			var camera, renderer;
 			var orbitControls, prevCameraMatrixWorld;
-			var transformControls;
 			var renderQuad, textureCube;
 			var floatQuad, initTexture, readBuffer, writeBuffer;
 			var frame = 0;
-			var clock = new THREE.Clock();
+			var editor;
 
 			var config = {
 				saveImage: function() {
@@ -641,10 +644,25 @@ void main(void) {
 				});
 			}
 
-			function initBuffers() {
+
+			function initDynamicObjects() {
 				initTexture  = createDataTexture( canvas.width, canvas.height );
 				readBuffer  = createRenderTarget( canvas.width, canvas.height );
 				writeBuffer = readBuffer.clone();
+
+				// render quad
+				renderQuad = createQuadScene( {
+					uniforms: {
+						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
+						frame: { type: 'i', value: frame },
+						buffer: { type: 't', value: writeBuffer.texture },
+					},
+					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent,
+				} );
+
+				// EditorScene
+				editor = new SceneEditor( camera, canvas, renderQuad.scene );
 
 				// float quad
 				floatQuad = createQuadScene( {
@@ -665,18 +683,7 @@ void main(void) {
 						gRefractiveIndex: { type: 'f', value: config.refractiveIndex },
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
-					fragmentShader: document.getElementById( 'float_fragment_shader' ).textContent
-				} );
-
-				// render quad
-				renderQuad = createQuadScene( {
-					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
-						frame: { type: 'i', value: frame },
-						buffer: { type: 't', value: writeBuffer.texture },
-					},
-					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
-					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent
+					fragmentShader: editor.createFragmentShader(),
 				} );
 			}
 
@@ -696,22 +703,12 @@ void main(void) {
 				textureCube.mapping = THREE.CubeReflectionMapping;
 			}
 
+			function setColorVectorFromHex( hex, vector ) {
+				var color = new THREE.Color( hex );
+				vector.set( color.r, color.g, color.b );
+			}
+
 			function initEditorScene() {
-				var geometry = new THREE.CubeGeometry(1, 1, 1);
-				var material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
-
-				var mesh = new THREE.Mesh( geometry, material );
-				var mesh2 = new THREE.Mesh( geometry, material );
-				mesh2.position.x = 2;
-
-				renderQuad.scene.add( mesh );
-				renderQuad.scene.add( mesh2 );
-
-				// TransformControls
-				transformControls = new THREE.TransformControls( camera, canvas );
-				renderQuad.scene.add( transformControls );
-				transformControls.attach( mesh );
-				transformControls.update();
 			}
 
 			function init() {
@@ -740,6 +737,9 @@ void main(void) {
 					alert( "EXT_shader_texture_lod is not supported" );
 					return;
 				}
+
+				// SceneEditor
+				//editor = new SceneEditor();
 
 
 				// OrbitControls
@@ -777,47 +777,37 @@ void main(void) {
 
 				initTextureCube();
 				onWindowResize();
-				initEditorScene();
 
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
 
 			function onWindowResize() {
-
 				if ( config.resolution === 'full' ) {
-
 					canvas.width = window.innerWidth;
 					canvas.height = window.innerHeight;
-
 				} else {
-
 					canvas.width = config.resolution;
 					canvas.height = config.resolution;
-
 				}
 
 				camera.aspect = canvas.width / canvas.height;
 				camera.updateProjectionMatrix();
 
 				renderer.setSize( canvas.width, canvas.height );
-				initBuffers();
+				initDynamicObjects();
 				frame = 0;
-
 			}
 
 			function animate( timestamp ) {
-
 				requestAnimationFrame( animate );
 				render( timestamp );
-
 			}
 
 			function render( timestamp ) {
 
-				var delta = clock.getDelta();
-
 				stats.begin();
 
+				// Orbitcontrols
 				orbitControls.update();
 				if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
 					frame = 0;
