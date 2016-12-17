@@ -87,10 +87,12 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	var intersects = this.raycaster.intersectObjects( this.meshes );
 	console.log( intersects );
 
-	if ( intersects.length === 0 ) {
+	if ( this.transformControls.object ) {
 		this.transformControls.object.material.visible = false;
 		this.transformControls.detach( this.transformControls.object );
-	} else if ( intersects[0] !== this.transformControls.object ) {
+	}
+
+	if ( intersects.length > 0 && intersects[0] !== this.transformControls.object ) {
 		this.transformControls.detach( this.transformControls.object );
 		this.transformControls.attach( intersects[0].object );
 		intersects[0].object.material.visible = true;
