@@ -583,9 +583,13 @@ void main(void) {
 				},
 				resolution: '512',
 
+				// Object
 				transformMode: function() {
 					editor.toggleTransformMode();
 				},
+
+				// Material
+				materialType: "MATERIAL_TYPE_DIFFUSE",
 				roughness: 0.2,
 				refractiveIndex: 1.6,
 			};
@@ -734,7 +738,9 @@ void main(void) {
 				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
 
+				//
 				// datGUI
+				//
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
@@ -742,12 +748,32 @@ void main(void) {
 				} );
 
 				gui.add( config, 'transformMode' ).name( "Translate/Scale" );
-				gui.add( config, 'roughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
+
+				// Object
+				var selectedObjectFolder = gui.addFolder( "Selected Object" );
+				selectedObjectFolder.add( config, 'materialType', [
+					"MATERIAL_TYPE_DIFFUSE",
+					"MATERIAL_TYPE_SPECULAR",
+					"MATERIAL_TYPE_REFRACTION",
+					"MATERIAL_TYPE_GGX",
+					"MATERIAL_TYPE_GGX_REFRACTION",
+				] ).name( 'Material Type' ).onChange( function( value ) {
+					if ( !editor.transformControls.object ) {
+						alert( "先に Object を選択してください" );
+						return;
+					}
+
+					editor.transformControls.object.userData.material.type = value;
+					createDynamicObjects();
 					frame = 0;
 				} );
-				gui.add( config, 'refractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+				selectedObjectFolder.add( config, 'roughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
 					frame = 0;
 				} );
+				selectedObjectFolder.add( config, 'refractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+					frame = 0;
+				} );
+				selectedObjectFolder.open();
 
 				// Stats
 				stats = new Stats();
