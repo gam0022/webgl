@@ -44,7 +44,7 @@
 <script id="vertex_shader" type="x-shader/x-vertex">
 attribute vec3 position;
 void main(void) {
-	gl_Position = vec4( position, 1.0 );
+	gl_Position = vec4( position.xy, 1.0, 1.0 );
 }
 </script>
 
@@ -529,6 +529,8 @@ void main( void ) {
 		calcRadiance( intersection, ray, i, sa );
 		color *= intersection.material.emission + intersection.material.color;
 		if ( !intersection.hit ) break;
+
+		// 光源に到達しないケースなら明るさは0
 		if ( i == BOUNCE_LIMIT && intersection.hit ) {
 			color = vec3( 0.0 );
 		}
@@ -556,6 +558,7 @@ void main(void) {
 
 		<script src="js/three.min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/controls/TransformControls.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
 
@@ -593,7 +596,6 @@ void main(void) {
 				} );
 				var plane = new THREE.Mesh( geometry, material );
 				plane.frustumCulled = false;
-				plane.position.z = -1;
 				scene.add( plane );
 
 				return {
@@ -693,6 +695,18 @@ void main(void) {
 				textureCube.mapping = THREE.CubeReflectionMapping;
 			}
 
+			function initEditorScene() {
+				var geometry = new THREE.CubeGeometry(1, 1, 1);
+				var material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
+
+				var mesh = new THREE.Mesh( geometry, material );
+				var mesh2 = new THREE.Mesh( geometry, material );
+				mesh2.position.x = 2;
+
+				renderQuad.scene.add(mesh);
+				renderQuad.scene.add(mesh2);
+			}
+
 			function init() {
 
 				container = document.createElement( 'div' );
@@ -702,10 +716,10 @@ void main(void) {
 				camera.position.set( 0, 1, 8 );
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				//renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( config.resolution, config.resolution );
-				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				//renderer.setClearColor( new THREE.Color( 0xffffff ) );
 				canvas = renderer.domElement;
 				container.appendChild( canvas );
 
@@ -720,6 +734,8 @@ void main(void) {
 					return;
 				}
 
+
+				// OrbitControls
 				orbitControls = new THREE.OrbitControls( camera, canvas );
 				orbitControls.enablePan = true;
 				orbitControls.keyPanSpeed = 0.01;
@@ -732,8 +748,8 @@ void main(void) {
 				orbitControls.autoRotateSpeed = 0.0;
 				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
-				window.addEventListener( 'resize', onWindowResize, false );
 
+				// datGUI
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
@@ -747,12 +763,16 @@ void main(void) {
 					frame = 0;
 				} );
 
+				// Stats
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
 
+
 				initTextureCube();
 				onWindowResize();
+				initEditorScene();
 
+				window.addEventListener( 'resize', onWindowResize, false );
 			}
 
 			function onWindowResize() {
