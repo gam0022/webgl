@@ -44,33 +44,48 @@ var SceneEditor = function( camera, canvas, scene ) {
 	this.mouse = new THREE.Vector2();
 
 	// Init Scene
-	var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
-	mesh.userData.type = "Sphere";
-	mesh.userData.material = {
+	var ground = new THREE.Mesh( this.geometry, this.material.clone() );
+	ground.userData.type = "aabb";
+	ground.userData.material = {
+		type: "MATERIAL_TYPE_GGX",
+		color: "#e6e6e6",
+		emission: "#000000",
+		roughness: 0.9,
+		refractiveIndex: 1.3,
+	};
+	ground.position.y = -0.05;
+	ground.scale.x = 10;
+	ground.scale.y = 0.1;
+	ground.scale.z = 10;
+	this.addMesh( ground );
+
+	var sphere = new THREE.Mesh( this.geometry, this.material.clone() );
+	sphere.userData.type = "sphere";
+	sphere.userData.material = {
 		type: "MATERIAL_TYPE_GGX",
 		color: "#808080",
 		emission: "#000000",
 		roughness: 0.3,
 		refractiveIndex: 1.3,
 	};
-	mesh.position.y = 0.5;
-	this.addMesh( mesh );
+	sphere.position.y = 0.5;
+	this.addMesh( sphere );
 
-	var mesh2 = new THREE.Mesh( this.geometry, this.material.clone() );
-	mesh2.userData.type = "Sphere";
-	mesh2.userData.material = {
+	var sphere2 = new THREE.Mesh( this.geometry, this.material.clone() );
+	sphere2.userData.type = "sphere";
+	sphere2.userData.material = {
 		type: "MATERIAL_TYPE_REFRACTION",
 		color: "#ffffff",
 		emission: "#000000",
 		roughness: 0.3,
 		refractiveIndex: 1.3,
 	};
-	mesh2.position.x = 2;
-	mesh2.position.y = 1;
-	mesh2.scale.x = 2;
-	mesh2.scale.y = 2;
-	mesh2.scale.z = 2;
-	this.addMesh( mesh2 );
+	sphere2.position.x = 2;
+	sphere2.position.y = 1;
+	sphere2.scale.x = 2;
+	sphere2.scale.y = 2;
+	sphere2.scale.z = 2;
+	this.addMesh( sphere2 );
 };
 
 SceneEditor.prototype.addMesh = function( mesh ) {
@@ -139,12 +154,21 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 	for( var i = 0, l = this.meshes.length; i < l; i++ ) {
 		var mesh = this.meshes[i];
 		switch( mesh.userData.type ) {
-			case "Sphere":
+			case "sphere":
 				shader += [
 					this.createMaterialShaders( mesh, "sphere" ),
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
 					"sphere.radius = " + this.castFloat( 0.5 * mesh.scale.y ) + ";",
 					"intersectSphere( intersection, ray, sphere );",
+				].join( "\n" );
+				break;
+			case "aabb":
+				var offset = mesh.scale.clone().multiplyScalar( 0.5 );
+				shader += [
+					this.createMaterialShaders( mesh, "aabb" ),
+					"aabb.lb = " + this.createShaderFromVector3( mesh.position.clone().sub( offset ) ) + ";",
+					"aabb.rt = " + this.createShaderFromVector3( mesh.position.clone().add( offset ) ) + ";",
+					"intersectAABB( intersection, ray, aabb );",
 				].join( "\n" );
 				break;
 			default:
@@ -165,6 +189,7 @@ SceneEditor.prototype.createFragmentShader = function() {
 		"Material distanceMaterial;",
 		"Sphere sphere;",
 
+		/*
 		"aabb.material.type = MATERIAL_TYPE_GGX;",
 		"aabb.material.color = vec3( 0.9 );",
 		"aabb.material.emission = vec3( 0.0 );",
@@ -173,35 +198,9 @@ SceneEditor.prototype.createFragmentShader = function() {
 		"aabb.lb = vec3( -5.0, -0.1, -5.0 );",
 		"aabb.rt = vec3( 5.0, 0.0, 5.0 );",
 		"intersectAABB( intersection, ray, aabb );",
-
-		this.createSceneIntersectShaders(),
-
-		/*
-		aabb.material.type = MATERIAL_TYPE_GGX;
-		aabb.material.color = vec3( 0.9 );
-		aabb.material.emission = vec3( 0.0 );
-		aabb.lb = vec3( -5.0, -0.1, -5.0 );
-		aabb.rt = vec3( 5.0, 0.0, 5.0 );
-		intersectAABB( intersection, ray, aabb );
-
-		aabb.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-		aabb.lb = vec3( -4.0, 0.0, -4.0 );
-		aabb.rt = vec3( -3.0, 1.0, -3.0 );
-		intersectAABB( intersection, ray, aabb );
-
-		distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
-		distanceMaterial.color = vec3( 0.4, 0.4, 0.8 );
-		distanceMaterial.emission = vec3( 0.0 );
-		intersectDistanceFucntion( intersection, ray, distanceMaterial );
-
-		sphere.material.emission = vec3( 0.0 );
-		sphere.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-		sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-		sphere.position = vec3( -2.0, 0.7, 3.0 );
-		sphere.radius = 0.7;
-		intersectSphere( intersection, ray, sphere );
 		*/
 
+		this.createSceneIntersectShaders(),
 		"}",
 	].join( "\n" );
 
