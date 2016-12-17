@@ -583,7 +583,7 @@ void main(void) {
 				},
 				resolution: '512',
 
-				roughness: 0.5,
+				roughness: 0.2,
 				refractiveIndex: 1.6,
 			};
 
@@ -687,14 +687,6 @@ void main(void) {
 				textureCube = new THREE.CubeTextureLoader().load( urls );
 				textureCube.format = THREE.RGBFormat;
 				textureCube.mapping = THREE.CubeReflectionMapping;
-			}
-
-			function setColorVectorFromHex( hex, vector ) {
-				var color = new THREE.Color( hex );
-				vector.set( color.r, color.g, color.b );
-			}
-
-			function initEditorScene() {
 			}
 
 			function init() {
