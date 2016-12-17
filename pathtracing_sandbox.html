@@ -567,6 +567,7 @@ void main(void) {
 			var container, stats;
 			var camera, renderer;
 			var orbitControls, prevCameraMatrixWorld;
+			var transformControls;
 			var renderQuad, textureCube;
 			var floatQuad, initTexture, readBuffer, writeBuffer;
 			var frame = 0;
@@ -703,8 +704,14 @@ void main(void) {
 				var mesh2 = new THREE.Mesh( geometry, material );
 				mesh2.position.x = 2;
 
-				renderQuad.scene.add(mesh);
-				renderQuad.scene.add(mesh2);
+				renderQuad.scene.add( mesh );
+				renderQuad.scene.add( mesh2 );
+
+				// TransformControls
+				transformControls = new THREE.TransformControls( camera, canvas );
+				renderQuad.scene.add( transformControls );
+				transformControls.attach( mesh );
+				transformControls.update();
 			}
 
 			function init() {
