@@ -766,6 +766,16 @@ void main(void) {
 
 				// EditorScene
 				editor = new SceneEditor( camera, canvas, renderQuad.scene );
+				editor.transformControls.addEventListener('mouseDown', function( e ) {
+				});
+				editor.transformControls.addEventListener('mouseUp', function( e ) {
+				});
+				editor.transformControls.addEventListener('change', function( e ) {
+					createDynamicObjects();
+					frame = 0;
+				});
+				editor.transformControls.addEventListener('objectChange', function( e ) {
+				});
 
 				onWindowResize();
 				window.addEventListener( 'resize', onWindowResize, false );

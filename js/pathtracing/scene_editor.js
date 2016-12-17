@@ -27,7 +27,10 @@ var SceneEditor = function( camera, canvas, scene ) {
 		emission: "#000000",
 	};
 	mesh2.position.x = 2;
-	mesh2.position.y = 0.5;
+	mesh2.position.y = 1;
+	mesh2.scale.x = 2;
+	mesh2.scale.y = 2;
+	mesh2.scale.z = 2;
 	this.addMesh( mesh2 );
 
 	this.transformControls.attach( mesh );
@@ -63,7 +66,7 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 					"sphere.material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
 					"sphere.material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
-					"sphere.radius = " + mesh.scale.x * 0.5 + ";",
+					"sphere.radius = " + ( 0.5 * mesh.scale.x ).toFixed(2) + ";",
 					"intersectSphere( intersection, ray, sphere );",
 				].join( "\n" );
 				break;
