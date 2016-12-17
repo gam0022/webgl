@@ -50,6 +50,8 @@ var SceneEditor = function( camera, canvas, scene ) {
 		type: "MATERIAL_TYPE_GGX",
 		color: "#808080",
 		emission: "#000000",
+		roughness: 0.3,
+		refractiveIndex: 1.3,
 	};
 	mesh.position.y = 0.5;
 	this.addMesh( mesh );
@@ -60,6 +62,8 @@ var SceneEditor = function( camera, canvas, scene ) {
 		type: "MATERIAL_TYPE_REFRACTION",
 		color: "#ffffff",
 		emission: "#000000",
+		roughness: 0.3,
+		refractiveIndex: 1.3,
 	};
 	mesh2.position.x = 2;
 	mesh2.position.y = 1;
@@ -124,6 +128,8 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 					"sphere.material.type = " + mesh.userData.material.type + ";",
 					"sphere.material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
 					"sphere.material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
+					"sphere.material.roughness = float( " + mesh.userData.material.roughness + " );",
+					"sphere.material.refractiveIndex = float( " + mesh.userData.material.refractiveIndex + " );",
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
 					"sphere.radius = float( " + ( 0.5 * mesh.scale.y ) + " );",
 					"intersectSphere( intersection, ray, sphere );",
@@ -150,6 +156,8 @@ SceneEditor.prototype.createFragmentShader = function() {
 		"aabb.material.type = MATERIAL_TYPE_GGX;",
 		"aabb.material.color = vec3( 0.9 );",
 		"aabb.material.emission = vec3( 0.0 );",
+		"aabb.material.roughness = 0.3;",
+		"aabb.material.refractiveIndex = 1.3;",
 		"aabb.lb = vec3( -5.0, -0.1, -5.0 );",
 		"aabb.rt = vec3( 5.0, 0.0, 5.0 );",
 		"intersectAABB( intersection, ray, aabb );",
