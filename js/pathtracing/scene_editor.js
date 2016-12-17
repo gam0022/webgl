@@ -44,7 +44,7 @@ var SceneEditor = function( camera, canvas, scene ) {
 	this.mouse = new THREE.Vector2();
 
 	// Init Scene
-	var mesh = new THREE.Mesh( this.geometry, this.material );
+	var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
 	mesh.userData.type = "Sphere";
 	mesh.userData.material = {
 		type: "MATERIAL_TYPE_GGX",
@@ -55,7 +55,7 @@ var SceneEditor = function( camera, canvas, scene ) {
 	//mesh.visible = false;
 	this.addMesh( mesh );
 
-	var mesh2 = new THREE.Mesh( this.geometry, this.material );
+	var mesh2 = new THREE.Mesh( this.geometry, this.material.clone() );
 	mesh2.userData.type = "Sphere";
 	mesh2.userData.material = {
 		type: "MATERIAL_TYPE_REFRACTION",
@@ -88,10 +88,12 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	console.log( intersects );
 
 	if ( intersects.length === 0 ) {
+		this.transformControls.object.material.visible = false;
 		this.transformControls.detach( this.transformControls.object );
 	} else if ( intersects[0] !== this.transformControls.object ) {
 		this.transformControls.detach( this.transformControls.object );
 		this.transformControls.attach( intersects[0].object );
+		intersects[0].object.material.visible = true;
 		this.transformControls.update();
 	}
 }
