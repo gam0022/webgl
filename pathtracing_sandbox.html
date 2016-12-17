@@ -779,6 +779,7 @@ void main(void) {
 
 				onWindowResize();
 				window.addEventListener( 'resize', onWindowResize, false );
+				canvas.addEventListener( 'click', editor.onCanvasClick.bind( editor ), false );
 			}
 
 			function onWindowResize() {

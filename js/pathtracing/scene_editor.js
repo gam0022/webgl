@@ -1,14 +1,49 @@
-var SceneEditor = function( camera, canvas, scene ) {
-	this.scene = scene;
-	this.meshes = [];
+if (!Function.prototype.bind) {
+	Function.prototype.bind = function (oThis) {
+		if (typeof this !== "function") {
+			// closest thing possible to the ECMAScript 5 internal IsCallable function
+			throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+		}
 
+		var aArgs = Array.prototype.slice.call(arguments, 1),
+			fToBind = this,
+			fNOP = function () {},
+			fBound = function () {
+				return fToBind.apply(this instanceof fNOP
+					? this
+						: oThis || window,
+					aArgs.concat(Array.prototype.slice.call(arguments)));
+			};
+
+		fNOP.prototype = this.prototype;
+		fBound.prototype = new fNOP();
+
+		return fBound;
+	};
+}
+
+var SceneEditor = function( camera, canvas, scene ) {
+	this.camera = camera;
+	this.canvas = canvas;
+	this.scene = scene;
+
+	this.meshes = [];
 	this.geometry = new THREE.CubeGeometry( 1, 1, 1 );
-	this.material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
+	this.material = new THREE.MeshBasicMaterial( {
+		color: 0x00ff00,
+		wireframe: true,
+		visible: false
+	} );
 
 	// TransformControls
-	this.transformControls = new THREE.TransformControls( camera, canvas );
+	this.transformControls = new THREE.TransformControls( this.camera, this.canvas );
 	this.scene.add( this.transformControls );
 
+	// Raycaster
+	this.raycaster = new THREE.Raycaster();
+	this.mouse = new THREE.Vector2();
+
+	// Init Scene
 	var mesh = new THREE.Mesh( this.geometry, this.material );
 	mesh.userData.type = "Sphere";
 	mesh.userData.material = {
@@ -17,6 +52,7 @@ var SceneEditor = function( camera, canvas, scene ) {
 		emission: "#000000",
 	};
 	mesh.position.y = 0.5;
+	//mesh.visible = false;
 	this.addMesh( mesh );
 
 	var mesh2 = new THREE.Mesh( this.geometry, this.material );
@@ -32,9 +68,6 @@ var SceneEditor = function( camera, canvas, scene ) {
 	mesh2.scale.y = 2;
 	mesh2.scale.z = 2;
 	this.addMesh( mesh2 );
-
-	this.transformControls.attach( mesh );
-	this.transformControls.update();
 };
 
 SceneEditor.prototype.addMesh = function( mesh ) {
@@ -45,6 +78,23 @@ SceneEditor.prototype.addMesh = function( mesh ) {
 SceneEditor.prototype.loadJSON = function( jsonString ) {
 };
 
+
+SceneEditor.prototype.onCanvasClick = function( e ) {
+	this.mouse.x = ( e.offsetX / canvas.width ) * 2 - 1;
+	this.mouse.y = - ( e.offsetY / canvas.height ) * 2 + 1;
+
+	this.raycaster.setFromCamera( this.mouse, this.camera );
+	var intersects = this.raycaster.intersectObjects( this.meshes );
+	console.log( intersects );
+
+	if ( intersects.length === 0 ) {
+		this.transformControls.detach( this.transformControls.object );
+	} else if ( intersects[0] !== this.transformControls.object ) {
+		this.transformControls.detach( this.transformControls.object );
+		this.transformControls.attach( intersects[0].object );
+		this.transformControls.update();
+	}
+}
 
 SceneEditor.prototype.createShaderFromHex = function( hex ) {
 	var color = new THREE.Color( hex );
