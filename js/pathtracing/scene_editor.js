@@ -93,10 +93,9 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	}
 
 	if ( intersects.length > 0 && intersects[0] !== this.transformControls.object ) {
+		intersects[0].object.material.visible = true;
 		this.transformControls.detach( this.transformControls.object );
 		this.transformControls.attach( intersects[0].object );
-		intersects[0].object.material.visible = true;
-		this.transformControls.update();
 	}
 }
 
