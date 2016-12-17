@@ -128,9 +128,9 @@ SceneEditor.prototype.castFloat = function( value ) {
 	return "float( " + value + " )";
 }
 
-SceneEditor.prototype.createShaderFromHex = function( hex ) {
+SceneEditor.prototype.createShaderFromHex = function( hex, scale ) {
 	var color = new THREE.Color( hex );
-	return "vec3(" + this.castFloat( color.r ) + ", " + this.castFloat( color.g ) + ", " + this.castFloat( color.b ) + " )";
+	return "vec3(" + this.castFloat( color.r * scale ) + ", " + this.castFloat( color.g * scale ) + ", " + this.castFloat( color.b * scale ) + " )";
 }
 
 SceneEditor.prototype.createShaderFromVector3 = function( vector ) {
@@ -141,8 +141,8 @@ SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 	var shader = "";
 	shader += [
 		basename + ".material.type = " + mesh.userData.material.type + ";",
-		basename + ".material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
-		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
+		basename + ".material.color = " + this.createShaderFromHex( mesh.userData.material.color, 1.0 ) + ";",
+		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission, 5.0 ) + ";",
 		basename + ".material.roughness = " + this.castFloat( mesh.userData.material.roughness )  + ";",
 		basename + ".material.refractiveIndex = " + this.castFloat( mesh.userData.material.refractiveIndex ) + ";",
 	].join( "\n" );
