@@ -52,7 +52,6 @@ var SceneEditor = function( camera, canvas, scene ) {
 		emission: "#000000",
 	};
 	mesh.position.y = 0.5;
-	//mesh.visible = false;
 	this.addMesh( mesh );
 
 	var mesh2 = new THREE.Mesh( this.geometry, this.material.clone() );
@@ -78,6 +77,13 @@ SceneEditor.prototype.addMesh = function( mesh ) {
 SceneEditor.prototype.loadJSON = function( jsonString ) {
 };
 
+SceneEditor.prototype.toggleTransformMode = function() {
+	if ( this.transformControls.getMode() === "translate" ) {
+		this.transformControls.setMode( "scale" );
+	} else {
+		this.transformControls.setMode( "translate" );
+	}
+};
 
 SceneEditor.prototype.onCanvasClick = function( e ) {
 	this.mouse.x = ( e.offsetX / canvas.width ) * 2 - 1;
@@ -119,7 +125,7 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 					"sphere.material.color = " + this.createShaderFromHex( mesh.userData.material.color ) + ";",
 					"sphere.material.emission = " + this.createShaderFromHex( mesh.userData.material.emission ) + ";",
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
-					"sphere.radius = " + ( 0.5 * mesh.scale.x ).toFixed(2) + ";",
+					"sphere.radius = float( " + ( 0.5 * mesh.scale.y ) + " );",
 					"intersectSphere( intersection, ray, sphere );",
 				].join( "\n" );
 				break;
