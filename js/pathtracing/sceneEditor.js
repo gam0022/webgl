@@ -44,14 +44,19 @@ var SceneEditor = function( camera, canvas, scene, config ) {
 		visible: false
 	} );
 
+
 	// TransformControls
 	this.transformControls = new THREE.TransformControls( this.camera, this.canvas );
 	this.scene.add( this.transformControls );
+	//this.transformControls.addEventListener( 'mouseDown', function( e ) {} );
+	//this.transformControls.addEventListener( 'mouseUp', function( e ) {} );
+	//this.transformControls.addEventListener( 'change', function( e ) {} );
+	this.transformControls.addEventListener( 'objectChange', this.onTransformControlsChange.bind( this ), false );
+
 
 	// Raycaster
 	this.raycaster = new THREE.Raycaster();
 	this.mouse = new THREE.Vector2();
-
 	this.canvas.addEventListener( 'click', this.onCanvasClick.bind( this ), false );
 
 	this.loadJSON();
@@ -80,6 +85,21 @@ SceneEditor.prototype.loadObjectJSON = function( objectJSON ) {
 	mesh.scale.set( objectJSON.scale[0], objectJSON.scale[1], objectJSON.scale[2] );
 	this.addMesh( mesh );
 	return mesh;
+};
+
+SceneEditor.prototype.fixMeshesScale = function() {
+	for( var i = 0, l = this.meshes.length; i < l; i++ ) {
+		var mesh = this.meshes[i];
+
+		if ( mesh.userData.type == "sphere" ) {
+			mesh.scale.x = mesh.scale.z = mesh.scale.y;
+		}
+	}
+};
+
+SceneEditor.prototype.onTransformControlsChange = function() {
+	this.fixMeshesScale();
+	this.update();
 };
 
 SceneEditor.prototype.loadJSON = function() {
