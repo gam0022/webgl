@@ -576,7 +576,7 @@ void main(void) {
 				},
 				resolution: '512',
 
-				// Object
+				// Scene Edit
 				envmap: 'pisa',
 				transformMode: function() {
 					editor.toggleTransformMode();
@@ -588,7 +588,8 @@ void main(void) {
 					editor.addObject( "aabb" );
 				},
 
-				// Material
+				// Selected Object
+				objectType: "sphere",
 				materialType: "MATERIAL_TYPE_DIFFUSE",
 				materialColor: "#ffffff",
 				materialEmission: "#000000",
@@ -733,6 +734,13 @@ void main(void) {
 
 				// Selected Object
 				var selectedObjectFolder = gui.addFolder( "Selected Object" );
+				selectedObjectFolder.add( config, 'objectType', {
+					sphere: "sphere",
+					box: "aabb",
+				} ).name( 'Type' ).onChange( function( value ) {
+					editor.updateSelectedObject( value, "type" );
+				} ).listen();
+
 				selectedObjectFolder.add( config, 'materialType', {
 					diffuse: "MATERIAL_TYPE_DIFFUSE",
 					specular: "MATERIAL_TYPE_SPECULAR",

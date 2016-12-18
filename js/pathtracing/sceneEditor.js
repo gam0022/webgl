@@ -224,6 +224,7 @@ SceneEditor.prototype.selectObject = function( object ) {
 	this.transformControls.detach( this.transformControls.object );
 	this.transformControls.attach( object );
 
+	this.config.objectType = object.userData.type;
 	this.config.materialType = object.userData.material.type;
 	this.config.materialColor = object.userData.material.color;
 	this.config.materialEmission = object.userData.material.emission;
@@ -266,7 +267,12 @@ SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
 		return;
 	}
 
-	mesh.userData[ key1 ][ key2 ] = value;
+	if ( key2 ) {
+		mesh.userData[key1][key2] = value;
+	} else {
+		mesh.userData[key1] = value;
+	}
+
 	this.update();
 }
 
