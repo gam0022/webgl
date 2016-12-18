@@ -22,6 +22,14 @@ if (!Function.prototype.bind) {
 	};
 }
 
+Array.prototype.removeValue = function(value) {
+	var index = this.indexOf(value);
+	if (index !== -1) {
+		this.splice(index, 1);
+	}
+	return this;
+};
+
 var SceneEditor = function( camera, canvas, scene, config ) {
 	this.camera = camera;
 	this.canvas = canvas;
@@ -57,6 +65,11 @@ SceneEditor.prototype.update = function() {
 SceneEditor.prototype.addMesh = function( mesh ) {
 	this.meshes.push( mesh );
 	this.scene.add( mesh );
+};
+
+SceneEditor.prototype.removeMesh = function( mesh ) {
+	this.meshes.removeValue( mesh );
+	this.scene.remove( mesh )
 };
 
 SceneEditor.prototype.loadObjectJSON = function( objectJSON ) {
@@ -233,7 +246,6 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 
 	this.raycaster.setFromCamera( this.mouse, this.camera );
 	var intersects = this.raycaster.intersectObjects( this.meshes );
-	console.log( intersects );
 
 	this.releaseObject();
 
@@ -258,7 +270,7 @@ SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
 	this.update();
 }
 
-SceneEditor.prototype.fitToGround = function() {
+SceneEditor.prototype.fitToGroundSelectedObject = function() {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
@@ -268,6 +280,19 @@ SceneEditor.prototype.fitToGround = function() {
 
 	mesh.position.y = mesh.scale.y * 0.5;
 	this.transformControls.update();
+	this.update();
+};
+
+SceneEditor.prototype.removeSelectedObject = function() {
+	var mesh = this.transformControls.object;
+
+	if ( !mesh ) {
+		alert( "先に Object を選択してください" );
+		return;
+	}
+
+	this.releaseObject();
+	this.removeMesh( mesh );
 	this.update();
 };
 

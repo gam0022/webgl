@@ -595,7 +595,10 @@ void main(void) {
 				materialRefractiveIndex: 1.6,
 
 				fitToGround: function() {
-					editor.fitToGround();
+					editor.fitToGroundSelectedObject();
+				},
+				remove: function() {
+					editor.removeSelectedObject();
 				},
 			};
 
@@ -738,6 +741,7 @@ void main(void) {
 				} ).listen();
 
 				selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
+				selectedObjectFolder.add( config, "remove" ).name( "Remove" );
 				selectedObjectFolder.open();
 			}
 
