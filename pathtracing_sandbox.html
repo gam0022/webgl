@@ -580,6 +580,12 @@ void main(void) {
 				transformMode: function() {
 					editor.toggleTransformMode();
 				},
+				addSphere: function() {
+					editor.addObject( "sphere" );
+				},
+				addBox: function() {
+					editor.addObject( "aabb" );
+				},
 
 				// Material
 				materialType: "MATERIAL_TYPE_DIFFUSE",
@@ -700,6 +706,8 @@ void main(void) {
 				} );
 
 				gui.add( config, 'transformMode' ).name( "Translate/Scale" );
+				gui.add( config, 'addSphere' ).name( "Add Sphere" );
+				gui.add( config, 'addBox' ).name( "Add Box" );
 
 				// Object
 				var selectedObjectFolder = gui.addFolder( "Selected Object" );

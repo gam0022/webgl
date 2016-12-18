@@ -49,9 +49,24 @@ var SceneEditor = function( camera, canvas, scene, config ) {
 	this.loadJSON();
 };
 
+SceneEditor.prototype.update = function() {
+	createDynamicObjects();
+	frame = 0;
+};
+
 SceneEditor.prototype.addMesh = function( mesh ) {
 	this.meshes.push( mesh );
 	this.scene.add( mesh );
+};
+
+SceneEditor.prototype.loadObjectJSON = function( objectJSON ) {
+	var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
+	mesh.userData.type = objectJSON.type;
+	mesh.userData.material = objectJSON.material;
+	mesh.position.set( objectJSON.position[0], objectJSON.position[1], objectJSON.position[2] );
+	mesh.scale.set( objectJSON.scale[0], objectJSON.scale[1], objectJSON.scale[2] );
+	this.addMesh( mesh );
+	return mesh;
 };
 
 SceneEditor.prototype.loadJSON = function() {
@@ -120,12 +135,7 @@ SceneEditor.prototype.loadJSON = function() {
 
 	for( var i = 0, l = sceneJSON.length; i < l; i++ ) {
 		var objectJSON = sceneJSON[i];
-		var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
-		mesh.userData.type = objectJSON.type;
-		mesh.userData.material = objectJSON.material;
-		mesh.position.set( objectJSON.position[0], objectJSON.position[1], objectJSON.position[2] );
-		mesh.scale.set( objectJSON.scale[0], objectJSON.scale[1], objectJSON.scale[2] );
-		this.addMesh( mesh );
+		this.loadObjectJSON( objectJSON );
 	}
 };
 
@@ -135,6 +145,25 @@ SceneEditor.prototype.toggleTransformMode = function() {
 	} else {
 		this.transformControls.setMode( "translate" );
 	}
+};
+
+SceneEditor.prototype.addObject = function( type ) {
+	var mesh = this.loadObjectJSON( {
+		type: type,
+		material: {
+			type: "MATERIAL_TYPE_GGX",
+			color: "#ffffff",
+			emission: "#000000",
+			roughness: 0.2,
+			refractiveIndex: 1.3,
+		},
+		position: [ 0.0, 1.0, 0.0 ],
+		scale: [ 2.0, 2.0, 2.0 ],
+	} );
+
+	this.releaseObject();
+	this.selectObject( mesh );
+	this.update();
 };
 
 
@@ -190,9 +219,7 @@ SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
 	}
 
 	mesh.userData[ key1 ][ key2 ] = value;
-
-	createDynamicObjects();
-	frame = 0;
+	this.update();
 }
 
 SceneEditor.prototype.fitToGround = function() {
@@ -205,9 +232,7 @@ SceneEditor.prototype.fitToGround = function() {
 
 	mesh.position.y = mesh.scale.y * 0.5;
 	this.transformControls.update();
-
-	createDynamicObjects();
-	frame = 0;
+	this.update();
 };
 
 
