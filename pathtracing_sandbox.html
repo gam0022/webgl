@@ -708,9 +708,11 @@ void main(void) {
 					onWindowResize();
 				} );
 
-				gui.add( config, 'transformMode' ).name( "Translate/Scale" );
-				gui.add( config, 'addSphere' ).name( "Add Sphere" );
-				gui.add( config, 'addBox' ).name( "Add Box" );
+				var sceneEditFolder = gui.addFolder( "Scene Edit" );
+				sceneEditFolder.add( config, 'transformMode' ).name( "Translate/Scale" );
+				sceneEditFolder.add( config, 'addSphere' ).name( "Add Sphere" );
+				sceneEditFolder.add( config, 'addBox' ).name( "Add Box" );
+				sceneEditFolder.open();
 
 				// Object
 				var selectedObjectFolder = gui.addFolder( "Selected Object" );
