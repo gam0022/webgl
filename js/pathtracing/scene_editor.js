@@ -46,63 +46,7 @@ var SceneEditor = function( camera, canvas, scene, config ) {
 
 	this.canvas.addEventListener( 'click', this.onCanvasClick.bind( this ), false );
 
-
-	// Init Scene
-	var ground = new THREE.Mesh( this.geometry, this.material.clone() );
-	ground.userData.type = "aabb";
-	ground.userData.material = {
-		type: "MATERIAL_TYPE_GGX",
-		color: "#e6e6e6",
-		emission: "#000000",
-		roughness: 0.9,
-		refractiveIndex: 1.3,
-	};
-	ground.position.y = -0.05;
-	ground.scale.x = 10;
-	ground.scale.y = 0.1;
-	ground.scale.z = 10;
-	this.addMesh( ground );
-
-	var sphere = new THREE.Mesh( this.geometry, this.material.clone() );
-	sphere.userData.type = "sphere";
-	sphere.userData.material = {
-		type: "MATERIAL_TYPE_GGX",
-		color: "#808080",
-		emission: "#000000",
-		roughness: 0.3,
-		refractiveIndex: 1.3,
-	};
-	sphere.position.y = 0.5;
-	this.addMesh( sphere );
-
-	var sphere2 = new THREE.Mesh( this.geometry, this.material.clone() );
-	sphere2.userData.type = "sphere";
-	sphere2.userData.material = {
-		type: "MATERIAL_TYPE_REFRACTION",
-		color: "#ffffff",
-		emission: "#000000",
-		roughness: 0.3,
-		refractiveIndex: 1.3,
-	};
-	sphere2.position.x = 2;
-	sphere2.position.y = 1;
-	sphere2.scale.x = 2;
-	sphere2.scale.y = 2;
-	sphere2.scale.z = 2;
-	this.addMesh( sphere2 );
-
-	var box = new THREE.Mesh( this.geometry, this.material.clone() );
-	box.userData.type = "aabb";
-	box.userData.material = {
-		type: "MATERIAL_TYPE_GGX",
-		color: "#ffffff",
-		emission: "#000000",
-		roughness: 0.3,
-		refractiveIndex: 1.3,
-	};
-	box.position.x = -2;
-	box.position.y = 0.5;
-	//this.addMesh( box );
+	this.loadJSON();
 };
 
 SceneEditor.prototype.addMesh = function( mesh ) {
@@ -110,7 +54,79 @@ SceneEditor.prototype.addMesh = function( mesh ) {
 	this.scene.add( mesh );
 };
 
-SceneEditor.prototype.loadJSON = function( jsonString ) {
+SceneEditor.prototype.loadJSON = function() {
+	var sceneJSON = [
+		{
+			type: "aabb",
+			material: {
+				type: "MATERIAL_TYPE_GGX",
+				color: "#e0e0e0",
+				emission: "#000000",
+				roughness: 0.3,
+				refractiveIndex: 1.3,
+			},
+			position: [ 0.0, -0.05, 0.0 ],
+			scale: [ 10.0, 0.1, 10.0 ],
+		},
+		{
+			type: "sphere",
+			material: {
+				type: "MATERIAL_TYPE_GGX",
+				color: "#ff5050",
+				emission: "#000000",
+				roughness: 0.2,
+				refractiveIndex: 1.3,
+			},
+			position: [ 0.0, 1.0, 0.0 ],
+			scale: [ 2.0, 2.0, 2.0 ],
+		},
+		{
+			type: "sphere",
+			material: {
+				type: "MATERIAL_TYPE_REFRACTION",
+				color: "#ffffff",
+				emission: "#000000",
+				roughness: 0.3,
+				refractiveIndex: 1.3,
+			},
+			position: [ 2.0, 0.7, 3.0 ],
+			scale: [ 1.4, 1.4, 1.4 ],
+		},
+		{
+			type: "sphere",
+			material: {
+				type: "MATERIAL_TYPE_SPECULAR",
+				color: "#ffffff",
+				emission: "#000000",
+				roughness: 0.3,
+				refractiveIndex: 1.3,
+			},
+			position: [ -3.0, 0.7, -2.0 ],
+			scale: [ 1.4, 1.4, 1.4 ],
+		},
+		{
+			type: "aabb",
+			material: {
+				type: "MATERIAL_TYPE_REFRACTION",
+				color: "#8080ff",
+				emission: "#000000",
+				roughness: 0.3,
+				refractiveIndex: 1.3,
+			},
+			position: [ 2.5, 0.5, -3.0 ],
+			scale: [ 1.0, 1.0, 1.0 ],
+		},
+	];
+
+	for( var i = 0, l = sceneJSON.length; i < l; i++ ) {
+		var objectJSON = sceneJSON[i];
+		var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
+		mesh.userData.type = objectJSON.type;
+		mesh.userData.material = objectJSON.material;
+		mesh.position.set( objectJSON.position[0], objectJSON.position[1], objectJSON.position[2] );
+		mesh.scale.set( objectJSON.scale[0], objectJSON.scale[1], objectJSON.scale[2] );
+		this.addMesh( mesh );
+	}
 };
 
 SceneEditor.prototype.toggleTransformMode = function() {
