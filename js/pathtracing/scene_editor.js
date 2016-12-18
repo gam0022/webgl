@@ -86,6 +86,22 @@ var SceneEditor = function( camera, canvas, scene ) {
 	sphere2.scale.y = 2;
 	sphere2.scale.z = 2;
 	this.addMesh( sphere2 );
+
+	var box = new THREE.Mesh( this.geometry, this.material.clone() );
+	box.userData.type = "aabb";
+	box.userData.material = {
+		type: "MATERIAL_TYPE_GGX",
+		color: "#ffffff",
+		emission: "#000000",
+		roughness: 0.3,
+		refractiveIndex: 1.3,
+	};
+	box.position.x = -2;
+	box.position.y = 1;
+	box.scale.x = 2;
+	box.scale.y = 2;
+	box.scale.z = 2;
+	this.addMesh( box );
 };
 
 SceneEditor.prototype.addMesh = function( mesh ) {
@@ -122,20 +138,20 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 		this.transformControls.detach( this.transformControls.object );
 		this.transformControls.attach( intersects[0].object );
 	}
-}
+};
 
 SceneEditor.prototype.castFloat = function( value ) {
 	return "float( " + value + " )";
-}
+};
 
 SceneEditor.prototype.createShaderFromHex = function( hex, scale ) {
 	var color = new THREE.Color( hex );
 	return "vec3(" + this.castFloat( color.r * scale ) + ", " + this.castFloat( color.g * scale ) + ", " + this.castFloat( color.b * scale ) + " )";
-}
+};
 
 SceneEditor.prototype.createShaderFromVector3 = function( vector ) {
 	return "vec3(" + this.castFloat( vector.x ) + ", " + this.castFloat( vector.y ) + ", " + this.castFloat( vector.z ) + " )";
-}
+};
 
 SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 	var shader = "";
@@ -147,7 +163,7 @@ SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 		basename + ".material.refractiveIndex = " + this.castFloat( mesh.userData.material.refractiveIndex ) + ";",
 	].join( "\n" );
 	return shader;
-}
+};
 
 SceneEditor.prototype.createSceneIntersectShaders = function() {
 	var shader = "";
@@ -177,7 +193,7 @@ SceneEditor.prototype.createSceneIntersectShaders = function() {
 		}
 	}
 	return shader;
-}
+};
 
 SceneEditor.prototype.createFragmentShader = function() {
 	var float_fragment_shader_p1 = document.getElementById( "float_fragment_shader_p1" ).textContent;
@@ -205,4 +221,33 @@ SceneEditor.prototype.createFragmentShader = function() {
 	].join( "\n" );
 
 	return float_fragment_shader_p1 + intersectScene + float_fragment_shader_p2;
+};
+
+SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
+	var mesh = this.transformControls.object;
+
+	if ( !mesh ) {
+		alert( "先に Object を選択してください" );
+		return;
+	}
+
+	mesh.userData[ key1 ][ key2 ] = value;
+
+	createDynamicObjects();
+	frame = 0;
 }
+
+SceneEditor.prototype.fitToGround = function() {
+	var mesh = this.transformControls.object;
+
+	if ( !mesh ) {
+		alert( "先に Object を選択してください" );
+		return;
+	}
+
+	mesh.position.y = mesh.scale.y * 0.5;
+	this.transformControls.update();
+
+	createDynamicObjects();
+	frame = 0;
+};

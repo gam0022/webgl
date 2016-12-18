@@ -587,6 +587,10 @@ void main(void) {
 				materialEmission: "#000000",
 				materialRoughness: 0.2,
 				materialRefractiveIndex: 1.6,
+
+				fitToGround: function() {
+					editor.fitToGround();
+				},
 			};
 
 			init();
@@ -688,17 +692,6 @@ void main(void) {
 				textureCube.mapping = THREE.CubeReflectionMapping;
 			}
 
-			function updateSelectedObject( value, key1, key2 ) {
-				if ( !editor.transformControls.object ) {
-					alert( "先に Object を選択してください" );
-					return;
-				}
-
-				editor.transformControls.object.userData[ key1 ][ key2 ] = value;
-				createDynamicObjects();
-				frame = 0;
-			}
-
 			function initGUI() {
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
@@ -717,24 +710,26 @@ void main(void) {
 					"MATERIAL_TYPE_GGX",
 					"MATERIAL_TYPE_GGX_REFRACTION",
 				] ).name( 'Material Type' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "type" );
+					editor.updateSelectedObject( value, "material", "type" );
 				} );
 
 				selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "color" );
+					editor.updateSelectedObject( value, "material", "color" );
 				} );
 
 				selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "emission" );
+					editor.updateSelectedObject( value, "material", "emission" );
 				} );
 
 				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "roughness" );
+					editor.updateSelectedObject( value, "material", "roughness" );
 				} );
 
 				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-					updateSelectedObject( value, "material", "refractiveIndex" );
+					editor.updateSelectedObject( value, "material", "refractiveIndex" );
 				} );
+
+				selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
 				selectedObjectFolder.open();
 			}
 
