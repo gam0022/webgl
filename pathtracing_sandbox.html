@@ -711,23 +711,23 @@ void main(void) {
 					"MATERIAL_TYPE_GGX_REFRACTION",
 				] ).name( 'Material Type' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "type" );
-				} );
+				} ).listen();
 
 				selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "color" );
-				} );
+				} ).listen();
 
 				selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "emission" );
-				} );
+				} ).listen();
 
 				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "roughness" );
-				} );
+				} ).listen();
 
 				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "refractiveIndex" );
-				} );
+				} ).listen();
 
 				selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
 				selectedObjectFolder.open();
@@ -797,7 +797,7 @@ void main(void) {
 
 
 				// EditorScene
-				editor = new SceneEditor( camera, canvas, renderQuad.scene );
+				editor = new SceneEditor( camera, canvas, renderQuad.scene, config );
 				editor.transformControls.addEventListener('mouseDown', function( e ) {
 				});
 				editor.transformControls.addEventListener('mouseUp', function( e ) {
@@ -811,7 +811,6 @@ void main(void) {
 
 				onWindowResize();
 				window.addEventListener( 'resize', onWindowResize, false );
-				canvas.addEventListener( 'click', editor.onCanvasClick.bind( editor ), false );
 			}
 
 			function onWindowResize() {

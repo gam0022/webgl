@@ -22,10 +22,11 @@ if (!Function.prototype.bind) {
 	};
 }
 
-var SceneEditor = function( camera, canvas, scene ) {
+var SceneEditor = function( camera, canvas, scene, config ) {
 	this.camera = camera;
 	this.canvas = canvas;
 	this.scene = scene;
+	this.config = config;
 
 	this.meshes = [];
 	this.geometry = new THREE.CubeGeometry( 1, 1, 1 );
@@ -42,6 +43,9 @@ var SceneEditor = function( camera, canvas, scene ) {
 	// Raycaster
 	this.raycaster = new THREE.Raycaster();
 	this.mouse = new THREE.Vector2();
+
+	this.canvas.addEventListener( 'click', this.onCanvasClick.bind( this ), false );
+
 
 	// Init Scene
 	var ground = new THREE.Mesh( this.geometry, this.material.clone() );
@@ -97,11 +101,8 @@ var SceneEditor = function( camera, canvas, scene ) {
 		refractiveIndex: 1.3,
 	};
 	box.position.x = -2;
-	box.position.y = 1;
-	box.scale.x = 2;
-	box.scale.y = 2;
-	box.scale.z = 2;
-	this.addMesh( box );
+	box.position.y = 0.5;
+	//this.addMesh( box );
 };
 
 SceneEditor.prototype.addMesh = function( mesh ) {
@@ -120,6 +121,31 @@ SceneEditor.prototype.toggleTransformMode = function() {
 	}
 };
 
+
+//
+// Edit Object
+//
+SceneEditor.prototype.selectObject = function( object ) {
+	object.material.visible = true;
+	this.transformControls.detach( this.transformControls.object );
+	this.transformControls.attach( object );
+
+	this.config.materialType = object.userData.material.type;
+	this.config.materialColor = object.userData.material.color;
+	this.config.materialEmission = object.userData.material.emission;
+	this.config.materialRoughness = object.userData.material.roughness;
+	this.config.materialRefractiveIndex = object.userData.material.refractiveIndex;
+};
+
+SceneEditor.prototype.releaseObject = function( object ) {
+	if ( !this.transformControls.object ) {
+		return;
+	}
+
+	this.transformControls.object.material.visible = false;
+	this.transformControls.detach( this.transformControls.object );
+};
+
 SceneEditor.prototype.onCanvasClick = function( e ) {
 	this.mouse.x = ( e.offsetX / canvas.width ) * 2 - 1;
 	this.mouse.y = - ( e.offsetY / canvas.height ) * 2 + 1;
@@ -128,18 +154,50 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	var intersects = this.raycaster.intersectObjects( this.meshes );
 	console.log( intersects );
 
-	if ( this.transformControls.object ) {
-		this.transformControls.object.material.visible = false;
-		this.transformControls.detach( this.transformControls.object );
-	}
+	this.releaseObject();
 
-	if ( intersects.length > 0 && intersects[0] !== this.transformControls.object ) {
-		intersects[0].object.material.visible = true;
-		this.transformControls.detach( this.transformControls.object );
-		this.transformControls.attach( intersects[0].object );
+	if ( intersects.length > 0 ) {
+		// Select Object
+		var clickedObject = intersects[0].object;
+		if ( clickedObject && clickedObject !== this.transformControls.object ) {
+			this.selectObject( clickedObject );
+		}
 	}
 };
 
+SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
+	var mesh = this.transformControls.object;
+
+	if ( !mesh ) {
+		alert( "先に Object を選択してください" );
+		return;
+	}
+
+	mesh.userData[ key1 ][ key2 ] = value;
+
+	createDynamicObjects();
+	frame = 0;
+}
+
+SceneEditor.prototype.fitToGround = function() {
+	var mesh = this.transformControls.object;
+
+	if ( !mesh ) {
+		alert( "先に Object を選択してください" );
+		return;
+	}
+
+	mesh.position.y = mesh.scale.y * 0.5;
+	this.transformControls.update();
+
+	createDynamicObjects();
+	frame = 0;
+};
+
+
+//
+// Create GLSL
+//
 SceneEditor.prototype.castFloat = function( value ) {
 	return "float( " + value + " )";
 };
@@ -221,33 +279,4 @@ SceneEditor.prototype.createFragmentShader = function() {
 	].join( "\n" );
 
 	return float_fragment_shader_p1 + intersectScene + float_fragment_shader_p2;
-};
-
-SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
-	var mesh = this.transformControls.object;
-
-	if ( !mesh ) {
-		alert( "先に Object を選択してください" );
-		return;
-	}
-
-	mesh.userData[ key1 ][ key2 ] = value;
-
-	createDynamicObjects();
-	frame = 0;
-}
-
-SceneEditor.prototype.fitToGround = function() {
-	var mesh = this.transformControls.object;
-
-	if ( !mesh ) {
-		alert( "先に Object を選択してください" );
-		return;
-	}
-
-	mesh.position.y = mesh.scale.y * 0.5;
-	this.transformControls.update();
-
-	createDynamicObjects();
-	frame = 0;
 };
