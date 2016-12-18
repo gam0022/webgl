@@ -733,13 +733,13 @@ void main(void) {
 
 				// Selected Object
 				var selectedObjectFolder = gui.addFolder( "Selected Object" );
-				selectedObjectFolder.add( config, 'materialType', [
-					"MATERIAL_TYPE_DIFFUSE",
-					"MATERIAL_TYPE_SPECULAR",
-					"MATERIAL_TYPE_REFRACTION",
-					"MATERIAL_TYPE_GGX",
-					"MATERIAL_TYPE_GGX_REFRACTION",
-				] ).name( 'Material Type' ).onChange( function( value ) {
+				selectedObjectFolder.add( config, 'materialType', {
+					diffuse: "MATERIAL_TYPE_DIFFUSE",
+					specular: "MATERIAL_TYPE_SPECULAR",
+					refraction: "MATERIAL_TYPE_REFRACTION",
+					ggx: "MATERIAL_TYPE_GGX",
+					ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
+				} ).name( 'Material Type' ).onChange( function( value ) {
 					editor.updateSelectedObject( value, "material", "type" );
 				} ).listen();
 
