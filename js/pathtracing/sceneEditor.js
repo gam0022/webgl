@@ -351,13 +351,13 @@ SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 	return shader;
 };
 
-SceneEditor.prototype.updateIntersectSceneInternal = function() {
-	var glsl = "";
+SceneEditor.prototype.createSceneIntersectShaders = function() {
+	var shader = "";
 	for( var i = 0, l = this.meshes.length; i < l; i++ ) {
 		var mesh = this.meshes[i];
 		switch( mesh.userData.type ) {
 			case "sphere":
-				glsl += [
+				shader += [
 					this.createMaterialShaders( mesh, "sphere" ),
 					"sphere.position = " + this.createShaderFromVector3( mesh.position ) + ";",
 					"sphere.radius = " + this.castFloat( 0.5 * mesh.scale.y ) + ";",
@@ -366,7 +366,7 @@ SceneEditor.prototype.updateIntersectSceneInternal = function() {
 				break;
 			case "aabb":
 				var offset = mesh.scale.clone().multiplyScalar( 0.5 );
-				glsl += [
+				shader += [
 					this.createMaterialShaders( mesh, "aabb" ),
 					"aabb.lb = " + this.createShaderFromVector3( mesh.position.clone().sub( offset ) ) + ";",
 					"aabb.rt = " + this.createShaderFromVector3( mesh.position.clone().add( offset ) ) + ";",
@@ -378,5 +378,33 @@ SceneEditor.prototype.updateIntersectSceneInternal = function() {
 				break;
 		}
 	}
-	return THREE.ShaderChunk.pathtracing_intersect_scene_internal = glsl;
+	return shader;
+};
+
+SceneEditor.prototype.createFragmentShader = function() {
+	var float_fragment_shader_p1 = document.getElementById( "float_fragment_shader_p1" ).textContent;
+	var float_fragment_shader_p2 = document.getElementById( "float_fragment_shader_p2" ).textContent;
+
+	var intersectScene = [
+		"void intersectScene( inout Intersection intersection, inout Ray ray ) {",
+		"AABB aabb;",
+		"Material distanceMaterial;",
+		"Sphere sphere;",
+
+		/*
+		"aabb.material.type = MATERIAL_TYPE_GGX;",
+		"aabb.material.color = vec3( 0.9 );",
+		"aabb.material.emission = vec3( 0.0 );",
+		"aabb.material.roughness = 0.3;",
+		"aabb.material.refractiveIndex = 1.3;",
+		"aabb.lb = vec3( -5.0, -0.1, -5.0 );",
+		"aabb.rt = vec3( 5.0, 0.0, 5.0 );",
+		"intersectAABB( intersection, ray, aabb );",
+		*/
+
+		this.createSceneIntersectShaders(),
+		"}",
+	].join( "\n" );
+
+	return float_fragment_shader_p1 + intersectScene + float_fragment_shader_p2;
 };
