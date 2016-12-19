@@ -543,13 +543,13 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 </script>
 
 <script id="float_fragment_shader_p2" type="x-shader/x-fragment">
-void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, float sa ) {
+void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersection.distance = INF;
 	intersectScene( intersection, ray );
 
-	//float seed = 23.1 * sa + 73.1 * float( bounce ) + 17.7 * float( frame );
-	vec2 Xi = hash23( vec3( gl_FragCoord.xy, 500.0 * hash12( vec2( float( frame ), float( bounce ) ) ) ) );
+	vec3 seed = vec3( gl_FragCoord.xy, float( frame ) * 0.3 ) + float( bounce ) * 500.0 + 50.0;
+	vec2 Xi = hash23( seed );
 	ray.origin = intersection.position + OFFSET * intersection.normal;
 
 	if ( intersection.hit ) {
@@ -613,9 +613,6 @@ void main( void ) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
 	vec4 prevColor = texture2D( buffer, uv );
 
-	// sa
-	float sa = hash13( vec3( gl_FragCoord.xy, float( frame ) ) );
-
 	// fragment position
 	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
 
@@ -628,13 +625,13 @@ void main( void ) {
 	// bounce
 	Intersection intersection;
 	vec3 color = vec3( 1.0 );
-	for ( int i = 0; i <= BOUNCE_LIMIT; i++ ) {
-		calcRadiance( intersection, ray, i, sa );
+	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
+		calcRadiance( intersection, ray, bounce );
 		color *= intersection.material.emission + intersection.material.color;
 		if ( !intersection.hit ) break;
 
 		// 光源に到達しないケースなら明るさは0
-		if ( i == BOUNCE_LIMIT && intersection.hit ) {
+		if ( bounce == BOUNCE_LIMIT && intersection.hit ) {
 			color = vec3( 0.0 );
 		}
 	}

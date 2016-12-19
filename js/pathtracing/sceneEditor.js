@@ -193,7 +193,7 @@ SceneEditor.prototype.loadJSON = function() {
 			material: {
 				type: "MATERIAL_TYPE_DIFFUSE",
 				color: "#000000",
-				emission: "#ffffff",
+				emission: "#2b2b2b",
 				roughness: 0.3,
 				refractiveIndex: 1.3,
 			},
