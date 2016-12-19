@@ -193,7 +193,7 @@ SceneEditor.prototype.loadJSON = function() {
 			material: {
 				type: "MATERIAL_TYPE_DIFFUSE",
 				color: "#000000",
-				emission: "#2b2b2b",
+				emission: "#808080",
 				roughness: 0.3,
 				refractiveIndex: 1.3,
 			},
@@ -344,7 +344,7 @@ SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 	shader += [
 		basename + ".material.type = " + mesh.userData.material.type + ";",
 		basename + ".material.color = " + this.createShaderFromHex( mesh.userData.material.color, 1.0 ) + ";",
-		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission, 30.0 ) + ";",
+		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission, 10.0 ) + ";",
 		basename + ".material.roughness = " + this.castFloat( mesh.userData.material.roughness )  + ";",
 		basename + ".material.refractiveIndex = " + this.castFloat( mesh.userData.material.refractiveIndex ) + ";",
 	].join( "\n" );
