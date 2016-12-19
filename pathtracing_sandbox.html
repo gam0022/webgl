@@ -548,8 +548,8 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 	intersection.distance = INF;
 	intersectScene( intersection, ray );
 
-	float seed = 23.1 * sa + 73.1 * float( bounce ) + 17.7 * float( frame );
-	vec2 Xi = hash21( seed );
+	//float seed = 23.1 * sa + 73.1 * float( bounce ) + 17.7 * float( frame );
+	vec2 Xi = hash23( vec3( gl_FragCoord.xy, 500.0 * hash12( vec2( float( frame ), float( bounce ) ) ) ) );
 	ray.origin = intersection.position + OFFSET * intersection.normal;
 
 	if ( intersection.hit ) {

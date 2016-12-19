@@ -344,7 +344,7 @@ SceneEditor.prototype.createMaterialShaders = function( mesh, basename ) {
 	shader += [
 		basename + ".material.type = " + mesh.userData.material.type + ";",
 		basename + ".material.color = " + this.createShaderFromHex( mesh.userData.material.color, 1.0 ) + ";",
-		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission, 5.0 ) + ";",
+		basename + ".material.emission = " + this.createShaderFromHex( mesh.userData.material.emission, 30.0 ) + ";",
 		basename + ".material.roughness = " + this.castFloat( mesh.userData.material.roughness )  + ";",
 		basename + ".material.refractiveIndex = " + this.castFloat( mesh.userData.material.refractiveIndex ) + ";",
 	].join( "\n" );
