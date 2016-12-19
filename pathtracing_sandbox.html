@@ -49,8 +49,6 @@ void main(void) {
 </script>
 
 <script id="float_fragment_shader_p1" type="x-shader/x-fragment">
-#extension GL_EXT_shader_texture_lod : enable
-
 precision highp float;
 
 //
@@ -489,7 +487,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce, f
 			}
 		}
 	} else {
-		intersection.material.color = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;//backgroundColor;
+		intersection.material.color = textureCube( cubeMap, ray.direction ).rgb;//backgroundColor;
 		intersection.material.emission = vec3( 0.0 );
 	}
 }
@@ -701,6 +699,7 @@ void main(void) {
 				textureCube.format = THREE.RGBFormat;
 				textureCube.mapping = THREE.CubeReflectionMapping;
 				textureCubes.bridge = textureCube;
+				textureCubes.generateMipmaps = false;
 
 				r = "textures/cube/pisa/";
 				urls = [
@@ -712,6 +711,7 @@ void main(void) {
 				textureCube.format = THREE.RGBFormat;
 				textureCube.mapping = THREE.CubeReflectionMapping;
 				textureCubes.pisa = textureCube;
+				textureCubes.generateMipmaps = false;
 			}
 
 			function initGUI() {
@@ -791,11 +791,6 @@ void main(void) {
 				// extentions
 				if ( !renderer.extensions.get( "OES_texture_float" ) ) {
 					alert( "No OES_texture_float support for float textures." );
-					return;
-				}
-
-				if ( !renderer.extensions.get( "EXT_shader_texture_lod" ) ) {
-					alert( "EXT_shader_texture_lod is not supported" );
 					return;
 				}
 
