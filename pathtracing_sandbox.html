@@ -656,372 +656,367 @@ void main(void) {
 }
 </script>
 
-		<script src="js/three.min.js"></script>
-		<script src="js/controls/OrbitControls.js"></script>
-		<script src="js/controls/TransformControls.js"></script>
-		<script src="js/libs/stats.min.js"></script>
-		<script src="js/libs/dat.gui.min.js"></script>
+<script src="js/three.min.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
+<script src="js/controls/TransformControls.js"></script>
+<script src="js/libs/stats.min.js"></script>
+<script src="js/libs/dat.gui.min.js"></script>
 
-		<script src="js/pathtracing/sceneEditor.js"></script>
+<script src="js/pathtracing/sceneEditor.js"></script>
+<script>
+var container, stats;
+var camera, renderer;
+var orbitControls, prevCameraMatrixWorld;
+var textureCubes;
+var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
+var frame = 0;
+var editor;
 
-		<script>
+var config = {
+	saveImage: function() {
+		renderer.render( renderQuad.scene, camera );
+		window.open( canvas.toDataURL() );
+	},
+	resolution: '512',
 
-			var container, stats;
-			var camera, renderer;
-			var orbitControls, prevCameraMatrixWorld;
-			var textureCubes;
-			var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
-			var frame = 0;
-			var editor;
+	// Scene Edit
+	envmap: 'pisa',
+	transformMode: function() {
+		editor.toggleTransformMode();
+	},
+	addSphere: function() {
+		editor.addObject( "sphere" );
+	},
+	addBox: function() {
+		editor.addObject( "aabb" );
+	},
 
-			var config = {
-				saveImage: function() {
-					renderer.render( renderQuad.scene, camera );
-					window.open( canvas.toDataURL() );
-				},
-				resolution: '512',
+	// Selected Object
+	objectType: "sphere",
+	materialType: "MATERIAL_TYPE_DIFFUSE",
+	materialColor: "#ffffff",
+	materialEmission: "#000000",
+	materialRoughness: 0.2,
+	materialRefractiveIndex: 1.6,
 
-				// Scene Edit
-				envmap: 'pisa',
-				transformMode: function() {
-					editor.toggleTransformMode();
-				},
-				addSphere: function() {
-					editor.addObject( "sphere" );
-				},
-				addBox: function() {
-					editor.addObject( "aabb" );
-				},
+	fitToGround: function() {
+		editor.fitToGroundSelectedObject();
+	},
+	remove: function() {
+		editor.removeSelectedObject();
+	},
+};
 
-				// Selected Object
-				objectType: "sphere",
-				materialType: "MATERIAL_TYPE_DIFFUSE",
-				materialColor: "#ffffff",
-				materialEmission: "#000000",
-				materialRoughness: 0.2,
-				materialRefractiveIndex: 1.6,
+init();
+animate();
 
-				fitToGround: function() {
-					editor.fitToGroundSelectedObject();
-				},
-				remove: function() {
-					editor.removeSelectedObject();
-				},
-			};
+function createQuadScene( parameters ) {
+	var scene = new THREE.Scene();
+	var geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
+	var material = new THREE.RawShaderMaterial( {
+		uniforms: parameters.uniforms,
+		vertexShader: parameters.vertexShader,
+		fragmentShader: parameters.fragmentShader,
+	} );
+	var plane = new THREE.Mesh( geometry, material );
+	plane.frustumCulled = false;
+	scene.add( plane );
 
-			init();
-			animate();
+	return {
+		scene: scene,
+		geometry: geometry,
+		material: material,
+	};
+}
 
-			function createQuadScene( parameters ) {
-				var scene = new THREE.Scene();
-				var geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
-				var material = new THREE.RawShaderMaterial( {
-					uniforms: parameters.uniforms,
-					vertexShader: parameters.vertexShader,
-					fragmentShader: parameters.fragmentShader,
-				} );
-				var plane = new THREE.Mesh( geometry, material );
-				plane.frustumCulled = false;
-				scene.add( plane );
+function createDataTexture( width, height ) {
+	var data = new Float32Array( width * height * 4 );
 
-				return {
-					scene: scene,
-					geometry: geometry,
-					material: material,
-				};
-			}
+	for (var k = 0, kl = data.length; k < kl; k += 4) {
+		data[k]      = 0.0;
+		data[k + 1]  = 0.0;
+		data[k + 2]  = 0.0;
+		data[k + 3]  = 1.0;
+	}
 
-			function createDataTexture( width, height ) {
-				var data = new Float32Array( width * height * 4 );
-			
-				for (var k = 0, kl = data.length; k < kl; k += 4) {
-					data[k]      = 0.0;
-					data[k + 1]  = 0.0;
-					data[k + 2]  = 0.0;
-					data[k + 3]  = 1.0;
-				}
-			
-				var texture = new THREE.DataTexture(
-					data,
-					width,
-					height,
-					THREE.RGBAFormat,
-					THREE.FloatType);
-			
-				texture.needsUpdate = true;
-			
-				return texture;
-			}
+	var texture = new THREE.DataTexture(
+		data,
+		width,
+		height,
+		THREE.RGBAFormat,
+		THREE.FloatType);
 
-			function createRenderTarget( width, height ) {
-				return new THREE.WebGLRenderTarget( width, height, {
-					wrapS: THREE.RepeatWrapping,
-					wrapT: THREE.RepeatWrapping,
-					minFilter: THREE.NearestFilter,
-					magFilter: THREE.NearestFilter,
-					format: THREE.RGBAFormat,
-					type: THREE.FloatType,
-					stencilBuffer: false,
-					depthBuffer: false
-				});
-			}
+	texture.needsUpdate = true;
+
+	return texture;
+}
+
+function createRenderTarget( width, height ) {
+	return new THREE.WebGLRenderTarget( width, height, {
+		wrapS: THREE.RepeatWrapping,
+		wrapT: THREE.RepeatWrapping,
+		minFilter: THREE.NearestFilter,
+		magFilter: THREE.NearestFilter,
+		format: THREE.RGBAFormat,
+		type: THREE.FloatType,
+		stencilBuffer: false,
+		depthBuffer: false
+	});
+}
 
 
-			function createDynamicObjects() {
-				initTexture  = createDataTexture( canvas.width, canvas.height );
-				readBuffer  = createRenderTarget( canvas.width, canvas.height );
-				writeBuffer = readBuffer.clone();
+function createDynamicObjects() {
+	initTexture  = createDataTexture( canvas.width, canvas.height );
+	readBuffer  = createRenderTarget( canvas.width, canvas.height );
+	writeBuffer = readBuffer.clone();
 
-				// float quad
-				floatQuad = createQuadScene( {
-					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
-						time: { type: 'f', value: 0.0 },
-						frame: { type: 'i', value: frame },
-						buffer: { type: 't', value: readBuffer.texture },
-						cubeMap: { type: 'tc', value: textureCubes[config.envmap] },
+	// float quad
+	floatQuad = createQuadScene( {
+		uniforms: {
+			resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
+			time: { type: 'f', value: 0.0 },
+			frame: { type: 'i', value: frame },
+			buffer: { type: 't', value: readBuffer.texture },
+			cubeMap: { type: 'tc', value: textureCubes[config.envmap] },
 
-						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
-						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
-						cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
-						cameraNear: { type: 'f', value: camera.near },
-						cameraFar:  { type: 'f', value: camera.far },
-					},
-					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
-					fragmentShader: editor.createFragmentShader(),
-				} );
-			}
+			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
+			cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+			cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+			cameraNear: { type: 'f', value: camera.near },
+			cameraFar:  { type: 'f', value: camera.far },
+		},
+		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+		fragmentShader: editor.createFragmentShader(),
+	} );
+}
 
-			function initTextureCube() {
-				textureCubes = {};
-				var cubeTextureLoader = new THREE.CubeTextureLoader();
+function initTextureCube() {
+	textureCubes = {};
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
 
-				var r = "textures/cube/Bridge2/";
-				var urls = [
-					r + "posx.jpg", r + "negx.jpg",
-					r + "posy.jpg", r + "negy.jpg",
-					r + "posz.jpg", r + "negz.jpg",
-				];
-				var textureCube = cubeTextureLoader.load( urls );
-				textureCube.format = THREE.RGBFormat;
-				textureCube.mapping = THREE.CubeReflectionMapping;
-				textureCubes.bridge = textureCube;
-				textureCubes.generateMipmaps = false;
+	var r = "textures/cube/Bridge2/";
+	var urls = [
+		r + "posx.jpg", r + "negx.jpg",
+		r + "posy.jpg", r + "negy.jpg",
+		r + "posz.jpg", r + "negz.jpg",
+	];
+	var textureCube = cubeTextureLoader.load( urls );
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	textureCubes.bridge = textureCube;
+	textureCubes.generateMipmaps = false;
 
-				r = "textures/cube/pisa/";
-				urls = [
-					r + "px.png", r + "nx.png",
-					r + "py.png", r + "ny.png",
-					r + "pz.png", r + "nz.png",
-				];
-				textureCube = cubeTextureLoader.load( urls );
-				textureCube.format = THREE.RGBFormat;
-				textureCube.mapping = THREE.CubeReflectionMapping;
-				textureCubes.pisa = textureCube;
-				textureCubes.generateMipmaps = false;
-			}
+	r = "textures/cube/pisa/";
+	urls = [
+		r + "px.png", r + "nx.png",
+		r + "py.png", r + "ny.png",
+		r + "pz.png", r + "nz.png",
+	];
+	textureCube = cubeTextureLoader.load( urls );
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	textureCubes.pisa = textureCube;
+	textureCubes.generateMipmaps = false;
+}
 
-			function initGUI() {
-				var gui = new dat.GUI();
-				gui.add( config, 'saveImage' ).name( 'Save Image' );
-				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
-					onWindowResize();
-				} );
+function initGUI() {
+	var gui = new dat.GUI();
+	gui.add( config, 'saveImage' ).name( 'Save Image' );
+	gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+		onWindowResize();
+	} );
 
-				// Scene Edit
-				var sceneEditFolder = gui.addFolder( "Scene Edit" );
-				sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
-					floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
-					frame = 0;
-				} );
-				sceneEditFolder.add( config, 'transformMode' ).name( "Translate/Scale" );
-				sceneEditFolder.add( config, 'addSphere' ).name( "Add Sphere" );
-				sceneEditFolder.add( config, 'addBox' ).name( "Add Box" );
-				sceneEditFolder.open();
+	// Scene Edit
+	var sceneEditFolder = gui.addFolder( "Scene Edit" );
+	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
+		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
+		frame = 0;
+	} );
+	sceneEditFolder.add( config, 'transformMode' ).name( "Translate/Scale" );
+	sceneEditFolder.add( config, 'addSphere' ).name( "Add Sphere" );
+	sceneEditFolder.add( config, 'addBox' ).name( "Add Box" );
+	sceneEditFolder.open();
 
-				// Selected Object
-				var selectedObjectFolder = gui.addFolder( "Selected Object" );
-				selectedObjectFolder.add( config, 'objectType', {
-					sphere: "sphere",
-					box: "aabb",
-				} ).name( 'Type' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "type" );
-				} ).listen();
+	// Selected Object
+	var selectedObjectFolder = gui.addFolder( "Selected Object" );
+	selectedObjectFolder.add( config, 'objectType', {
+		sphere: "sphere",
+		box: "aabb",
+	} ).name( 'Type' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "type" );
+	} ).listen();
 
-				selectedObjectFolder.add( config, 'materialType', {
-					diffuse: "MATERIAL_TYPE_DIFFUSE",
-					specular: "MATERIAL_TYPE_SPECULAR",
-					refraction: "MATERIAL_TYPE_REFRACTION",
-					ggx: "MATERIAL_TYPE_GGX",
-					ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
-				} ).name( 'Material Type' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "material", "type" );
-				} ).listen();
+	selectedObjectFolder.add( config, 'materialType', {
+		diffuse: "MATERIAL_TYPE_DIFFUSE",
+		specular: "MATERIAL_TYPE_SPECULAR",
+		refraction: "MATERIAL_TYPE_REFRACTION",
+		ggx: "MATERIAL_TYPE_GGX",
+		ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
+	} ).name( 'Material Type' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "type" );
+	} ).listen();
 
-				selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "material", "color" );
-				} ).listen();
+	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "color" );
+	} ).listen();
 
-				selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "material", "emission" );
-				} ).listen();
+	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "emission" );
+	} ).listen();
 
-				selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "material", "roughness" );
-				} ).listen();
+	selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "roughness" );
+	} ).listen();
 
-				selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-					editor.updateSelectedObject( value, "material", "refractiveIndex" );
-				} ).listen();
+	selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "refractiveIndex" );
+	} ).listen();
 
-				selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
-				selectedObjectFolder.add( config, "remove" ).name( "Remove" );
-				selectedObjectFolder.open();
-			}
+	selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
+	selectedObjectFolder.add( config, "remove" ).name( "Remove" );
+	selectedObjectFolder.open();
+}
 
-			function init() {
+function init() {
+	container = document.createElement( 'div' );
+	document.body.appendChild( container );
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+	camera.position.set( 0, 1, 8 );
+	camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.set( 0, 1, 8 );
-				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	//renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( config.resolution, config.resolution );
+	//renderer.setClearColor( new THREE.Color( 0xffffff ) );
+	canvas = renderer.domElement;
+	container.appendChild( canvas );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				//renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( config.resolution, config.resolution );
-				//renderer.setClearColor( new THREE.Color( 0xffffff ) );
-				canvas = renderer.domElement;
-				container.appendChild( canvas );
-
-				// extentions
-				if ( !renderer.extensions.get( "OES_texture_float" ) ) {
-					alert( "No OES_texture_float support for float textures." );
-					return;
-				}
-
-
-				// OrbitControls
-				orbitControls = new THREE.OrbitControls( camera, canvas );
-				orbitControls.enablePan = true;
-				orbitControls.keyPanSpeed = 0.01;
-				orbitControls.enableDamping = false;
-				orbitControls.dampingFactor = 0.015;
-				orbitControls.enableZoom = true;
-				orbitControls.zoomSpeed = 1;
-				orbitControls.rotateSpeed = 0.8;
-				orbitControls.autoRotate = false;
-				orbitControls.autoRotateSpeed = 0.0;
-				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
+	// extentions
+	if ( !renderer.extensions.get( "OES_texture_float" ) ) {
+		alert( "No OES_texture_float support for float textures." );
+		return;
+	}
 
 
-				initGUI();
-
-				// Stats
-				stats = new Stats();
-				document.body.appendChild( stats.domElement );
-
-
-				initTextureCube();
-
-				// RenderQuad
-				renderQuad = createQuadScene( {
-					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
-						frame: { type: 'i', value: frame },
-						buffer: { type: 't', value: null },
-					},
-					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
-					fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent,
-				} );
+	// OrbitControls
+	orbitControls = new THREE.OrbitControls( camera, canvas );
+	orbitControls.enablePan = true;
+	orbitControls.keyPanSpeed = 0.01;
+	orbitControls.enableDamping = false;
+	orbitControls.dampingFactor = 0.015;
+	orbitControls.enableZoom = true;
+	orbitControls.zoomSpeed = 1;
+	orbitControls.rotateSpeed = 0.8;
+	orbitControls.autoRotate = false;
+	orbitControls.autoRotateSpeed = 0.0;
+	orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
 
-				// EditorScene
-				editor = new SceneEditor( camera, canvas, renderQuad.scene, config );
+	initGUI();
+
+	// Stats
+	stats = new Stats();
+	document.body.appendChild( stats.domElement );
 
 
-				onWindowResize();
-				window.addEventListener( 'resize', onWindowResize, false );
-			}
+	initTextureCube();
 
-			function onWindowResize() {
-				if ( config.resolution === 'full' ) {
-					canvas.width = window.innerWidth;
-					canvas.height = window.innerHeight;
-				} else {
-					canvas.width = config.resolution;
-					canvas.height = config.resolution;
-				}
+	// RenderQuad
+	renderQuad = createQuadScene( {
+		uniforms: {
+			resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
+			frame: { type: 'i', value: frame },
+			buffer: { type: 't', value: null },
+		},
+		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+		fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent,
+	} );
 
-				camera.aspect = canvas.width / canvas.height;
-				camera.updateProjectionMatrix();
 
-				renderer.setSize( canvas.width, canvas.height );
-				editor.update();
-			}
+	// EditorScene
+	editor = new SceneEditor( camera, canvas, renderQuad.scene, config );
 
-			function animate( timestamp ) {
-				requestAnimationFrame( animate );
-				render( timestamp );
-			}
 
-			function render( timestamp ) {
+	onWindowResize();
+	window.addEventListener( 'resize', onWindowResize, false );
+}
 
-				stats.begin();
+function onWindowResize() {
+	if ( config.resolution === 'full' ) {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.width = config.resolution;
+		canvas.height = config.resolution;
+	}
 
-				// OrbitControls
-				orbitControls.update();
-				if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
-					frame = 0;
-				}
-				prevCameraMatrixWorld = camera.matrixWorld.clone();
+	camera.aspect = canvas.width / canvas.height;
+	camera.updateProjectionMatrix();
 
-				// float quad
-				{
-					// set uniforms
-					floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-					floatQuad.material.uniforms.time.value = timestamp * 0.001;
-					floatQuad.material.uniforms.frame.value = frame;
-					floatQuad.material.uniforms.buffer.value = frame === 0 ? initTexture : readBuffer.texture;
+	renderer.setSize( canvas.width, canvas.height );
+	editor.update();
+}
 
-					// set camera uniforms
-					{
-						var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
-						var cameraViewInverseMatrix = camera.matrixWorld;
-						var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
-						//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
-						cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
-						cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
-						floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+function animate( timestamp ) {
+	requestAnimationFrame( animate );
+	render( timestamp );
+}
 
-						floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-						floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+function render( timestamp ) {
+	stats.begin();
 
-						floatQuad.material.uniforms.cameraNear.value = camera.near;
-						floatQuad.material.uniforms.cameraFar.value  = camera.far;
-					}
-					renderer.render( floatQuad.scene, camera, writeBuffer );
-				}
+	// OrbitControls
+	orbitControls.update();
+	if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
+		frame = 0;
+	}
+	prevCameraMatrixWorld = camera.matrixWorld.clone();
 
-				// render quad
-				{
-					renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-					renderQuad.material.uniforms.frame.value = frame;
-					renderQuad.material.uniforms.buffer.value = writeBuffer.texture;
+	// float quad
+	{
+		// set uniforms
+		floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+		floatQuad.material.uniforms.time.value = timestamp * 0.001;
+		floatQuad.material.uniforms.frame.value = frame;
+		floatQuad.material.uniforms.buffer.value = frame === 0 ? initTexture : readBuffer.texture;
 
-					renderer.render( renderQuad.scene, camera );
-				}
+		// set camera uniforms
+		{
+			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
+			var cameraViewInverseMatrix = camera.matrixWorld;
+			var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+			//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
+			cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
+			cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
 
-				// swap buffers
-				var tmpBuffer = writeBuffer;
-				writeBuffer = readBuffer;
-				readBuffer = tmpBuffer;
+			floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
+			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
 
-				stats.end();
-				frame++;
+			floatQuad.material.uniforms.cameraNear.value = camera.near;
+			floatQuad.material.uniforms.cameraFar.value  = camera.far;
+		}
+		renderer.render( floatQuad.scene, camera, writeBuffer );
+	}
 
-			}
-		</script>
+	// render quad
+	{
+		renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+		renderQuad.material.uniforms.frame.value = frame;
+		renderQuad.material.uniforms.buffer.value = writeBuffer.texture;
+
+		renderer.render( renderQuad.scene, camera );
+	}
+
+	// swap buffers
+	var tmpBuffer = writeBuffer;
+	writeBuffer = readBuffer;
+	readBuffer = tmpBuffer;
+
+	stats.end();
+	frame++;
+}
+</script>
 	</body>
 </html>
