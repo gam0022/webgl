@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - pathtracing sandbox</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: black;
+				margin: 0;
+				padding: 0;
+			}
+
+			a { color: skyblue }
+
+			canvas {
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+
+			#info {
+				color: white;
+				font-size: 13px;
+				position: absolute;
+				bottom: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl pathtracing sandbox<br />
+			by <a href="https://github.com/gam0022" target="_blank">gam0022</a> (<a href="http://qiita.com/gam0022/items/9875480d33e03fe2113c" target="_blank">article in Japanese</a>)
+		</div>
+
+<script id="vertex_shader" type="x-shader/x-vertex">
+attribute vec3 position;
+void main(void) {
+	gl_Position = vec4( position.xy, 1.0, 1.0 );
+}
+</script>
+
+<script id="float_fragment_shader_p1" type="x-shader/x-fragment">
+precision highp float;
+
+//
+// uniforms
+//
+uniform float time;
+uniform int frame;
+uniform sampler2D buffer;
+uniform vec2 resolution;
+
+// cubeMap
+uniform samplerCube cubeMap;
+
+// camera
+uniform vec3 cameraPosition;
+uniform mat4 viewMatrix;
+
+uniform mat4 cameraWorldMatrix;
+uniform mat4 cameraProjectionMatrixInverse;
+uniform mat4 cameraViewProjectionpMatrixInverse;
+uniform float cameraNear;
+uniform float cameraFar;
+
+// consts
+const float INF = 1e+10;
+const float EPS = 1e-4;
+const float OFFSET = EPS * 10.0;
+const float PI = 3.14159265359;
+const float PI2 = 6.28318530718;
+const vec3 backgroundColor = vec3( 1.0 );
+const vec3 SpecularColor = vec3( 1.0 );
+const int BOUNCE_LIMIT = 10;
+
+// HLSL
+float saturate( float x ) {
+	return clamp( x, 0.0, 1.0 );
+}
+
+
+// ray
+struct Ray {
+	vec3 origin;
+	vec3 direction;
+};
+
+// material
+struct Material {
+	int type;
+	vec3 color;
+	vec3 emission;
+	float roughness;
+	float refractiveIndex;
+};
+#define MATERIAL_TYPE_DIFFUSE 0
+#define MATERIAL_TYPE_SPECULAR 1
+#define MATERIAL_TYPE_REFRACTION 2
+#define MATERIAL_TYPE_GGX 3
+#define MATERIAL_TYPE_GGX_REFRACTION  4
+
+//
+// Primitive
+//
+struct Intersection {
+	bool hit;
+	vec3 position;
+	float distance;
+	vec3 normal;
+	Material material;
+};
+
+struct Sphere {
+	float radius;
+	vec3 position;
+	Material material;
+};
+
+struct Plane {
+	vec3 position;
+	vec3 normal;
+	Material material;
+};
+
+struct AABB {
+	vec3 lb;
+	vec3 rt;
+	Material material;
+};
+
+//
+// Util
+//
+
+bool equals( float x, float y ) {
+	return abs( x - y ) < EPS;
+}
+
+//
+// Random
+// https://www.shadertoy.com/view/4djSRW
+//
+
+// Hash without Sine
+// Creative Commons Attribution-ShareAlike 4.0 International Public License
+// Created by David Hoskins.
+
+// https://www.shadertoy.com/view/4djSRW
+// Trying to find a Hash function that is the same on ALL systens
+// and doesn't rely on trigonometry functions that change accuracy 
+// depending on GPU. 
+// New one on the left, sine function on the right.
+// It appears to be the same speed, but I suppose that depends.
+
+// * Note. It still goes wrong eventually!
+// * Try full-screen paused to see details.
+
+// *** Change these to suit your range of random numbers..
+
+// *** Use this for integer stepped ranges, ie Value-Noise/Perlin noise functions.
+#define HASHSCALE1 .1031
+#define HASHSCALE3 vec3(.1031, .1030, .0973)
+#define HASHSCALE4 vec4(1031, .1030, .0973, .1099)
+
+// For smaller input rangers like audio tick or 0-1 UVs use these...
+//#define HASHSCALE3 443.8975
+//#define HASHSCALE3 vec3(443.897, 441.423, 437.195)
+//#define HASHSCALE3 vec3(443.897, 441.423, 437.195, 444.129)
+
+
+
+//  1 out, 1 in...
+float hash11(float p)
+{
+	vec3 p3  = fract(vec3(p) * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+//  1 out, 2 in...
+float hash12(vec2 p)
+{
+	vec3 p3  = fract(vec3(p.xyx) * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+//  1 out, 3 in...
+float hash13(vec3 p3)
+{
+	p3  = fract(p3 * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+//  2 out, 1 in...
+vec2 hash21(float p)
+{
+	vec3 p3 = fract(vec3(p) * HASHSCALE3);
+	p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.xx+p3.yz)*p3.zy);
+
+}
+
+///  2 out, 2 in...
+vec2 hash22(vec2 p)
+{
+	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
+    p3 += dot(p3, p3.yzx+19.19);
+    return fract((p3.xx+p3.yz)*p3.zy);
+
+}
+
+///  2 out, 3 in...
+vec2 hash23(vec3 p3)
+{
+	p3 = fract(p3 * HASHSCALE3);
+    p3 += dot(p3, p3.yzx+19.19);
+    return fract((p3.xx+p3.yz)*p3.zy);
+}
+
+//  3 out, 1 in...
+vec3 hash31(float p)
+{
+   vec3 p3 = fract(vec3(p) * HASHSCALE3);
+   p3 += dot(p3, p3.yzx+19.19);
+   return fract((p3.xxy+p3.yzz)*p3.zyx); 
+}
+
+
+///  3 out, 2 in...
+vec3 hash32(vec2 p)
+{
+	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
+    p3 += dot(p3, p3.yxz+19.19);
+    return fract((p3.xxy+p3.yzz)*p3.zyx);
+}
+
+///  3 out, 3 in...
+vec3 hash33(vec3 p3)
+{
+	p3 = fract(p3 * HASHSCALE3);
+    p3 += dot(p3, p3.yxz+19.19);
+    return fract((p3.xxy + p3.yxx)*p3.zyx);
+
+}
+
+// 4 out, 1 in...
+vec4 hash41(float p)
+{
+	vec4 p4 = fract(vec4(p) * HASHSCALE4);
+    p4 += dot(p4, p4.wzxy+19.19);
+    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+    
+}
+
+// 4 out, 2 in...
+vec4 hash42(vec2 p)
+{
+	vec4 p4 = fract(vec4(p.xyxy) * HASHSCALE4);
+    p4 += dot(p4, p4.wzxy+19.19);
+    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+
+}
+
+// 4 out, 3 in...
+vec4 hash43(vec3 p)
+{
+	vec4 p4 = fract(vec4(p.xyzx)  * HASHSCALE4);
+    p4 += dot(p4, p4.wzxy+19.19);
+    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+}
+
+// 4 out, 4 in...
+vec4 hash44(vec4 p4)
+{
+	p4 = fract(p4  * HASHSCALE4);
+    p4 += dot(p4, p4.wzxy+19.19);
+    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+    //return fract(vec4((p4.x + p4.y)*p4.z, (p4.x + p4.z)*p4.y, (p4.y + p4.z)*p4.w, (p4.z + p4.w)*p4.x));
+}
+
+//
+// BRDF
+//
+
+// cos分布による重点サンプリング
+vec3 cosineDirection( vec2 Xi, vec3 normal ) {
+	// compute basis from normal
+	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
+	// (link provided by nimitz)
+	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
+	vec3 uu = vec3( tc.x, tc.z, -normal.x );
+	vec3 vv = vec3( tc.z, tc.y, -normal.y );
+	float a = PI2 * Xi.y;
+	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
+}
+
+// http://project-asura.com/blog/?p=3124
+// Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
+// おそらくcos分布による重点サンプリングだと思っている…
+vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
+	float a = Roughness * Roughness;
+
+	float Phi = PI2 * Xi.x;
+	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y ) );
+	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
+
+	vec3 H;
+	H.x = SinTheta * cos( Phi );
+	H.y = SinTheta * sin( Phi );
+	H.z = CosTheta;
+
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+	vec3 TangentX = normalize( cross( UpVector , N ) );
+	vec3 TangentY = cross( N, TangentX );
+	// Tangent to world space
+	return TangentX * H.x + TangentY * H.y + N * H.z;
+}
+
+// http://d.hatena.ne.jp/hanecci/20130727/p2
+float GGX_G_1( float Roughness, float NoV ) {
+    float k = 0.5 * Roughness * Roughness;
+    return NoV / ( NoV * ( 1.0 - k ) + k );
+}
+
+float GGX_G( float Roughness, float NoV, float NoL ) {
+    return GGX_G_1( Roughness, NoV ) * GGX_G_1( Roughness, NoL );
+}
+
+
+//
+// Distance Functoion
+//
+float udFloor( vec3 p ){
+	return dot( p, vec3( 0.0, 1.0, 0.0 ) ) + 1.0;
+}
+
+float sdSphere( vec3 p, float r ) {
+	return length( p ) - r;
+}
+
+float sdTorus( vec3 p, vec2 t ) {
+	vec2 q = vec2( length( p.xz ) - t.x, p.y );
+	return length( q ) - t.y;
+}
+
+float sceneDistance( vec3 p ) {
+	return sdTorus( p - vec3( 3.0, 0.2, 0.0 ), vec2( 1.0, 0.2 ) );
+	// return sdSphere( p, 1.0 );
+	//return min( udFloor( p ), sdSphere( p, 1.0 ) );
+}
+
+vec3 calcNormal( vec3 p ) {
+	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
+	return normalize(
+		e.xyy * sceneDistance( p + e.xyy ) + e.yyx * sceneDistance( p + e.yyx ) + 
+			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
+}
+
+
+//
+// Intersect
+//
+void intersectDistanceFucntion( inout Intersection intersection, Ray ray, Material material ) {
+	float d;
+	float distance = 0.0;
+	vec3 p = ray.origin;
+
+	for ( int i = 0; i < 200; i++ ) {
+		d = sceneDistance( p );
+		distance += d;
+		p = ray.origin + distance * ray.direction;
+		if ( abs( d ) < EPS ) break;
+	}
+
+	if ( abs( d ) < EPS ) {
+		if ( distance < intersection.distance ) {
+			intersection.hit = true;
+			intersection.position = p;
+			intersection.normal = calcNormal( p );
+			intersection.distance = distance;
+			intersection.material = material;
+		}
+	}
+}
+
+void intersectPlane( inout Intersection intersection, Ray ray, Plane plane ){
+    float d = -dot( plane.position, plane.normal );
+    float v = dot( ray.direction, plane.normal );
+    float t = -( dot( ray.origin, plane.normal ) + d ) / v;
+
+	if( t > EPS && t < intersection.distance ) {
+		intersection.hit = true;
+		intersection.position = ray.origin + ray.direction * t;
+		intersection.normal = plane.normal;
+		intersection.distance = t;
+		intersection.material = plane.material;
+	}
+}
+
+void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
+	vec3  a = ray.origin - sphere.position;
+	float b = dot( a, ray.direction );
+	float c = dot( a, a ) - sphere.radius * sphere.radius;
+	float d = b * b - c;
+	float t = -b - sqrt( d );
+
+	if( d > 0.0 && t > EPS && t < intersection.distance ) {
+		intersection.hit = true;
+		intersection.position = ray.origin + ray.direction * t;
+		intersection.normal = normalize( intersection.position - sphere.position );
+		intersection.distance = t;
+		intersection.material = sphere.material;
+	}
+}
+
+// http://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms
+void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
+	vec3 dirfrac;
+	dirfrac.x = 1.0 / ray.direction.x;
+	dirfrac.y = 1.0 / ray.direction.y;
+	dirfrac.z = 1.0 / ray.direction.z;
+
+	float t1 = (aabb.lb.x - ray.origin.x)*dirfrac.x;
+	float t2 = (aabb.rt.x - ray.origin.x)*dirfrac.x;
+	float t3 = (aabb.lb.y - ray.origin.y)*dirfrac.y;
+	float t4 = (aabb.rt.y - ray.origin.y)*dirfrac.y;
+	float t5 = (aabb.lb.z - ray.origin.z)*dirfrac.z;
+	float t6 = (aabb.rt.z - ray.origin.z)*dirfrac.z;
+
+	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+	if( tmin <= tmax && 0.0 <= tmin && tmin < intersection.distance ) {
+		intersection.hit = true;
+		intersection.position = ray.origin + ray.direction * tmin;
+		intersection.distance = tmin;
+		intersection.material = aabb.material;
+
+		// 交点座標から法線を求める
+		// 高速化のためにY軸から先に判定する
+		if( equals( intersection.position.y, aabb.rt.y ) ) {
+			intersection.normal = vec3( 0.0, 1.0, 0.0 );
+		} else if( equals( intersection.position.y, aabb.lb.y ) ) {
+			intersection.normal = vec3( 0.0, -1.0, 0.0 );
+		} else if( equals( intersection.position.x, aabb.lb.x ) ) {
+			intersection.normal = vec3( -1.0, 0.0, 0.0 );
+		} else if( equals( intersection.position.x, aabb.rt.x ) ) {
+			intersection.normal = vec3( 1.0, 0.0, 0.0 );
+		} else if( equals( intersection.position.z, aabb.lb.z ) ) {
+			intersection.normal = vec3( 0.0, 0.0, -1.0 );
+		} else if( equals( intersection.position.z, aabb.rt.z ) ) {
+			intersection.normal = vec3( 0.0, 0.0, 1.0 );
+		}
+	}
+}
+/*
+void intersectScene( inout Intersection intersection, inout Ray ray ) {
+	Plane plane;
+	plane.material.type = MATERIAL_TYPE_DIFFUSE;
+	plane.material.color = vec3( 0.9 );
+	plane.material.emission = vec3( 0.0 );
+	plane.position = vec3( 0.0, 0.0, 0.0 );
+	plane.normal = vec3( 0.0, 1.0, 0.0 );
+	//intersectPlane( intersection, ray, plane );
+
+	AABB aabb;
+	aabb.material.type = MATERIAL_TYPE_GGX;
+	aabb.material.color = vec3( 0.9 );
+	aabb.material.emission = vec3( 0.0 );
+	aabb.lb = vec3( -5.0, -0.1, -5.0 );
+	aabb.rt = vec3( 5.0, 0.0, 5.0 );
+	intersectAABB( intersection, ray, aabb );
+
+	aabb.material.type = MATERIAL_TYPE_GGX_REFRACTION;
+	aabb.lb = vec3( -4.0, 0.0, -4.0 );
+	aabb.rt = vec3( -3.0, 1.0, -3.0 );
+	intersectAABB( intersection, ray, aabb );
+
+	Material distanceMaterial;
+	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
+	distanceMaterial.color = vec3( 0.4, 0.4, 0.8 );
+	distanceMaterial.emission = vec3( 0.0 );
+	intersectDistanceFucntion( intersection, ray, distanceMaterial );
+
+	Sphere sphere;
+	sphere.material.emission = vec3( 0.0 );
+
+	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
+	sphere.material.color = vec3( 0.8, 0.4, 0.4 );
+	sphere.position = vec3( 0.0, 1.0, 1.0 );
+	sphere.radius = 1.0;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_REFRACTION;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( 2.0, 0.7, 3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_GGX_REFRACTION;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( -2.0, 0.7, 3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
+	sphere.material.color = vec3( 0.5, 0.25, 0.3 );
+	sphere.position = vec3( -2.0, 0.7, 3.0 );
+	sphere.radius = 0.2;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_SPECULAR;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( 3.0, 0.7, -3.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_GGX;
+	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
+	sphere.position = vec3( -3.0, 0.7, -1.0 );
+	sphere.radius = 0.7;
+	intersectSphere( intersection, ray, sphere );
+
+	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
+	sphere.material.color = vec3( 0.0 );
+	sphere.material.emission = vec3( 20.0 );
+	sphere.position = vec3( 0.0, 5.0, 0.0 );
+	sphere.radius = 1.0;
+	//intersectSphere( intersection, ray, sphere );
+}
+*/
+</script>
+
+<script id="float_fragment_shader_p2" type="x-shader/x-fragment">
+void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
+	intersection.hit = false;
+	intersection.distance = INF;
+	intersectScene( intersection, ray );
+
+	vec3 seed = vec3( gl_FragCoord.xy, float( frame ) * 0.3 ) + float( bounce ) * 500.0 + 50.0;
+	vec2 Xi = hash23( seed );
+	ray.origin = intersection.position + OFFSET * intersection.normal;
+
+	if ( intersection.hit ) {
+		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
+			ray.direction = cosineDirection( Xi, intersection.normal);
+		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
+			ray.direction = reflect( ray.direction, intersection.normal );
+		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
+			vec3 rayDirection = ray.direction;
+			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
+			vec3 orientingNormal = isIncoming ? intersection.normal : -intersection.normal;
+			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
+			if ( ray.direction == vec3( 0.0 ) ) {
+				// 完全反射のケース
+				ray.direction = reflect( rayDirection, orientingNormal );
+			} else {
+				ray.origin = intersection.position - OFFSET * intersection.normal;
+			}
+		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
+			vec3 N = intersection.normal;
+			vec3 V = -ray.direction;
+			vec3 H = importanceSampleGGX( Xi, intersection.material.roughness, N );
+			vec3 L = reflect( ray.direction, H );
+			//vec3 L = 2.0 * dot( V, H ) * H - V;
+
+			float NoV = saturate( dot( N, V ) );// x x
+			float NoL = saturate( dot( N, L ) );// x x
+			float NoH = saturate( dot( N, H ) );// o o
+			float VoH = saturate( dot( V, H ) );// x x
+
+			if( NoL > 0.0 ) {
+				float G = GGX_G( intersection.material.roughness, NoV, NoL );
+				float Fc = pow( 1.0 - VoH, 5.0 );
+				vec3 F = (1.0 - Fc) * SpecularColor + Fc;
+				intersection.material.color *= F * G * VoH / ( NoH * NoV );
+			}
+
+			ray.direction = L;
+		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
+			vec3 H = importanceSampleGGX( Xi, intersection.material.roughness, intersection.normal );
+
+			vec3 rayDirection = ray.direction;
+			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
+			vec3 orientingNormal = isIncoming ? H : -H;
+			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
+			if ( ray.direction == vec3( 0.0 ) ) {
+				// 完全反射のケース
+				ray.direction = reflect( rayDirection, orientingNormal );
+			} else {
+				ray.origin = intersection.position - OFFSET * intersection.normal;
+			}
+		}
+	} else {
+		intersection.material.color = textureCube( cubeMap, ray.direction ).rgb;//backgroundColor;
+		intersection.material.emission = vec3( 0.0 );
+	}
+}
+
+void main( void ) {
+	// previous color
+	vec2 uv = gl_FragCoord.xy / resolution.xy;
+	vec4 prevColor = texture2D( buffer, uv );
+
+	// fragment position
+	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+
+	// camera and ray
+	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
+	Ray ray;
+	ray.origin = cameraPosition;
+	ray.direction = normalize( rayTip.xyz );
+
+	// bounce
+	Intersection intersection;
+	vec3 color = vec3( 1.0 );
+	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
+		calcRadiance( intersection, ray, bounce );
+		color *= intersection.material.emission + intersection.material.color;
+		if ( !intersection.hit ) break;
+
+		// 光源に到達しないケースなら明るさは0
+		if ( bounce == BOUNCE_LIMIT && intersection.hit ) {
+			color = vec3( 0.0 );
+		}
+	}
+
+	gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
+	//gl_FragColor = vec4( color, 1.0 );
+}
+</script>
+
+<script id="render_fragment_shader" type="x-shader/x-fragment">
+precision highp float;
+
+uniform int frame;
+uniform vec2 resolution;
+uniform sampler2D buffer;
+
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution.xy;
+	vec4 color = texture2D( buffer, uv );
+	gl_FragColor = vec4( color.rgb / float( frame + 1 ), 1.0 );
+	//gl_FragColor = vec4( color.rgb, 1.0 );
+}
+</script>
+
+<script src="js/three.min.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
+<script src="js/controls/TransformControls.js"></script>
+<script src="js/libs/stats.min.js"></script>
+<script src="js/libs/dat.gui.min.js"></script>
+
+<script src="js/pathtracing/sceneEditor.js"></script>
+<script>
+var container, stats;
+var camera, renderer;
+var orbitControls, prevCameraMatrixWorld;
+var textureCubes;
+var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
+var frame = 0;
+var editor;
+
+var config = {
+	saveImage: function() {
+		renderer.render( renderQuad.scene, camera );
+		window.open( canvas.toDataURL() );
+	},
+	resolution: '512',
+
+	// Scene Edit
+	envmap: 'pisa',
+	transformMode: function() {
+		editor.toggleTransformMode();
+	},
+	addSphere: function() {
+		editor.addObject( "sphere" );
+	},
+	addBox: function() {
+		editor.addObject( "aabb" );
+	},
+
+	// Selected Object
+	objectType: "sphere",
+	materialType: "MATERIAL_TYPE_DIFFUSE",
+	materialColor: "#ffffff",
+	materialEmission: "#000000",
+	materialRoughness: 0.2,
+	materialRefractiveIndex: 1.6,
+
+	fitToGround: function() {
+		editor.fitToGroundSelectedObject();
+	},
+	remove: function() {
+		editor.removeSelectedObject();
+	},
+};
+
+init();
+animate();
+
+function createQuadScene( parameters ) {
+	var scene = new THREE.Scene();
+	var geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
+	var material = new THREE.RawShaderMaterial( {
+		uniforms: parameters.uniforms,
+		vertexShader: parameters.vertexShader,
+		fragmentShader: parameters.fragmentShader,
+	} );
+	var plane = new THREE.Mesh( geometry, material );
+	plane.frustumCulled = false;
+	scene.add( plane );
+
+	return {
+		scene: scene,
+		geometry: geometry,
+		material: material,
+	};
+}
+
+function createDataTexture( width, height ) {
+	var data = new Float32Array( width * height * 4 );
+
+	for (var k = 0, kl = data.length; k < kl; k += 4) {
+		data[k]      = 0.0;
+		data[k + 1]  = 0.0;
+		data[k + 2]  = 0.0;
+		data[k + 3]  = 1.0;
+	}
+
+	var texture = new THREE.DataTexture(
+		data,
+		width,
+		height,
+		THREE.RGBAFormat,
+		THREE.FloatType);
+
+	texture.needsUpdate = true;
+
+	return texture;
+}
+
+function createRenderTarget( width, height ) {
+	return new THREE.WebGLRenderTarget( width, height, {
+		wrapS: THREE.RepeatWrapping,
+		wrapT: THREE.RepeatWrapping,
+		minFilter: THREE.NearestFilter,
+		magFilter: THREE.NearestFilter,
+		format: THREE.RGBAFormat,
+		type: THREE.FloatType,
+		stencilBuffer: false,
+		depthBuffer: false
+	});
+}
+
+
+function createDynamicObjects() {
+	initTexture  = createDataTexture( canvas.width, canvas.height );
+	readBuffer  = createRenderTarget( canvas.width, canvas.height );
+	writeBuffer = readBuffer.clone();
+
+	// float quad
+	floatQuad = createQuadScene( {
+		uniforms: {
+			resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
+			time: { type: 'f', value: 0.0 },
+			frame: { type: 'i', value: frame },
+			buffer: { type: 't', value: readBuffer.texture },
+			cubeMap: { type: 'tc', value: textureCubes[config.envmap] },
+
+			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
+			cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+			cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+			cameraNear: { type: 'f', value: camera.near },
+			cameraFar:  { type: 'f', value: camera.far },
+		},
+		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+		fragmentShader: editor.createFragmentShader(),
+	} );
+}
+
+function initTextureCube() {
+	textureCubes = {};
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
+
+	var r = "textures/cube/Bridge2/";
+	var urls = [
+		r + "posx.jpg", r + "negx.jpg",
+		r + "posy.jpg", r + "negy.jpg",
+		r + "posz.jpg", r + "negz.jpg",
+	];
+	var textureCube = cubeTextureLoader.load( urls );
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	textureCubes.bridge = textureCube;
+	textureCubes.generateMipmaps = false;
+
+	r = "textures/cube/pisa/";
+	urls = [
+		r + "px.png", r + "nx.png",
+		r + "py.png", r + "ny.png",
+		r + "pz.png", r + "nz.png",
+	];
+	textureCube = cubeTextureLoader.load( urls );
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	textureCubes.pisa = textureCube;
+	textureCubes.generateMipmaps = false;
+}
+
+function initGUI() {
+	var gui = new dat.GUI();
+	gui.add( config, 'saveImage' ).name( 'Save Image' );
+	gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+		onWindowResize();
+	} );
+
+	// Scene Edit
+	var sceneEditFolder = gui.addFolder( "Scene Edit" );
+	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
+		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
+		frame = 0;
+	} );
+	sceneEditFolder.add( config, 'transformMode' ).name( "Translate/Scale" );
+	sceneEditFolder.add( config, 'addSphere' ).name( "Add Sphere" );
+	sceneEditFolder.add( config, 'addBox' ).name( "Add Box" );
+	sceneEditFolder.open();
+
+	// Selected Object
+	var selectedObjectFolder = gui.addFolder( "Selected Object" );
+	selectedObjectFolder.add( config, 'objectType', {
+		sphere: "sphere",
+		box: "aabb",
+	} ).name( 'Type' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "type" );
+	} ).listen();
+
+	selectedObjectFolder.add( config, 'materialType', {
+		diffuse: "MATERIAL_TYPE_DIFFUSE",
+		specular: "MATERIAL_TYPE_SPECULAR",
+		refraction: "MATERIAL_TYPE_REFRACTION",
+		ggx: "MATERIAL_TYPE_GGX",
+		ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
+	} ).name( 'Material Type' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "type" );
+	} ).listen();
+
+	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "color" );
+	} ).listen();
+
+	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "emission" );
+	} ).listen();
+
+	selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "roughness" );
+	} ).listen();
+
+	selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, "material", "refractiveIndex" );
+	} ).listen();
+
+	selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
+	selectedObjectFolder.add( config, "remove" ).name( "Remove" );
+	selectedObjectFolder.open();
+}
+
+function init() {
+	container = document.createElement( 'div' );
+	document.body.appendChild( container );
+
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+	camera.position.set( 0, 1, 8 );
+	camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+
+	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	//renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( config.resolution, config.resolution );
+	//renderer.setClearColor( new THREE.Color( 0xffffff ) );
+	canvas = renderer.domElement;
+	container.appendChild( canvas );
+
+	// extentions
+	if ( !renderer.extensions.get( "OES_texture_float" ) ) {
+		alert( "No OES_texture_float support for float textures." );
+		return;
+	}
+
+
+	// OrbitControls
+	orbitControls = new THREE.OrbitControls( camera, canvas );
+	orbitControls.enablePan = true;
+	orbitControls.keyPanSpeed = 0.01;
+	orbitControls.enableDamping = false;
+	orbitControls.dampingFactor = 0.015;
+	orbitControls.enableZoom = true;
+	orbitControls.zoomSpeed = 1;
+	orbitControls.rotateSpeed = 0.8;
+	orbitControls.autoRotate = false;
+	orbitControls.autoRotateSpeed = 0.0;
+	orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
+
+
+	initGUI();
+
+	// Stats
+	stats = new Stats();
+	document.body.appendChild( stats.domElement );
+
+
+	initTextureCube();
+
+	// RenderQuad
+	renderQuad = createQuadScene( {
+		uniforms: {
+			resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
+			frame: { type: 'i', value: frame },
+			buffer: { type: 't', value: null },
+		},
+		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
+		fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent,
+	} );
+
+
+	// EditorScene
+	editor = new SceneEditor( camera, canvas, renderQuad.scene, config );
+
+
+	onWindowResize();
+	window.addEventListener( 'resize', onWindowResize, false );
+}
+
+function onWindowResize() {
+	if ( config.resolution === 'full' ) {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.width = config.resolution;
+		canvas.height = config.resolution;
+	}
+
+	camera.aspect = canvas.width / canvas.height;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( canvas.width, canvas.height );
+	editor.update();
+}
+
+function animate( timestamp ) {
+	requestAnimationFrame( animate );
+	render( timestamp );
+}
+
+function render( timestamp ) {
+	stats.begin();
+
+	// OrbitControls
+	orbitControls.update();
+	if ( camera && prevCameraMatrixWorld && !camera.matrixWorld.equals( prevCameraMatrixWorld ) ) {
+		frame = 0;
+	}
+	prevCameraMatrixWorld = camera.matrixWorld.clone();
+
+	// float quad
+	{
+		// set uniforms
+		floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+		floatQuad.material.uniforms.time.value = timestamp * 0.001;
+		floatQuad.material.uniforms.frame.value = frame;
+		floatQuad.material.uniforms.buffer.value = frame === 0 ? initTexture : readBuffer.texture;
+
+		// set camera uniforms
+		{
+			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
+			var cameraViewInverseMatrix = camera.matrixWorld;
+			var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+			//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
+			cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
+			cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+
+			floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
+			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+
+			floatQuad.material.uniforms.cameraNear.value = camera.near;
+			floatQuad.material.uniforms.cameraFar.value  = camera.far;
+		}
+		renderer.render( floatQuad.scene, camera, writeBuffer );
+	}
+
+	// render quad
+	{
+		renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+		renderQuad.material.uniforms.frame.value = frame;
+		renderQuad.material.uniforms.buffer.value = writeBuffer.texture;
+
+		renderer.render( renderQuad.scene, camera );
+	}
+
+	// swap buffers
+	var tmpBuffer = writeBuffer;
+	writeBuffer = readBuffer;
+	readBuffer = tmpBuffer;
+
+	stats.end();
+	frame++;
+}
+</script>
+	</body>
+</html>
