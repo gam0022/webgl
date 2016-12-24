@@ -430,8 +430,8 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 		intersection.normal = normalize( intersection.position - sphere.position );
 		intersection.distance = t;
 		intersection.material = sphere.material;
-		intersection.uv.y = acos( intersection.normal.z ) / PI;
-		intersection.uv.x = 0.5 + sign( intersection.normal.y ) * acos( intersection.normal.x / length( intersection.normal.xy ) ) / PI2;
+		intersection.uv.y = -acos( intersection.normal.y ) / PI;
+		intersection.uv.x = 0.5 - sign( intersection.normal.z ) * acos( intersection.normal.x / length( intersection.normal.xz ) ) / PI2;
 	}
 }
 
