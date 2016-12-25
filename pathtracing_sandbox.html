@@ -715,16 +715,6 @@ var textureChoices = {
 	gam0022: 5,
 	gam0022_inverse: 6,
 };
-</script>
-<script src="js/pathtracing/sceneEditor.js"></script>
-<script>
-var container, stats;
-var camera, renderer;
-var orbitControls, prevCameraMatrixWorld;
-var textureCubes, texture2Ds;
-var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
-var frame = 0;
-var editor;
 
 var config = {
 	saveImage: function() {
@@ -734,7 +724,8 @@ var config = {
 	resolution: '512',
 
 	// Scene Edit
-	envmap: 'bridge',
+	preset: "basic",
+	envmap: "pisa",
 	transformMode: function() {
 		editor.toggleTransformMode();
 	},
@@ -763,6 +754,17 @@ var config = {
 		editor.removeSelectedObject();
 	},
 };
+</script>
+<script src="js/pathtracing/presetScenes.js"></script>
+<script src="js/pathtracing/sceneEditor.js"></script>
+<script>
+var container, stats;
+var camera, renderer;
+var orbitControls, prevCameraMatrixWorld;
+var textureCubes, texture2Ds;
+var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
+var frame = 0;
+var editor;
 
 init();
 animate();
@@ -911,6 +913,11 @@ function initGUI() {
 
 	// Scene Edit
 	var sceneEditFolder = gui.addFolder( "Scene Edit" );
+	sceneEditFolder.add( config, 'preset', [ "basic", "table" ] ).name( 'Preset' ).onChange( function( value ) {
+		editor.removeAllMesh();
+		editor.loadSceneJSON( presetScenes[value]() );
+		editor.update();
+	} );
 	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
 		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
 		frame = 0;

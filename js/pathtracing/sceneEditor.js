@@ -59,7 +59,7 @@ var SceneEditor = function( camera, canvas, scene, config ) {
 	this.mouse = new THREE.Vector2();
 	this.canvas.addEventListener( 'click', this.onCanvasClick.bind( this ), false );
 
-	this.loadJSON();
+	this.loadSceneJSON( presetScenes[config.preset]() );
 };
 
 SceneEditor.prototype.update = function() {
@@ -77,6 +77,13 @@ SceneEditor.prototype.removeMesh = function( mesh ) {
 	this.scene.remove( mesh )
 };
 
+SceneEditor.prototype.removeAllMesh = function() {
+	for( var i = 0, n = this.meshes.length; i < n; i++ ) {
+		var mesh = this.meshes[n - i - 1];
+		this.removeMesh( mesh );
+	}
+};
+
 SceneEditor.prototype.loadObjectJSON = function( objectJSON ) {
 	var mesh = new THREE.Mesh( this.geometry, this.material.clone() );
 	mesh.userData.type = objectJSON.type;
@@ -85,6 +92,13 @@ SceneEditor.prototype.loadObjectJSON = function( objectJSON ) {
 	mesh.scale.set( objectJSON.scale[0], objectJSON.scale[1], objectJSON.scale[2] );
 	this.addMesh( mesh );
 	return mesh;
+};
+
+SceneEditor.prototype.loadSceneJSON = function( sceneJSON ) {
+	for( var i = 0, l = sceneJSON.length; i < l; i++ ) {
+		var objectJSON = sceneJSON[i];
+		this.loadObjectJSON( objectJSON );
+	}
 };
 
 SceneEditor.prototype.fixMeshesScale = function() {
@@ -100,144 +114,6 @@ SceneEditor.prototype.fixMeshesScale = function() {
 SceneEditor.prototype.onTransformControlsChange = function() {
 	this.fixMeshesScale();
 	this.update();
-};
-
-SceneEditor.prototype.loadJSON = function() {
-	var sceneJSON = [
-		{
-			type: "aabb",
-			material: {
-				type: "MATERIAL_TYPE_GGX",
-				color: "#ffffff",
-				emission: "#000000",
-				roughness: 0.3,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-
-			},
-			position: [ 0.0, -0.05, 0.0 ],
-			scale: [ 10.0, 0.1, 10.0 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_GGX",
-				color: "#ff5050",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.2,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ 0.0, 0.9, 0.0 ],
-			scale: [ 1.8, 1.8, 1.8 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_GGX",
-				color: "#50f0f0",
-				colorTexture: 0,
-				emission: "#222244",
-				roughness: 0.5,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.earth_inverse,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ -3.5, 0.8, 0.0 ],
-			scale: [ 1.6, 1.6, 1.6 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_REFRACTION",
-				color: "#ffffff",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.3,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ 4.0, 0.7, 0.0 ],
-			scale: [ 1.4, 1.4, 1.4 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_SPECULAR",
-				color: "#ffffff",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.3,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ -2.0, 0.7, -2.0 ],
-			scale: [ 1.4, 1.4, 1.4 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_GGX_REFRACTION",
-				color: "#ffffff",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.3,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ 2.0, 0.7, 1.0 ],
-			scale: [ 1.4, 1.4, 1.4 ],
-		},
-		{
-			type: "sphere",
-			material: {
-				type: "MATERIAL_TYPE_DIFFUSE",
-				color: "#4b2d0e",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.3,
-				refractiveIndex: 1.3,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.none,
-			},
-			position: [ 2.0, 0.7, 1.0 ],
-			scale: [ 0.5, 0.5, 0.5 ],
-		},
-		{
-			type: "aabb",
-			material: {
-				type: "MATERIAL_TYPE_GGX_REFRACTION",
-				color: "#ffffff",
-				colorTexture: 0,
-				emission: "#000000",
-				roughness: 0.2,
-				refractiveIndex: 1.6,
-				colorTexture: textureChoices.none,
-				emissionTexture: textureChoices.none,
-				roughnessTexture: textureChoices.earth_inverse,
-			},
-			position: [ 0.0, 2.0, -4.0 ],
-			scale: [ 8.0, 4.0, 0.1 ],
-		},
-	];
-
-	for( var i = 0, l = sceneJSON.length; i < l; i++ ) {
-		var objectJSON = sceneJSON[i];
-		this.loadObjectJSON( objectJSON );
-	}
 };
 
 SceneEditor.prototype.toggleTransformMode = function() {
@@ -432,17 +308,6 @@ SceneEditor.prototype.createFragmentShader = function() {
 		"AABB aabb;",
 		"Material distanceMaterial;",
 		"Sphere sphere;",
-
-		/*
-		"aabb.material.type = MATERIAL_TYPE_GGX;",
-		"aabb.material.color = vec3( 0.9 );",
-		"aabb.material.emission = vec3( 0.0 );",
-		"aabb.material.roughness = 0.3;",
-		"aabb.material.refractiveIndex = 1.3;",
-		"aabb.lb = vec3( -5.0, -0.1, -5.0 );",
-		"aabb.rt = vec3( 5.0, 0.0, 5.0 );",
-		"intersectAABB( intersection, ray, aabb );",
-		*/
 
 		this.createSceneIntersectShaders(),
 		"}",
