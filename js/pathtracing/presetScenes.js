@@ -135,7 +135,7 @@ var presetScenes = {
 	table: function() {
 		var tableMaterial = {
 			type: "MATERIAL_TYPE_GGX",
-			color: "#aa55aa",
+			color: "#79520b",
 			emission: "#000000",
 			roughness: 0.1,
 			refractiveIndex: 1.3,
@@ -174,7 +174,7 @@ var presetScenes = {
 					emission: "#000000",
 					roughness: 0.2,
 					refractiveIndex: 1.3,
-					colorTexture: textureChoices.none,
+					colorTexture: textureChoices.gam0022,
 					emissionTexture: textureChoices.none,
 					roughnessTexture: textureChoices.none,
 				},
