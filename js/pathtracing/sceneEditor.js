@@ -198,9 +198,7 @@ SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
-		// TODO: 操作をブロックしないような方法で通知する
-		//alert( "先に Object を選択してください" );
-		console.log( "先に Object を選択してください" );
+		toastr.warning( "先に Object を選択してください" );
 		return;
 	}
 
@@ -217,7 +215,7 @@ SceneEditor.prototype.fitToGroundSelectedObject = function() {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
-		alert( "先に Object を選択してください" );
+		toastr.warning( "先に Object を選択してください" );
 		return;
 	}
 
@@ -230,7 +228,7 @@ SceneEditor.prototype.removeSelectedObject = function() {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
-		alert( "先に Object を選択してください" );
+		toastr.warning( "先に Object を選択してください" );
 		return;
 	}
 

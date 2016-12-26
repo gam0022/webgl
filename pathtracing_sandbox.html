@@ -706,6 +706,9 @@ void main(void) {
 <script src="js/controls/TransformControls.js"></script>
 <script src="js/libs/stats.min.js"></script>
 <script src="js/libs/dat.gui.min.js"></script>
+<script src="js/libs/jquery-3.1.1.min.js"></script>
+<script src="js/libs/toastr.min.js"></script>
+<link rel="stylesheet" href="js/libs/toastr.min.css" />
 
 <script>
 var textureChoices = {
@@ -949,10 +952,10 @@ function initGUI() {
 		editor.updateSelectedObject( value, "material", "type" );
 	} ).listen();
 
-	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
+	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onFinishChange( function( value ) {
 		editor.updateSelectedObject( value, "material", "color" );
 	} ).listen();
-	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
+	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onFinishChange( function( value ) {
 		editor.updateSelectedObject( value, "material", "emission" );
 	} ).listen();
 	selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
