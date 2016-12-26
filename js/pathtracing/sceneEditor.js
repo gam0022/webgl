@@ -37,7 +37,7 @@ var SceneEditor = function( camera, canvas, scene, config ) {
 	this.config = config;
 
 	this.meshes = [];
-	this.geometry = new THREE.CubeGeometry( 1, 1, 1 );
+	this.geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
 	this.material = new THREE.MeshBasicMaterial( {
 		color: 0x00ff00,
 		wireframe: true,
