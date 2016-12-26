@@ -30,6 +30,10 @@ Array.prototype.removeValue = function(value) {
 	return this;
 };
 
+toastr.options = {
+	"positionClass": "toast-top-left",
+};
+
 var SceneEditor = function( camera, canvas, scene, config ) {
 	this.camera = camera;
 	this.canvas = canvas;
