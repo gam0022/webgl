@@ -198,7 +198,9 @@ SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
-		alert( "先に Object を選択してください" );
+		// TODO: 操作をブロックしないような方法で通知する
+		//alert( "先に Object を選択してください" );
+		console.log( "先に Object を選択してください" );
 		return;
 	}
 
