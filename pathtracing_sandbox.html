@@ -629,6 +629,9 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 				float Fc = pow( 1.0 - VoH, 5.0 );
 				vec3 F = (1.0 - Fc) * SpecularColor + Fc;
 				intersection.material.color *= F * G * VoH / ( NoH * NoV );
+			} else {
+				// 半球外が選ばれた場合、どう対応するのがベストなのだろう…
+				// BRDFを0にすると真値よりも暗くなる気がする
 			}
 
 			ray.direction = L;
