@@ -4,6 +4,7 @@
 		<title>three.js webgl - pathtracing sandbox</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link rel="stylesheet" href="js/libs/toastr.min.css" />
 		<style>
 			body {
 				background-color: black;
@@ -31,6 +32,10 @@
 				width: 100%;
 				text-align: center;
 				z-index: 100;
+			}
+
+			.toast-message {
+				font-size: 13px;
 			}
 		</style>
 	</head>
@@ -711,7 +716,6 @@ void main(void) {
 <script src="js/libs/dat.gui.min.js"></script>
 <script src="js/libs/jquery-3.1.1.min.js"></script>
 <script src="js/libs/toastr.min.js"></script>
-<link rel="stylesheet" href="js/libs/toastr.min.css" />
 
 <script>
 var textureChoices = {
