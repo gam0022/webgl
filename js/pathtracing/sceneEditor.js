@@ -198,11 +198,13 @@ SceneEditor.prototype.onCanvasClick = function( e ) {
 	}
 };
 
-SceneEditor.prototype.updateSelectedObject = function( value, key1, key2 ) {
+SceneEditor.prototype.updateSelectedObject = function( value, notify, key1, key2 ) {
 	var mesh = this.transformControls.object;
 
 	if ( !mesh ) {
-		toastr.warning( "先に Object を選択してください" );
+        if ( notify ) {
+            toastr.warning( "先に Object を選択してください" );
+        }
 		return;
 	}
 

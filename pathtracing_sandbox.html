@@ -942,7 +942,7 @@ function initGUI() {
 		sphere: "sphere",
 		box: "aabb",
 	} ).name( 'Type' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "type" );
+		editor.updateSelectedObject( value, true, "type" );
 	} ).listen();
 
 	selectedObjectFolder.add( config, 'materialType', {
@@ -952,30 +952,38 @@ function initGUI() {
 		ggx: "MATERIAL_TYPE_GGX",
 		ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
 	} ).name( 'Material Type' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "type" );
+		editor.updateSelectedObject( value, true, "material", "type" );
 	} ).listen();
 
-	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onFinishChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "color" );
+	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, false, "material", "color" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "color" );
 	} ).listen();
-	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onFinishChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "emission" );
+	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, false, "material", "emission" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "emission" );
 	} ).listen();
 	selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "roughness" );
+		editor.updateSelectedObject( value, false, "material", "roughness" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "roughness" );
 	} ).listen();
 	selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "refractiveIndex" );
+		editor.updateSelectedObject( value, false, "material", "refractiveIndex" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "refractiveIndex" );
 	} ).listen();
 
 	selectedObjectFolder.add( config, 'materialColorTexture', textureChoices ).name( 'Color Texture' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "colorTexture" );
+		editor.updateSelectedObject( value, true, "material", "colorTexture" );
 	} ).listen();
 	selectedObjectFolder.add( config, 'materialEmissionTexture', textureChoices ).name( 'Emission Texture' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "emissionTexture" );
+		editor.updateSelectedObject( value, true, "material", "emissionTexture" );
 	} ).listen();
 	selectedObjectFolder.add( config, 'materialRoughnessTexture', textureChoices ).name( 'Roughness Texture' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "roughnessTexture" );
+		editor.updateSelectedObject( value, true, "material", "roughnessTexture" );
 	} ).listen();
 
 	selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
