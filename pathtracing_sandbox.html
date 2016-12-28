@@ -4,6 +4,7 @@
 		<title>three.js webgl - pathtracing sandbox</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link rel="stylesheet" href="js/libs/toastr.min.css" />
 		<style>
 			body {
 				background-color: black;
@@ -32,13 +33,17 @@
 				text-align: center;
 				z-index: 100;
 			}
+
+			.toast-message {
+				font-size: 13px;
+			}
 		</style>
 	</head>
 
 	<body>
 		<div id="info">
 			<a href="http://threejs.org" target="_blank">three.js</a> - webgl pathtracing sandbox<br />
-			by <a href="https://github.com/gam0022" target="_blank">gam0022</a> (<a href="http://qiita.com/gam0022/items/9875480d33e03fe2113c" target="_blank">article in Japanese</a>)
+			by <a href="https://github.com/gam0022" target="_blank">gam0022</a> (<a href="http://qiita.com/gam0022/items/18bb3612d7bdb6f4360a" target="_blank">article in Japanese</a>)
 		</div>
 
 <script id="vertex_shader" type="x-shader/x-vertex">
@@ -62,6 +67,13 @@ uniform vec2 resolution;
 // cubeMap
 uniform samplerCube cubeMap;
 
+// texture
+uniform sampler2D texture01;
+uniform sampler2D texture02;
+uniform sampler2D texture03;
+uniform sampler2D texture04;
+uniform sampler2D texture05;
+
 // camera
 uniform vec3 cameraPosition;
 uniform mat4 viewMatrix;
@@ -80,7 +92,7 @@ const float PI = 3.14159265359;
 const float PI2 = 6.28318530718;
 const vec3 backgroundColor = vec3( 1.0 );
 const vec3 SpecularColor = vec3( 1.0 );
-const int BOUNCE_LIMIT = 10;
+const int BOUNCE_LIMIT = 20;
 
 // HLSL
 float saturate( float x ) {
@@ -101,12 +113,32 @@ struct Material {
 	vec3 emission;
 	float roughness;
 	float refractiveIndex;
+
+	int colorTexture;
+	int emissionTexture;
+	int roughnessTexture;
 };
 #define MATERIAL_TYPE_DIFFUSE 0
 #define MATERIAL_TYPE_SPECULAR 1
 #define MATERIAL_TYPE_REFRACTION 2
 #define MATERIAL_TYPE_GGX 3
 #define MATERIAL_TYPE_GGX_REFRACTION  4
+
+vec3 fetchTextureMaterial( int texture, vec2 uv ) {
+	if ( texture == 0 ) {
+		return vec3( 1.0 );
+	} else if ( texture == 1 ) {
+		return texture2D( texture01, uv ).rgb;
+	} else if ( texture == 2 ) {
+		return texture2D( texture02, uv ).rgb;
+	} else if ( texture == 3 ) {
+		return texture2D( texture03, uv ).rgb;
+	} else if ( texture == 4 ) {
+		return texture2D( texture04, uv ).rgb;
+	} else if ( texture == 5 ) {
+		return texture2D( texture05, uv ).rgb;
+	}
+}
 
 //
 // Primitive
@@ -116,6 +148,7 @@ struct Intersection {
 	vec3 position;
 	float distance;
 	vec3 normal;
+	vec2 uv;
 	Material material;
 };
 
@@ -421,6 +454,8 @@ void intersectSphere( inout Intersection intersection, Ray ray, Sphere sphere ){
 		intersection.normal = normalize( intersection.position - sphere.position );
 		intersection.distance = t;
 		intersection.material = sphere.material;
+		intersection.uv.y = -acos( intersection.normal.y ) / PI;
+		intersection.uv.x = 0.5 - sign( intersection.normal.z ) * acos( intersection.normal.x / length( intersection.normal.xz ) ) / PI2;
 	}
 }
 
@@ -447,20 +482,29 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 		intersection.distance = tmin;
 		intersection.material = aabb.material;
 
+		vec3 uvw = ( intersection.position - aabb.lb ) / ( aabb.rt - aabb.lb );
+		//intersection.uv = vec2( uvw.x, uvw.z );
+
 		// 交点座標から法線を求める
 		// 高速化のためにY軸から先に判定する
 		if( equals( intersection.position.y, aabb.rt.y ) ) {
 			intersection.normal = vec3( 0.0, 1.0, 0.0 );
+			intersection.uv = uvw.xz;
 		} else if( equals( intersection.position.y, aabb.lb.y ) ) {
 			intersection.normal = vec3( 0.0, -1.0, 0.0 );
+			intersection.uv = uvw.xz;
 		} else if( equals( intersection.position.x, aabb.lb.x ) ) {
 			intersection.normal = vec3( -1.0, 0.0, 0.0 );
+			intersection.uv = uvw.zy;
 		} else if( equals( intersection.position.x, aabb.rt.x ) ) {
 			intersection.normal = vec3( 1.0, 0.0, 0.0 );
+			intersection.uv = uvw.zy;
 		} else if( equals( intersection.position.z, aabb.lb.z ) ) {
 			intersection.normal = vec3( 0.0, 0.0, -1.0 );
+			intersection.uv = uvw.xy;
 		} else if( equals( intersection.position.z, aabb.rt.z ) ) {
 			intersection.normal = vec3( 0.0, 0.0, 1.0 );
+			intersection.uv = uvw.xy;
 		}
 	}
 }
@@ -546,6 +590,9 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersection.distance = INF;
+	intersection.material.colorTexture = 0;
+	intersection.material.emissionTexture = 0;
+	intersection.material.roughnessTexture = 0;
 	intersectScene( intersection, ray );
 
 	vec3 seed = vec3( gl_FragCoord.xy, float( frame ) * 0.3 ) + float( bounce ) * 500.0 + 50.0;
@@ -553,6 +600,8 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 	ray.origin = intersection.position + OFFSET * intersection.normal;
 
 	if ( intersection.hit ) {
+		float roughness = intersection.material.roughness * fetchTextureMaterial( intersection.material.roughnessTexture, intersection.uv ).r;
+
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
 			ray.direction = cosineDirection( Xi, intersection.normal);
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
@@ -571,7 +620,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
 			vec3 N = intersection.normal;
 			vec3 V = -ray.direction;
-			vec3 H = importanceSampleGGX( Xi, intersection.material.roughness, N );
+			vec3 H = importanceSampleGGX( Xi, roughness, N );
 			vec3 L = reflect( ray.direction, H );
 			//vec3 L = 2.0 * dot( V, H ) * H - V;
 
@@ -581,15 +630,18 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			float VoH = saturate( dot( V, H ) );// x x
 
 			if( NoL > 0.0 ) {
-				float G = GGX_G( intersection.material.roughness, NoV, NoL );
+				float G = GGX_G( roughness, NoV, NoL );
 				float Fc = pow( 1.0 - VoH, 5.0 );
 				vec3 F = (1.0 - Fc) * SpecularColor + Fc;
 				intersection.material.color *= F * G * VoH / ( NoH * NoV );
+			} else {
+				// 半球外が選ばれた場合、どう対応するのがベストなのだろう…
+				// BRDFを0にすると真値よりも暗くなる気がする
 			}
 
 			ray.direction = L;
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
-			vec3 H = importanceSampleGGX( Xi, intersection.material.roughness, intersection.normal );
+			vec3 H = importanceSampleGGX( Xi, roughness, intersection.normal );
 
 			vec3 rayDirection = ray.direction;
 			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
@@ -627,7 +679,8 @@ void main( void ) {
 	vec3 color = vec3( 1.0 );
 	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
 		calcRadiance( intersection, ray, bounce );
-		color *= intersection.material.emission + intersection.material.color;
+		color *= 	intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv ) + 
+					intersection.material.color    * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
 		if ( !intersection.hit ) break;
 
 		// 光源に到達しないケースなら明るさは0
@@ -661,16 +714,19 @@ void main(void) {
 <script src="js/controls/TransformControls.js"></script>
 <script src="js/libs/stats.min.js"></script>
 <script src="js/libs/dat.gui.min.js"></script>
+<script src="js/libs/jquery-3.1.1.min.js"></script>
+<script src="js/libs/toastr.min.js"></script>
 
-<script src="js/pathtracing/sceneEditor.js"></script>
 <script>
-var container, stats;
-var camera, renderer;
-var orbitControls, prevCameraMatrixWorld;
-var textureCubes;
-var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
-var frame = 0;
-var editor;
+var textureChoices = {
+	none: 0,
+	checkered: 1,
+	earth: 2,
+	earth_inverse: 3,
+	earth_color: 4,
+	gam0022: 5,
+	gam0022_inverse: 6,
+};
 
 var config = {
 	saveImage: function() {
@@ -680,7 +736,8 @@ var config = {
 	resolution: '512',
 
 	// Scene Edit
-	envmap: 'pisa',
+	preset: "basic",
+	envmap: "pisa",
 	transformMode: function() {
 		editor.toggleTransformMode();
 	},
@@ -695,8 +752,11 @@ var config = {
 	objectType: "sphere",
 	materialType: "MATERIAL_TYPE_DIFFUSE",
 	materialColor: "#ffffff",
+	materialColorTexture: 0,
 	materialEmission: "#000000",
+	materialEmissionTexture: 0,
 	materialRoughness: 0.2,
+	materialRoughnessTexture: 0,
 	materialRefractiveIndex: 1.6,
 
 	fitToGround: function() {
@@ -706,6 +766,17 @@ var config = {
 		editor.removeSelectedObject();
 	},
 };
+</script>
+<script src="js/pathtracing/presetScenes.js"></script>
+<script src="js/pathtracing/sceneEditor.js"></script>
+<script>
+var container, stats;
+var camera, renderer;
+var orbitControls, prevCameraMatrixWorld;
+var textureCubes, texture2Ds;
+var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
+var frame = 0;
+var editor;
 
 init();
 animate();
@@ -779,6 +850,13 @@ function createDynamicObjects() {
 			buffer: { type: 't', value: readBuffer.texture },
 			cubeMap: { type: 'tc', value: textureCubes[config.envmap] },
 
+			texture01: { type: 't', value: texture2Ds.checkered },
+			texture02: { type: 't', value: texture2Ds.earth },
+			texture03: { type: 't', value: texture2Ds.earth_inverse },
+			texture04: { type: 't', value: texture2Ds.earth_color },
+			texture05: { type: 't', value: texture2Ds.gam0022 },
+			texture06: { type: 't', value: texture2Ds.gam0022_inverse },
+
 			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
 			cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
 			cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
@@ -819,6 +897,25 @@ function initTextureCube() {
 	textureCubes.generateMipmaps = false;
 }
 
+function initTexture2D() {
+	var loader = new THREE.TextureLoader();
+	texture2Ds = {};
+
+	var createRepeatTexture = function( url ) {
+		var texture = loader.load( url );
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		return texture;
+	}
+
+	texture2Ds.checkered       = createRepeatTexture( "textures/checkered_512.jpg" );
+	texture2Ds.earth           = createRepeatTexture( "textures/earth_2048.jpg" );
+	texture2Ds.earth_inverse   = createRepeatTexture( "textures/earth_inverse_2048.jpg" );
+	texture2Ds.earth_color     = createRepeatTexture( "textures/earth_color_2048.jpg" );
+	texture2Ds.gam0022         = createRepeatTexture( "textures/gam0022_1024.png" );
+	texture2Ds.gam0022_inverse = createRepeatTexture( "textures/gam0022_inverse_1024.png" );
+}
+
 function initGUI() {
 	var gui = new dat.GUI();
 	gui.add( config, 'saveImage' ).name( 'Save Image' );
@@ -828,6 +925,11 @@ function initGUI() {
 
 	// Scene Edit
 	var sceneEditFolder = gui.addFolder( "Scene Edit" );
+	sceneEditFolder.add( config, 'preset', [ "basic", "table" ] ).name( 'Preset' ).onChange( function( value ) {
+		editor.removeAllMesh();
+		editor.loadSceneJSON( presetScenes[value]() );
+		editor.update();
+	} );
 	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
 		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
 		frame = 0;
@@ -838,12 +940,13 @@ function initGUI() {
 	sceneEditFolder.open();
 
 	// Selected Object
+
 	var selectedObjectFolder = gui.addFolder( "Selected Object" );
 	selectedObjectFolder.add( config, 'objectType', {
 		sphere: "sphere",
 		box: "aabb",
 	} ).name( 'Type' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "type" );
+		editor.updateSelectedObject( value, true, "type" );
 	} ).listen();
 
 	selectedObjectFolder.add( config, 'materialType', {
@@ -853,23 +956,38 @@ function initGUI() {
 		ggx: "MATERIAL_TYPE_GGX",
 		ggx_refraction: "MATERIAL_TYPE_GGX_REFRACTION",
 	} ).name( 'Material Type' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "type" );
+		editor.updateSelectedObject( value, true, "material", "type" );
 	} ).listen();
 
 	selectedObjectFolder.addColor( config, 'materialColor', 0.0, 1.0 ).name( 'Color' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "color" );
+		editor.updateSelectedObject( value, false, "material", "color" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "color" );
 	} ).listen();
-
 	selectedObjectFolder.addColor( config, 'materialEmission', 0.0, 1.0 ).name( 'Emission' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "emission" );
+		editor.updateSelectedObject( value, false, "material", "emission" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "emission" );
 	} ).listen();
-
 	selectedObjectFolder.add( config, 'materialRoughness', 0.0, 1.0 ).name( 'Roughness' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "roughness" );
+		editor.updateSelectedObject( value, false, "material", "roughness" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "roughness" );
+	} ).listen();
+	selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, false, "material", "refractiveIndex" );
+	} ).onFinishChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "refractiveIndex" );
 	} ).listen();
 
-	selectedObjectFolder.add( config, 'materialRefractiveIndex', 0.0, 2.0 ).name( 'Refractive Index' ).onChange( function( value ) {
-		editor.updateSelectedObject( value, "material", "refractiveIndex" );
+	selectedObjectFolder.add( config, 'materialColorTexture', textureChoices ).name( 'Color Texture' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "colorTexture" );
+	} ).listen();
+	selectedObjectFolder.add( config, 'materialEmissionTexture', textureChoices ).name( 'Emission Texture' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "emissionTexture" );
+	} ).listen();
+	selectedObjectFolder.add( config, 'materialRoughnessTexture', textureChoices ).name( 'Roughness Texture' ).onChange( function( value ) {
+		editor.updateSelectedObject( value, true, "material", "roughnessTexture" );
 	} ).listen();
 
 	selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
@@ -921,6 +1039,7 @@ function init() {
 
 
 	initTextureCube();
+	initTexture2D();
 
 	// RenderQuad
 	renderQuad = createQuadScene( {
