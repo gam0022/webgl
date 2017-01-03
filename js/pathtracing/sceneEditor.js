@@ -109,7 +109,7 @@ SceneEditor.prototype.fixMeshesScale = function() {
 	for( var i = 0, l = this.meshes.length; i < l; i++ ) {
 		var mesh = this.meshes[i];
 
-		if ( mesh.userData.type == "sphere" ) {
+		if ( mesh.userData.type === "sphere" ) {
 			mesh.scale.x = mesh.scale.z = mesh.scale.y;
 		}
 	}
