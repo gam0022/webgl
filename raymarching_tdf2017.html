@@ -198,7 +198,7 @@ int calcMaterial( vec3 p ) {
 	if ( abs( dSphere( p, sPos, sSize ) ) < EPS ) {
 		return  MIRROR_MATERIAL;
 	}
-	else if ( abs( dMbox( opRep( p, 7.0 ) ) ) < EPS ) {
+	else {
 		return CIRCUIT_MATERIAL;
 	}
 }
@@ -227,7 +227,6 @@ float getShadow( vec3 ro, vec3 rd ) {
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	float d;
-	//float distance = 0.0;
 	intersection.distance = 0.0;
 	vec3 p = ray.origin;
 
@@ -240,19 +239,15 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	}
 
 	if ( abs( d ) < EPS ) {
-		//if ( distance < intersection.distance ) {
-			intersection.hit = true;
-			intersection.position = p;
-			intersection.normal = calcNormal( p );
-			//intersection.distance = distance;
-			intersection.material = calcMaterial( p );
-		//}
+		intersection.hit = true;
+		intersection.position = p;
+		intersection.normal = calcNormal( p );
+		intersection.material = calcMaterial( p );
 	}
 }
 
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
-	intersection.distance = INF;
 	intersectScene( intersection, ray );
 
 	if ( intersection.hit ) {
@@ -262,7 +257,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 
 		if ( intersection.material == CIRCUIT_MATERIAL ) {
 			vec2 uv = intersection.position.yz;
-			vec2 dg = circuitPattern(uv);
+			vec2 dg = circuitPattern( uv );
 			float glow = max( sin( length( intersection.position ) - 1.8 * time ) * 2.5, 0.0 );
 			float pattern = max( dg.x - 1.0, 0.0 );
 			intersection.color = vec3( 0.2, 0.2, 0.2 ) + illuminationColor * pattern * glow * diffuse + specular /* * max( 0.5, shadow )*/;
@@ -279,9 +274,11 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 
 void main(void) {
 	// fragment position
-	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
+	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
+	Ray ray;
+
 	if ( debugCamera ) {
 		cPos  = cameraPos;
 		cDir  = cameraDir;
@@ -290,12 +287,11 @@ void main(void) {
 		cDir  = normalize( vec3( sin( time * 0.5 ), sin( time * 0.1 ), cos( time * 0.6 ) + 0.5 ) );
 	}
 
-	Ray ray;
 	float targetDepth = 1.3;
 	vec3 cSide = normalize( cross( cDir, vec3( 1.0, 1.0 ,0.0 ) ) );
 	vec3 cUp   = normalize( cross( cSide, cDir ) );
 	ray.origin = cPos;
-	ray.direction = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
+	ray.direction = normalize( cSide * fragPos.x + cUp * fragPos.y + cDir * targetDepth );
 
 	// music's tempo
 	tempo = sin( 4.0 * PI * time );
