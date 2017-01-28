@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Copyright (c) 2016 gam0022
+Copyright (c) 2017 gam0022
 Released under the MIT license
 http://opensource.org/licenses/mit-license.php
 -->
@@ -63,9 +63,12 @@ uniform vec3 cameraPos;
 uniform vec3 cameraDir;
 
 // consts
-const float EPS = 0.01;
+const float INF = 1e+10;
+const float EPS = 1e-2;
 const float OFFSET = EPS * 100.0;
-const float PI = 3.14159;
+
+const float PI = 3.14159265359;
+const float PI2 = 6.28318530718;
 
 
 // globals
@@ -76,31 +79,38 @@ float sSize;
 vec3 illuminationColor;
 float tempo;
 
-struct Intersect {
-	bool isHit;
+// ray
+struct Ray {
+	vec3 origin;
+	vec3 direction;
+};
 
+#define CIRCUIT_MATERIAL 0
+#define MIRROR_MATERIAL  1
+
+//
+// Primitive
+//
+struct Intersection {
+	bool hit;
 	vec3 position;
 	float distance;
 	vec3 normal;
+	vec2 uv;
+	int count;
 
 	int material;
 	vec3 color;
 };
 
-const int CIRCUIT_MATERIAL = 0;
-const int MIRROR_MATERIAL = 1;
-
 
 // distance functions
-vec3 onRep( vec3 p, float interval ) {
-
+vec3 opRep( vec3 p, float interval ) {
 	return mod( p, interval ) - 0.5 * interval;
-
 }
 
 // thanks to https://www.shadertoy.com/view/MdVGRc
-float MBoxDist( vec3 p ) {
-
+float dMbox( vec3 p ) {
   const float scale = 2.7;
   const int n = 12;
   vec4 q0 = vec4 (p, 1.);
@@ -114,22 +124,17 @@ float MBoxDist( vec3 p ) {
   }
 
   return length( q.xyz ) / abs( q.w );
-
 }
 
-float sphereDist( vec3 p, vec3 c, float r ) {
-
+float dSphere( vec3 p, vec3 c, float r ) {
 	return length( p - c ) - r;
-
 }
 
-float sceneDist( vec3 p ) {
-
+float dScene( vec3 p ) {
 	return min(
-		sphereDist( p, sPos, sSize ),
-		MBoxDist( onRep( p, 7.0 ) )
+		dSphere( p, sPos, sSize ),
+		dMbox( opRep( p, 7.0 ) )
 	);
-
 }
 
 
@@ -182,37 +187,20 @@ vec2 circuitPattern( vec2 p ) {
 
 }
 
+vec3 calcNormal( vec3 p ) {
+	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
+	return normalize(
+		e.xyy * dScene( p + e.xyy ) + e.yyx * dScene( p + e.yyx ) + 
+			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
+}
 
-Intersect minIntersect( Intersect a, Intersect b ) {
-
-	if ( a.distance < b.distance ) {
-		return a;
-	} else {
-		return b;
+int calcMaterial( vec3 p ) {
+	if ( abs( dSphere( p, sPos, sSize ) ) < EPS ) {
+		return  MIRROR_MATERIAL;
 	}
-
-}
-
-Intersect sceneIntersect( vec3 p ) {
-
-	Intersect a, b;
-	a.distance = sphereDist( p, sPos, sSize );
-	a.material = MIRROR_MATERIAL;
-
-	b.distance = MBoxDist( onRep( p, 7.0 ) );
-	b.material = CIRCUIT_MATERIAL;
-
-	return minIntersect( a, b );
-}
-
-vec3 getNormal( vec3 p ) {
-
-	return normalize(vec3(
-		sceneDist(p + vec3( EPS, 0.0, 0.0 ) ) - sceneDist(p + vec3( -EPS, 0.0, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, EPS, 0.0 ) ) - sceneDist(p + vec3( 0.0, -EPS, 0.0 ) ),
-		sceneDist(p + vec3( 0.0, 0.0, EPS ) ) - sceneDist(p + vec3( 0.0, 0.0, -EPS ) )
-	));
-
+	else if ( abs( dMbox( opRep( p, 7.0 ) ) ) < EPS ) {
+		return CIRCUIT_MATERIAL;
+	}
 }
 
 float getShadow( vec3 ro, vec3 rd ) {
@@ -224,7 +212,7 @@ float getShadow( vec3 ro, vec3 rd ) {
 
 	for ( float t = 0.0; t < 50.0; t++ ) {
 
-		h = sceneDist( ro + rd * c );
+		h = dScene( ro + rd * c );
 
 		if ( h < EPS ) return shadowCoef;
 
@@ -237,65 +225,59 @@ float getShadow( vec3 ro, vec3 rd ) {
 
 }
 
-Intersect getRayColor( vec3 origin, vec3 ray ) {
+void intersectScene( inout Intersection intersection, inout Ray ray ) {
+	float d;
+	//float distance = 0.0;
+	intersection.distance = 0.0;
+	vec3 p = ray.origin;
 
-	// marching loop
-	float dist;
-	float depth = 0.0;
-	vec3 p = origin;
-	int count = 0;
-	Intersect nearest;
-
-	for ( int i = 0; i < 64; i++ ){
-
-		dist = sceneDist( p );
-		depth += dist;
-		p = origin + depth * ray;
-
-		count = i;
-		if ( abs(dist) < EPS ) break;
-
+	for ( int i = 0; i < 64; i++ ) {
+		d = dScene( p );
+		intersection.distance += d;
+		p = ray.origin + intersection.distance * ray.direction;
+		intersection.count = i;
+		if ( abs( d ) < EPS ) break;
 	}
 
-	if ( abs(dist) < EPS ) {
-
-		nearest = sceneIntersect( p );
-		nearest.position = p;
-		nearest.normal = getNormal(p);
-		float diffuse = clamp( dot( lightDir, nearest.normal ), 0.1, 1.0 );
-		float specular = pow( clamp( dot( reflect( lightDir, nearest.normal ), ray ), 0.0, 1.0 ), 10.0 );
-		//float shadow = getShadow( p + nearest.normal * OFFSET, lightDir );
-
-		if ( nearest.material == CIRCUIT_MATERIAL ) {
-
-			vec2 uv = p.yz;
-			vec2 dg = circuitPattern(uv);
-			float glow = max( sin( length( p ) - 1.8 * time ) * 2.5, 0.0 );
-			float pattern = max( dg.x - 1.0, 0.0 );
-			nearest.color = vec3( 0.2, 0.2, 0.2 ) + illuminationColor * pattern * glow * diffuse + specular /* * max( 0.5, shadow )*/;
-			
-		} else if ( nearest.material == MIRROR_MATERIAL ) {
-
-			nearest.color = ( vec3( 1.0 ) - illuminationColor ) * diffuse * 0.5 + specular/* * max( 0.5, shadow )*/;
-
-		}
-
-		nearest.isHit = true;
-
-	} else {
-
-		nearest.color = vec3(0.1);
-		nearest.isHit = false;
-
+	if ( abs( d ) < EPS ) {
+		//if ( distance < intersection.distance ) {
+			intersection.hit = true;
+			intersection.position = p;
+			intersection.normal = calcNormal( p );
+			//intersection.distance = distance;
+			intersection.material = calcMaterial( p );
+		//}
 	}
-
-	nearest.color += clamp( sin( time * 0.2 - 0.5 * PI ) * 0.2 * depth - 0.005 * float(count), -1.0, 1.0 );
-	return nearest;
-
 }
 
-void main(void) {
+void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
+	intersection.hit = false;
+	intersection.distance = INF;
+	intersectScene( intersection, ray );
 
+	if ( intersection.hit ) {
+		float diffuse = clamp( dot( lightDir, intersection.normal ), 0.1, 1.0 );
+		float specular = pow( clamp( dot( reflect( lightDir, intersection.normal ), ray.direction ), 0.0, 1.0 ), 10.0 );
+		//float shadow = getShadow( p + intersection.normal * OFFSET, lightDir );
+
+		if ( intersection.material == CIRCUIT_MATERIAL ) {
+			vec2 uv = intersection.position.yz;
+			vec2 dg = circuitPattern(uv);
+			float glow = max( sin( length( intersection.position ) - 1.8 * time ) * 2.5, 0.0 );
+			float pattern = max( dg.x - 1.0, 0.0 );
+			intersection.color = vec3( 0.2, 0.2, 0.2 ) + illuminationColor * pattern * glow * diffuse + specular /* * max( 0.5, shadow )*/;
+		} else if ( intersection.material == MIRROR_MATERIAL ) {
+			intersection.color = ( vec3( 1.0 ) - illuminationColor ) * diffuse * 0.5 + specular/* * max( 0.5, shadow )*/;
+		}
+	} else {
+		intersection.color = vec3(0.1);
+	}
+
+	intersection.color += clamp( sin( time * 0.2 - 0.5 * PI ) * 0.2 * intersection.distance - 0.005 * float( intersection.count ), -1.0, 1.0 );
+}
+
+
+void main(void) {
 	// fragment position
 	vec2 p = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
@@ -307,10 +289,13 @@ void main(void) {
 		cPos  = vec3( -0.8185093402862549, 4.509979248046875, time );
 		cDir  = normalize( vec3( sin( time * 0.5 ), sin( time * 0.1 ), cos( time * 0.6 ) + 0.5 ) );
 	}
+
+	Ray ray;
+	float targetDepth = 1.3;
 	vec3 cSide = normalize( cross( cDir, vec3( 1.0, 1.0 ,0.0 ) ) );
 	vec3 cUp   = normalize( cross( cSide, cDir ) );
-	float targetDepth = 1.3;
-	vec3 ray = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
+	ray.origin = cPos;
+	ray.direction = normalize( cSide * p.x + cUp * p.y + cDir * targetDepth );
 
 	// music's tempo
 	tempo = sin( 4.0 * PI * time );
@@ -325,24 +310,22 @@ void main(void) {
 
 	vec3 color = vec3( 0.0 );
 	float alpha = 1.0;
-	Intersect nearest;
+	Intersection intersection;
 
-	for ( int i = 0; i < 2; i++ ) {
+	for ( int bounce = 0; bounce <= 1; bounce++ ) {
+		calcRadiance( intersection, ray, bounce );
 
-		nearest = getRayColor( cPos, ray );
+		color += alpha * intersection.color;
+		if ( !intersection.hit || intersection.material == CIRCUIT_MATERIAL ) break;
 
-		color += alpha * nearest.color;
 		alpha *= 0.7;
-		ray = normalize( reflect( ray, nearest.normal ) );
-		cPos = nearest.position + nearest.normal * OFFSET;
-
-		if ( !nearest.isHit || nearest.material == CIRCUIT_MATERIAL ) break;
-
+		ray.origin = intersection.position + intersection.normal * OFFSET;
+		ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
 	}
 
 	color += 0.2 * tempo;
 
-	gl_FragColor = vec4(color, 1.0);
+	gl_FragColor = vec4( color, 1.0 );
 
 }
 
