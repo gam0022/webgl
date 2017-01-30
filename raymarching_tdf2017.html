@@ -347,7 +347,7 @@ void main(void) {
 		calcRadiance( intersection, ray, bounce );
 
 		color += alpha * intersection.color;
-		if ( !intersection.hit || intersection.material == CIRCUIT_MATERIAL ) break;
+		if ( !intersection.hit || intersection.material != MIRROR_MATERIAL ) break;
 
 		alpha *= 0.7;
 		ray.origin = intersection.position + intersection.normal * OFFSET;
