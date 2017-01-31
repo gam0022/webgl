@@ -151,7 +151,7 @@ float dSphere( vec3 p, vec3 c, float r ) {
 }
 
 float dWing( vec3 p ) {
-	float a = 0.1 + 0.1 * sin( time );
+	float a = 0.1 + 0.1 * tempo;
 	float d1 = sdBox( p, vec3( 0.1 + a, 2.0, 0.2 + a ) );
 	float d2 = sdBox( p, vec3( 0.3, 3.0, 0.01 + a ) );
 	float d3 = dSphere( opRep( p, 0.5 ), vec3( 0.0 ), 0.25 );
@@ -329,7 +329,8 @@ void main(void) {
 	ray.direction = normalize( cSide * fragPos.x + cUp * fragPos.y + cDir * targetDepth );
 
 	// music's tempo
-	tempo = sin( 4.0 * PI * time );
+	tempo = sin( 4.0 * PI * time ) + sin( 3.0 * PI * time ) + sin( 2.0 * PI * time ) + sin( PI * time );
+	tempo /= 4.0;
 
 	// sphere pos
 	float d = 0.2 + 0.1 * cos( time * 0.5 );
@@ -383,8 +384,8 @@ void main(void) {
 
 		<script>
 
-			var camera, dummyCamera, scene, flyControls, orbitControls, renderer;
-			var geometry, material, mesh;
+			var camera, scene, flyControls, orbitControls, renderer;
+			var geometry, material, plane;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var canvas;
 			var stats;
@@ -394,7 +395,7 @@ void main(void) {
 			var config = {
 				saveImage: function() {
 
-					renderer.render( scene, dummyCamera );
+					renderer.render( scene, camera );
 					window.open( canvas.toDataURL() );
 
 				},
@@ -409,7 +410,6 @@ void main(void) {
 
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera(35, 800/600);
-				dummyCamera = new THREE.Camera();
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 				camera.position.z = -2;
 
@@ -426,8 +426,9 @@ void main(void) {
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
 				} );
-				mesh = new THREE.Mesh( geometry, material );
-				scene.add( mesh );
+				plane = new THREE.Mesh( geometry, material );
+				plane.frustumCulled = false;
+				scene.add( plane );
 
 				renderer = new THREE.WebGLRenderer();
 				//renderer.setPixelRatio( window.devicePixelRatio );
@@ -509,7 +510,7 @@ void main(void) {
 				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
-				renderer.render( scene, dummyCamera );
+				renderer.render( scene, camera );
 
 				stats.end();
 				requestAnimationFrame( render );
