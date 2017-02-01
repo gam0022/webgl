@@ -158,11 +158,11 @@ float dSphere( vec3 p, vec3 c, float r ) {
 	return length( p - c ) - r;
 }
 
-float dBar(vec2 p, float interval, float width) {
+float dBar( vec2 p, float interval, float width) {
 	return length( max( abs( opRep( p, interval ) ) - width, 0.0 ) );
 }
 
-float dWing( vec3 p ) {
+float dWing( in vec3 p ) {
 	float a = 0.07 + 0.07 * tempo;
 
 	vec3 p1 = p;
@@ -178,7 +178,7 @@ float dWing( vec3 p ) {
 	return max( max( min( d1, d2 ), -d3), -d4 );
 }
 
-float dPoll( vec3 p ) {
+float dPoll( inout vec3 p ) {
 	p.xz = fold( p.xz, 6.0 );
 	p.z -= 0.5;
 	return dWing( p );
@@ -245,38 +245,37 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
 }
 
-int calcMaterial( vec3 p ) {
-	return TEST_MATERIAL;
-
-	if ( abs( dSphere( p, sPos, sSize ) ) < EPS ) {
-		return  MIRROR_MATERIAL;
+void setMaterialAndUv( inout Intersection intersection, vec3 p ) {
+	if ( abs( dPoll( p ) ) < EPS ) {
 	}
 	else {
-		return CIRCUIT_MATERIAL;
-	}
-}
-
-float getShadow( vec3 ro, vec3 rd ) {
-
-	float h = 0.0;
-	float c = 0.0;
-	float r = 1.0;
-	float shadowCoef = 0.5;
-
-	for ( float t = 0.0; t < 50.0; t++ ) {
-
-		h = dScene( ro + rd * c );
-
-		if ( h < EPS ) return shadowCoef;
-
-		r = min( r, h * 16.0 / c );
-		c += h;
-
 	}
 
-	return 1.0 - shadowCoef + r * shadowCoef;
-
+	intersection.material = TEST_MATERIAL;
+	intersection.uv = p.xz;
 }
+
+//float getShadow( vec3 ro, vec3 rd ) {
+//
+//	float h = 0.0;
+//	float c = 0.0;
+//	float r = 1.0;
+//	float shadowCoef = 0.5;
+//
+//	for ( float t = 0.0; t < 50.0; t++ ) {
+//
+//		h = dScene( ro + rd * c );
+//
+//		if ( h < EPS ) return shadowCoef;
+//
+//		r = min( r, h * 16.0 / c );
+//		c += h;
+//
+//	}
+//
+//	return 1.0 - shadowCoef + r * shadowCoef;
+//
+//}
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	float d;
@@ -295,7 +294,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 		intersection.hit = true;
 		intersection.position = p;
 		intersection.normal = calcNormal( p );
-		intersection.material = calcMaterial( p );
+		setMaterialAndUv( intersection, p );
 	}
 }
 
@@ -309,7 +308,12 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		//float shadow = getShadow( p + intersection.normal * OFFSET, lightDir );
 
 		if ( intersection.material == TEST_MATERIAL ) {
-			intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular - 0.01 * float( intersection.count );
+			//intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular - 0.01 * float( intersection.count );
+			vec2 uv = intersection.uv;
+			vec2 dg = circuitPattern( uv );
+			float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
+			float pattern = max( dg.x - 1.0, 0.0 );
+			intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular + illuminationColor * pattern - 0.01 * float( intersection.count );
 		} else if ( intersection.material == CIRCUIT_MATERIAL ) {
 			vec2 uv = intersection.position.yz;
 			vec2 dg = circuitPattern( uv );
