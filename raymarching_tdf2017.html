@@ -178,9 +178,26 @@ float dWing( in vec3 p ) {
 	return max( max( min( d1, d2 ), -d3), -d4 );
 }
 
+float easeInCubic( float t ) {
+	return t * t * t;
+}
+
+float easeInOutCubic( float t ) {
+	return t < 0.5 ? 4.0 * t * t * t : ( t - 1.0 ) * ( 2.0 * t - 2.0 ) * ( 2.0 * t - 2.0 ) + 1.0;
+}
+
 float dPoll( inout vec3 p ) {
-	p.xz = fold( p.xz, 6.0 );
+	float t = time * 0.5;
+	float t1 = floor( t );
+	float t2 = t1 + easeInOutCubic( t - t1 );
+
+	p.xz = fold( p.xz, t2 );
 	p.z -= 0.5;
+
+	if ( 10.0 <= time && time < 20.0 ) {
+		//p.x += 0.1 * tempo;
+	}
+
 	return dWing( p );
 }
 
@@ -313,7 +330,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			vec2 dg = circuitPattern( uv );
 			float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
 			float pattern = max( dg.x - 1.0, 0.0 );
-			intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular + illuminationColor * pattern - 0.01 * float( intersection.count );
+			intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular + illuminationColor * pattern * 0.0 - 0.01 * float( intersection.count );
 		} else if ( intersection.material == CIRCUIT_MATERIAL ) {
 			vec2 uv = intersection.position.yz;
 			vec2 dg = circuitPattern( uv );
@@ -438,8 +455,8 @@ void main(void) {
 
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera(35, 800/600);
+				camera.position.y = 5;
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
-				camera.position.z = -2;
 
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
 				material = new THREE.RawShaderMaterial( {
