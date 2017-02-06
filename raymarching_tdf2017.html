@@ -341,12 +341,12 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	intersection.distance = 0.0;
 	vec3 p = ray.origin;
 
-	for ( float i = 0.0; i < 64.0; i++ ) {
+	for ( float i = 0.0; i < 128.0; i++ ) {
 		d = dScene( p );
 		intersection.distance += d;
 		p = ray.origin + intersection.distance * ray.direction;
 		intersection.count = i;
-		if ( abs( d ) < EPS ) break;
+		if ( abs( d ) < EPS || length( p.xz ) >= 20.0 ) break;
 	}
 
 	if ( abs( d ) < EPS ) {
@@ -375,6 +375,8 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			intersection.color = vec3( 0.2 ) + 0.2 * diffuse * ao + specular;
 		}
+
+		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
 	} else {
 		vec3 base = vec3(0.4, 0.55, 0.8) * (1.0 - 0.8 * ray.direction.y) * 0.9;
 		vec3 cloud = vec3(1.0, 0.95, 1.0);
@@ -387,9 +389,9 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		// Clouds
 		intersection.color = mix(base, cloud, 0.5 *
 			smoothstep(0.5, 0.8, fbm((ray.origin.xz + ray.direction.xz * (250000.0 - ray.origin.y) / ray.direction.y) * 0.000008)));
-	}
 
-	intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(abs(ray.direction.y), 0.0), 8.0));
+		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(ray.direction.y, 0.0), 4.0));
+	}
 }
 
 
@@ -440,7 +442,7 @@ void main(void) {
 		color += alpha * intersection.color;
 		if ( !intersection.hit || intersection.material != METAL_MATERIAL ) break;
 
-		alpha *= 0.7;
+		alpha *= 0.5 * clamp(1.0 - 0.01 * intersection.distance, 0.0, 1.0);
 		ray.origin = intersection.position + intersection.normal * OFFSET;
 		ray.direction = normalize( reflect( ray.direction, intersection.normal ) );
 	}
