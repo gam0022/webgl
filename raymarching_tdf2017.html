@@ -213,9 +213,9 @@ float dWing( in vec3 p ) {
 	vec3 p2 = p;
 	p2 = opRep( p, 0.5 );
 
-	float d1 = sdBox( p1, vec3( 0.1 + a * 3.0, 12.0 - a,       0.2 + a ) );
-	float d2 = sdBox( p1, vec3( 0.3 - a,       13.0 - 4.0 * a, 0.1 + a ) );
-	float d3 = sdBox( p1, vec3( 0.2 - a,       14.0 - 4.0 * a, a ) );
+	float d1 = sdBox( p1, vec3( 0.2 + a * 3.0, 12.0 - a,       0.2 + a ) );
+	float d2 = sdBox( p1, vec3( 0.4 - a,       13.0 - 4.0 * a, 0.1 + a ) );
+	float d3 = sdBox( p1, vec3( 0.3 - a,       14.0 - 4.0 * a, a ) );
 	float d4 = sdBox( p2, vec3( 0.05 + a ) );
 	return max( max( min( d1, d2 ), -d3), -d4 );
 }
