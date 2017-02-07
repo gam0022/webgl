@@ -222,7 +222,7 @@ float dWing(in vec3 p) {
 	float d =   sdBox(p1, vec3(0.2 + a * 3.0, 12.0 - a,       0.2 + a));
 	d = min(d,  sdBox(p1, vec3(0.4 - a,       13.0 - 4.0 * a, 0.1 + a)));
 	d = max(d, -sdBox(p1, vec3(0.3 - a,       14.0 - 4.0 * a, a)));
-	d = max(d, -sdBox(p2, vec3(0.8 * a, 0.8 * a, 0.8 * a)));
+	d = max(d, -sdBox(p2, vec3(0.8 * a, 1.0 - a, 0.8 * a)));
 	return d;
 }
 
@@ -430,7 +430,8 @@ void main(void) {
 	ray.direction = normalize( cSide * fragPos.x + cUp * fragPos.y + cDir * targetDepth );
 
 	// music's tempo
-	tempo = sin( PI * time );// + sin( 3.0 * PI * time ) + sin( 2.0 * PI * time ) + sin( PI * time );
+	tempo = sin( PI * time );
+	//tempo = sin( PI * time ) + sin( 3.0 * PI * time ) + sin( 2.0 * PI * time ) + sin( PI * time );
 	//tempo /= 4.0;
 
 	// sphere pos
