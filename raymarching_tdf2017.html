@@ -146,11 +146,7 @@ float opRep( float p, float interval ) {
 }
 
 vec2 opRepLimit(vec2 p, float interval, float limit) {
-	if (abs(p.x) < limit && abs(p.y) < limit) {
-		return mod(p, interval) - 0.5 * interval;
-	} else {
-		return p - 0.5 * interval;
-	}
+	return mod(clamp(p, -limit, limit), interval) - 0.5 * interval;
 }
 
 // https://www.shadertoy.com/view/Mlf3Wj
