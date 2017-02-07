@@ -382,7 +382,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			//float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			//intersection.color = vec3(0.2) + 0.5 * diffuse * ao + 0.1 * specular;
-			intersection.color = vec3(0.7) * diffuse * ao * shadow + 0.1 * specular;
+			intersection.color =  hsv2rgb(vec3(0.1 * intersection.count, 0.4, 0.7)) * diffuse * ao * shadow + 0.1 * specular;
 		}
 
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
