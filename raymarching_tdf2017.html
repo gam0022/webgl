@@ -190,8 +190,8 @@ float sdBox( vec3 p, vec3 b ) {
   return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
 }
 
-float dSphere( vec3 p, vec3 c, float r ) {
-	return length( p - c ) - r;
+float dSphere(vec3 p, float r) {
+	return length(p) - r;
 }
 
 float dBar( vec2 p, float interval, float width) {
@@ -234,19 +234,31 @@ float easeInOutCubic( float t ) {
 	return t < 0.5 ? 4.0 * t * t * t : ( t - 1.0 ) * ( 2.0 * t - 2.0 ) * ( 2.0 * t - 2.0 ) + 1.0;
 }
 
-float dUfo( inout vec3 p ) {
-	float t = time * 0.5;
-	float t1 = floor( t );
-	float t2 = t1 + easeInOutCubic( t - t1 );
+#define META_SCENE_END_TIME 10.0
+#define UFO_SCENE_END_TIME    20.0
 
-	p.xz = fold( p.xz, min( t2, 10.0 ) );
+float dMeta(inout vec3 p) {
+	float d = dSphere(p, 1.0);
+	return d;
+}
+
+float dUfo(inout vec3 p) {
+	float t = time * 0.5;
+	float t1 = floor(t);
+	float t2 = t1 + easeInOutCubic(t - t1);
+
+	p.xz = fold(p.xz, min(t2, 10.0));
 	p.z -= 0.5;
 
-	return dWing( p );
+	return dWing(p);
 }
 
 float dScene( vec3 p ) {
-	return dUfo( p );
+	if (time < META_SCENE_END_TIME) {
+		return dMeta(p);
+	} else {
+		return dUfo(p);
+	}
 }
 
 
@@ -382,7 +394,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			//float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			//intersection.color = vec3(0.2) + 0.5 * diffuse * ao + 0.1 * specular;
-			intersection.color =  hsv2rgb(vec3(0.1 * intersection.count, 0.4, 0.7)) * diffuse * ao * shadow + 0.1 * specular;
+			intersection.color =  hsv2rgb(vec3(0.1 * intersection.count, 0.0, 0.7)) * diffuse * ao * shadow + 0.1 * specular;
 		}
 
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
@@ -396,10 +408,11 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		base += 0.75 * vec3(1.0, 0.8, 0.5) * pow(sundot, 64.0);
 
 		// Clouds
+		float rd = ray.direction.y + 0.5;
 		intersection.color = mix(base, cloud, 0.5 *
-			smoothstep(0.5, 0.8, fbm((ray.origin.xz + ray.direction.xz * (250000.0 - ray.origin.y) / ray.direction.y) * 0.000008)));
+			smoothstep(0.5, 0.8, fbm((ray.origin.xz + ray.direction.xz * (250000.0 - ray.origin.y) / rd) * 0.000008)));
 
-		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(ray.direction.y, 0.0), 4.0));
+		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(rd, 0.0), 4.0));
 	}
 }
 
