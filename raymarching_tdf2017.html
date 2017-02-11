@@ -69,6 +69,8 @@ const float OFFSET = EPS * 100.0;
 
 const float PI = 3.14159265359;
 const float PI2 = 6.28318530718;
+const float PIH = 1.57079632679;
+const float PIQ = 0.78539816339;
 
 
 // globals
@@ -197,8 +199,26 @@ float dBar( vec2 p, float interval, float width) {
 	return length( max( abs( opRep( p, interval ) ) - width, 0.0 ) );
 }
 
-float squareDistance( vec2 p ) {
-	return p.x * p.x + p.y * p.y;
+
+#define MIX_SCENE_END_TIME 8.0
+#define META_SCENE_END_TIME 20.0
+#define UFO_SCENE_END_TIME    30.0
+
+float dMix(inout vec3 p) {
+	float sphere = dSphere(p, 1.5);
+	float box = sdBox(p, vec3(1.1));
+	float d = mix(sphere, box, clamp(sin(PIQ * time) * 2.0, 0.0, 1.0));
+	return d;
+}
+
+float dMeta(inout vec3 p) {
+	float t = time - MIX_SCENE_END_TIME;
+	float a = 1.0 + sin(PIH * t);
+	float b = 0.2 * sin(t);
+	float d1 = dSphere(p + vec3(a, b, b), 1.0);
+	float d2 = dSphere(p - vec3(a, b, b), 1.0);
+	float d = smoothMin(d1, d2, 1.0);
+	return d;
 }
 
 float gauss(float x) {
@@ -207,9 +227,9 @@ float gauss(float x) {
 }
 
 float dWing(in vec3 p) {
+	float t = time - META_SCENE_END_TIME;
 	float a = 0.1 + 0.06 * (tempo + 1.0);
-
-	float b = min(time, 5.0) * gauss(length(p.xz));
+	float b = min(0.1 * t, 10.0) * gauss(length(p.xz));
 	p.y += -b + 10.0;
 
 	vec3 p1 = p;
@@ -233,16 +253,8 @@ float easeInOutCubic( float t ) {
 	return t < 0.5 ? 4.0 * t * t * t : ( t - 1.0 ) * ( 2.0 * t - 2.0 ) * ( 2.0 * t - 2.0 ) + 1.0;
 }
 
-#define META_SCENE_END_TIME 10.0
-#define UFO_SCENE_END_TIME    20.0
-
-float dMeta(inout vec3 p) {
-	float d = dSphere(p, 1.0);
-	return d;
-}
-
 float dUfo(inout vec3 p) {
-	float t = time * 0.5;
+	float t = (time - META_SCENE_END_TIME) * 0.5;
 	float t1 = floor(t);
 	float t2 = t1 + easeInOutCubic(t - t1);
 
@@ -253,7 +265,9 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene( vec3 p ) {
-	if (time < META_SCENE_END_TIME) {
+	if (time <= MIX_SCENE_END_TIME) {
+		return dMix(p);
+	} else if (time <= META_SCENE_END_TIME) {
 		return dMeta(p);
 	} else {
 		return dUfo(p);
@@ -393,7 +407,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			//float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			//intersection.color = vec3(0.2) + 0.5 * diffuse * ao + 0.1 * specular;
-			intersection.color = hsv2rgb(vec3(0.1 * intersection.count, 0.0, 0.7)) * diffuse * ao * shadow + 0.1 * specular;
+			intersection.color = hsv2rgb(vec3(0.1 * intersection.count, 0.1, 0.5)) * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflection = 0.7;
 		} else {
 			intersection.color = vec3(0.0);
