@@ -75,9 +75,9 @@ const float PIQ = 0.78539816339;
 
 // globals
 const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
-vec3 cPos, cDir;
-vec3 sPos;
-float sSize;
+
+vec3 cPos, cDir, target;
+
 vec3 illuminationColor;
 float tempo;
 
@@ -200,23 +200,22 @@ float dBar( vec2 p, float interval, float width) {
 }
 
 
-#define MIX_SCENE_END_TIME  16.0
-#define META_SCENE_END_TIME MIX_SCENE_END_TIME + 16.0
-#define UFO_SCENE_END_TIME  META_SCENE_END_TIME + 16.0
+#define MIX_SCENE_END_TIME  (16.0)
+#define META_SCENE_END_TIME (MIX_SCENE_END_TIME + 16.0)
+#define UFO_SCENE_END_TIME  (META_SCENE_END_TIME + 16.0)
 
 float dMix(inout vec3 p) {
 	float sphere = dSphere(p, 1.5);
 	float box = sdBox(p, vec3(1.1));
-	float d = mix(sphere, box, clamp(sin(PIQ * time) * 2.0, 0.0, 1.0));
+	float d = mix(sphere, box, 0.5 + clamp(sin(PIQ * time), -0.5, 0.5));
 	return d;
 }
 
 float dMeta(inout vec3 p) {
-	float t = time - MIX_SCENE_END_TIME;
-	float a = 1.0 + sin(PIH * t);
-	float b = 0.2 * sin(t);
-	float d1 = dSphere(p + vec3(a, b, b), 1.0);
-	float d2 = dSphere(p - vec3(a, b, b), 1.0);
+	float a = 1.0 + sin(time * 0.3);
+	float b = 0.2 * sin(time);
+	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
+	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
 	float d = smoothMin(d1, d2, 1.0);
 	return d;
 }
@@ -231,7 +230,7 @@ float dWing(in vec3 p) {
 	float l = length(p.xz);
 	float a = 0.1 + 0.06 * (1.0 + sin(PI * t + l));
 	float b = min(0.1 * t, 10.0) * gauss(l);
-	p.y += -b + 10.0;
+	p.y += -b + 15.0;
 
 	vec3 p1 = p;
 	p1.xz = opRepLimit(p.xz, 1.0, 20.0);
@@ -255,7 +254,7 @@ float easeInOutCubic( float t ) {
 }
 
 float dUfo(inout vec3 p) {
-	float t = (time - META_SCENE_END_TIME) * 0.5;
+	float t = max((time - META_SCENE_END_TIME - 10.0) * 0.5, 1.0);
 	float t1 = floor(t);
 	float t2 = t1 + easeInOutCubic(t - t1);
 
@@ -266,10 +265,10 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene( vec3 p ) {
-	if (time <= MIX_SCENE_END_TIME) {
-		return dMix(p);
-	} else if (time <= META_SCENE_END_TIME) {
-		return dMeta(p);
+	if (time < META_SCENE_END_TIME + 20.0) {
+		float d = dMeta(p);
+		d = smoothMin(d, dUfo(p), clamp(time - META_SCENE_END_TIME, 1.0, 10.0));
+		return d;
 	} else {
 		return dUfo(p);
 	}
@@ -278,11 +277,9 @@ float dScene( vec3 p ) {
 
 // color functions
 vec3 hsv2rgb( vec3 c ) {
-
 	vec4 K = vec4( 1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0 );
 	vec3 p = abs( fract( c.xxx + K.xyz ) * 6.0 - K.www );
 	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
-
 }
 
 // thanks to http://glslsandbox.com/e#21290.5
@@ -333,13 +330,15 @@ vec3 calcNormal( vec3 p ) {
 }
 
 void setMaterialAndUv(inout Intersection intersection, vec3 p) {
-	if ( time <= META_SCENE_END_TIME ) {
-		intersection.material = MIRROR_MATERIAL;
-	} else {
-		dUfo( p );
-		intersection.material = METAL_MATERIAL;
-		intersection.uv = p.xz;
-	}
+	intersection.material = METAL_MATERIAL;
+
+	//if ( false && time <= META_SCENE_END_TIME ) {
+	//	intersection.material = MIRROR_MATERIAL;
+	//} else {
+	//	dUfo(p);
+	//	intersection.material = METAL_MATERIAL;
+	//	intersection.uv = p.xz;
+	//}
 }
 
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
@@ -352,7 +351,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 		intersection.distance += d;
 		p = ray.origin + intersection.distance * ray.direction;
 		intersection.count = i;
-		if (abs(d) < EPS) break;
+		if (abs(d) < EPS || intersection.distance > 100.0) break;
 	}
 
 	if ( abs( d ) < EPS ) {
@@ -434,6 +433,31 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 	}
 }
 
+// gaz
+mat3 lookat(in vec3 eye, in vec3 target) {
+	vec3 w = normalize(target-eye);
+	vec3 u = normalize(cross(w,vec3(0.0,1.0,0.0)));
+	vec3 v = normalize(cross(u,w));
+    return mat3(u,v,w);
+}
+
+void setupCamera() {
+	float t = 0.1 * time;
+	float x = clamp((time - META_SCENE_END_TIME - 1.0) * 0.2, 0.0, 1.0);
+
+	target = vec3(0.0);
+	target.y = 0.7 * clamp(META_SCENE_END_TIME - time, -4.0, 40.0);
+
+	float r = 5.0;
+	vec3 p1 = target + vec3(0.0, 0.0, -5.0);
+	vec3 p2 = vec3(1.0, min(8.0, 2.0 + 0.2 * (time - META_SCENE_END_TIME)), 1.0);
+	cPos = mix(p1, p2, x);
+
+	vec3 d1 = normalize(target - cPos);
+	vec3 d2 = vec3(-0.2, -1.0, -0.2);
+
+	cDir = mix(d1, d2, x);
+}
 
 void main(void) {
 	// fragment position
@@ -446,11 +470,7 @@ void main(void) {
 		cPos  = cameraPos;
 		cDir  = cameraDir;
 	} else {
-		cPos  = vec3( -0.8185093402862549, 4.509979248046875, time );
-		cDir  = normalize( vec3( sin( time * 0.5 ), sin( time * 0.1 ), cos( time * 0.6 ) + 0.5 ) );
-
-		cPos = vec3( 0.0, 0.5, -5.0 );
-		cDir = vec3( 0.0, 0.0, 1.0 );
+		setupCamera();
 	}
 
 	float targetDepth = 1.3;
@@ -464,11 +484,6 @@ void main(void) {
 	tempo = sin( PI * time );
 	//tempo = sin( PI * time ) + sin( 3.0 * PI * time ) + sin( 2.0 * PI * time ) + sin( PI * time );
 	//tempo /= 4.0;
-
-	// sphere pos
-	float d = 0.2 + 0.1 * cos( time * 0.5 );
-	sPos = cPos + vec3( 0.0, 0.0, d );
-	sSize = 0.03 + 0.005 * tempo;
 
 	// Illumination Color
 	illuminationColor = hsv2rgb( vec3( time * 0.02 + 0.6, 1.0, 1.0 ) );
@@ -524,7 +539,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 20.0;
+			var offsetTime = 0.0;
 
 			var config = {
 				saveImage: function() {
@@ -533,7 +548,7 @@ void main(void) {
 					window.open( canvas.toDataURL() );
 
 				},
-				camera: 'Orbit',
+				camera: 'GLSL',
 				resolution: '512',
 			};
 
