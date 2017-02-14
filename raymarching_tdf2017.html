@@ -75,11 +75,9 @@ const float PIQ = 0.78539816339;
 
 // globals
 const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
-
 vec3 cPos, cDir, target;
-
-vec3 illuminationColor;
 float tempo;
+float lTime;
 
 // ray
 struct Ray {
@@ -109,7 +107,7 @@ float noise(vec2 x) {
 float fbm(vec2 p) {
 	const mat2 m2 = mat2(0.8, -0.6, 0.6, 0.8);
 
-	p.xy += time;
+	p.xy += lTime;
 
 	float f = 0.5000 * noise(p); p = m2 * p * 2.02;
 	f += 0.2500 * noise(p); p = m2 * p * 2.03;
@@ -206,7 +204,7 @@ float dBar( vec2 p, float interval, float width) {
 
 float dFract(inout vec3 p) {
 	float radius = 1.0;
-	float radiusScale = 0.45 * abs(sin(0.3 * time));
+	float radiusScale = 0.45 * abs(sin(0.3 * lTime));
 	float d = sdBox(p, vec3(radius));
 	for (int i = 0; i < 5; i++) {
 		vec3 q = abs(p) + normalize(vec3(-1.0)) * radius * (1.0 + radiusScale);
@@ -218,7 +216,7 @@ float dFract(inout vec3 p) {
 }
 
 float dTree(vec3 p) {
-	float scale = 0.6 * clamp(1.5 * sin(0.05 * (time - UFO_SCENE_END_TIME)), 0.0, 1.0);
+	float scale = 0.6 * clamp(1.5 * sin(0.05 * (lTime - UFO_SCENE_END_TIME)), 0.0, 1.0);
 	float width = mix(0.3 * scale, 0.0, clamp(p.y, 0.0, 1.0));
 	vec3 size = vec3(width, 1.0, width);
 	float d = sdBox(p, size);
@@ -242,13 +240,13 @@ float dSnowCrystal(inout vec3 p) {
 float dMix(inout vec3 p) {
 	float sphere = dSphere(p, 1.5);
 	float box = sdBox(p, vec3(1.1));
-	float d = mix(sphere, box, 0.5 + clamp(sin(PIQ * time), -0.5, 0.5));
+	float d = mix(sphere, box, 0.5 + clamp(sin(PIQ * lTime), -0.5, 0.5));
 	return d;
 }
 
 float dMeta(inout vec3 p) {
-	float a = 1.0 + cos(time * 0.3);
-	float b = 0.2 * sin(time);
+	float a = 1.0 + cos(lTime * 0.3);
+	float b = 0.2 * sin(lTime);
 	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
 	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
 	float d = smin(d1, d2, 1.0);
@@ -261,7 +259,7 @@ float gauss(float x) {
 }
 
 float dWing(in vec3 p) {
-	float t = time - META_SCENE_END_TIME;
+	float t = lTime - META_SCENE_END_TIME;
 	float l = length(p.xz);
 	float a = 0.1 + 0.06 * (1.0 + sin(PI * t + l));
 	float b = min(0.2 * t, 10.0) * gauss(l);
@@ -289,7 +287,7 @@ float easeInOutCubic( float t ) {
 }
 
 float dUfo(inout vec3 p) {
-	float t = max((time - META_SCENE_END_TIME - 10.0) * 0.5, 1.0);
+	float t = max((lTime - META_SCENE_END_TIME - 10.0) * 0.5, 1.0);
 	float t1 = floor(t);
 	float t2 = t1 + easeInOutCubic(t - t1);
 
@@ -300,11 +298,11 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene( vec3 p ) {
-	if (time < META_SCENE_END_TIME + 20.0) {
+	if (lTime < META_SCENE_END_TIME + 20.0) {
 		float d = dMeta(p);
-		d = smin(d, dUfo(p), clamp((time - META_SCENE_END_TIME) * 3.0, 1.0, 10.0));
+		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME) * 3.0, 1.0, 10.0));
 		return d;
-	} else if (time <= UFO_SCENE_END_TIME) {
+	} else if (lTime <= UFO_SCENE_END_TIME) {
 		return dUfo(p);
 	} else {
 		//return dFract(p);
@@ -370,7 +368,7 @@ vec3 calcNormal( vec3 p ) {
 void setMaterialAndUv(inout Intersection intersection, vec3 p) {
 	intersection.material = METAL_MATERIAL;
 
-	//if ( false && time <= META_SCENE_END_TIME ) {
+	//if ( false && lTime <= META_SCENE_END_TIME ) {
 	//	intersection.material = MIRROR_MATERIAL;
 	//} else {
 	//	dUfo(p);
@@ -442,10 +440,10 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			//intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular - 0.01 * float( intersection.count );
 			//vec2 uv = intersection.uv;
 			//vec2 dg = circuitPattern( uv );
-			//float glow = max( sin( length( uv ) - 1.8 * time ) * 2.5, 0.0 );
+			//float glow = max( sin( length( uv ) - 1.8 * lTime ) * 2.5, 0.0 );
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			//intersection.color = vec3(0.2) + 0.5 * diffuse * ao + 0.1 * specular;
-			intersection.color = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(time), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
+			intersection.color = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflection = 0.7;
 		} else {
 			intersection.color = vec3(0.0);
@@ -470,8 +468,8 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(rd, 0.0), 4.0));
 	}
 
-	intersection.color = mix(intersection.color, vec3(1.0), gauss((time - UFO_SCENE_END_TIME) * 5.0));
-	intersection.color = mix(intersection.color, vec3(1.0), gauss((time - SNOW_SCENE_END_TIME) * 3.0));
+	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 5.0));
+	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 3.0));
 }
 
 // gaz
@@ -484,11 +482,11 @@ mat3 lookat(in vec3 eye, in vec3 target) {
 
 void setupCamera() {
 	// time
-	float t1 = time - META_SCENE_END_TIME;
+	float t1 = lTime - META_SCENE_END_TIME;
 	float t2 = t1 - 30.0;
 	float t3 = t2 - 16.0;
 	float t4 = t3 - 30.0;
-	float t5 = time - UFO_SCENE_END_TIME;
+	float t5 = lTime - UFO_SCENE_END_TIME;
 
 	// blend
 	float b1 = easeInOutCubic(clamp(t1 * 0.2, 0.0, 1.0));
@@ -498,15 +496,15 @@ void setupCamera() {
 	float b5 = step(1.0, t5);
 
 	target = vec3(0.0);
-	target.y = 0.7 * clamp(META_SCENE_END_TIME - time, -4.0, 40.0);
+	target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
 	target.y = mix(target.y, 1.0, step(1.0, t2));
 	target.y = mix(target.y, 0.0, b5);
 
 	// position
 	vec3 p1 = target + vec3(0.0, 0.0, -5.0);
 
-	float a = 0.2 * (time - META_SCENE_END_TIME);
-	vec3 p2 = vec3(1.0 * pow(0.1, a), abs(8.0 * cos(0.1 * time)), 1.0 * pow(0.1, a));
+	float a = 0.2 * (lTime - META_SCENE_END_TIME);
+	vec3 p2 = vec3(1.0 * pow(0.1, a), abs(8.0 * cos(0.1 * lTime)), 1.0 * pow(0.1, a));
 
 	vec3 p3 = vec3(4.0, 1.0 + t2 * 0.4, 0.0);
 	vec3 p4 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
@@ -528,6 +526,9 @@ void setupCamera() {
 }
 
 void main(void) {
+	// local time
+	lTime = mod(time, SNOW_SCENE_END_TIME);
+
 	// fragment position
 	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
@@ -549,12 +550,9 @@ void main(void) {
 	ray.direction = normalize( cSide * fragPos.x + cUp * fragPos.y + cDir * targetDepth );
 
 	// music's tempo
-	tempo = sin( PI * time );
-	//tempo = sin( PI * time ) + sin( 3.0 * PI * time ) + sin( 2.0 * PI * time ) + sin( PI * time );
+	tempo = sin( PI * lTime );
+	//tempo = sin( PI * lTime ) + sin( 3.0 * PI * lTime ) + sin( 2.0 * PI * lTime ) + sin( PI * lTime );
 	//tempo /= 4.0;
-
-	// Illumination Color
-	illuminationColor = hsv2rgb( vec3( time * 0.02 + 0.6, 1.0, 1.0 ) );
 
 	vec3 color = vec3( 0.0 );
 	float reflection = 1.0;
