@@ -206,10 +206,10 @@ float dBar( vec2 p, float interval, float width) {
 float dFract(inout vec3 p) {
 	float radius = 1.0;
 	float radiusScale = 0.45 * abs(sin(0.3 * time));
-	float d = length(p) - radius;
+	float d = sdBox(p, vec3(radius));
 	for (int i = 0; i < 5; i++) {
 		vec3 q = abs(p) + normalize(vec3(-1.0)) * radius * (1.0 + radiusScale);
-		d = min(d, length(p) - radius);
+		d = min(d, sdBox(p, vec3(radius)));
 		p = q;
 		radius *= radiusScale;
 	}
