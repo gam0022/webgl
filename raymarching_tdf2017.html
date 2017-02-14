@@ -164,7 +164,7 @@ vec2 fold(in vec2 p, in float s) {
     return p;
 }
 
-float smoothMin(float d1, float d2, float k){
+float smin(float d1, float d2, float k){
 	float h = exp(-k * d1) + exp(-k * d2);
 	return -log(h) / k;
 }
@@ -215,7 +215,7 @@ float dMeta(inout vec3 p) {
 	float b = 0.2 * sin(time);
 	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
 	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
-	float d = smoothMin(d1, d2, 1.0);
+	float d = smin(d1, d2, 1.0);
 	return d;
 }
 
@@ -266,7 +266,7 @@ float dUfo(inout vec3 p) {
 float dScene( vec3 p ) {
 	if (time < META_SCENE_END_TIME + 20.0) {
 		float d = dMeta(p);
-		d = smoothMin(d, dUfo(p), clamp((time - META_SCENE_END_TIME) * 3.0, 1.0, 10.0));
+		d = smin(d, dUfo(p), clamp((time - META_SCENE_END_TIME) * 3.0, 1.0, 10.0));
 		return d;
 	} else {
 		return dUfo(p);
