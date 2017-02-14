@@ -200,7 +200,7 @@ float dBar( vec2 p, float interval, float width) {
 
 #define META_SCENE_END_TIME (32.0)
 #define UFO_SCENE_END_TIME (120.0)
-#define SNOW_SCENE_END_TIME (170.0)
+#define SNOW_SCENE_END_TIME (180.0)
 
 float dFract(inout vec3 p) {
 	float radius = 1.0;
@@ -469,7 +469,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 	}
 
 	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 5.0));
-	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 3.0));
+	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 0.5));
 }
 
 // gaz
@@ -486,14 +486,18 @@ void setupCamera() {
 	float t2 = t1 - 30.0;
 	float t3 = t2 - 16.0;
 	float t4 = t3 - 30.0;
+
 	float t5 = lTime - UFO_SCENE_END_TIME;
+	float t6 = t5 - 20.0;
 
 	// blend
 	float b1 = easeInOutCubic(clamp(t1 * 0.2, 0.0, 1.0));
 	float b2 = easeInOutCubic(clamp(t2 * 0.4, 0.0, 1.0));
 	float b3 = easeInOutCubic(clamp(t3 * 0.4, 0.0, 1.0));
 	float b4 = easeInOutCubic(clamp(t4 * 0.2, 0.0, 1.0));
+
 	float b5 = step(1.0, t5);
+	float b6 = easeInOutCubic(clamp(t6, 0.0, 1.0));
 
 	target = vec3(0.0);
 	target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
@@ -509,13 +513,17 @@ void setupCamera() {
 	vec3 p2 = vec3(3.5 + t2 * 0.8, 1.0 + t2 * 0.1, 0.0);
 	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
 	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0);
-	vec3 p5 = vec3(2.0 * cos(0.5 + t5 * 0.1), 0.1, (0.5 + t5 * 0.05) * sin(0.5 + t5 * 0.1));
 
-	cPos = mix(p0, p1, b1);
+	float v = 0.5 + t5 * 0.1;
+	vec3 p5 = vec3(2.0 * cos(v), 0.1, (0.5 + t5 * 0.01) * sin(v));
+	vec3 p6 = vec3(0.0, 0.0, 0.5 + t6 * 0.1);
+
+	cPos = mix(p0,   p1, b1);
 	cPos = mix(cPos, p2, b2);
 	cPos = mix(cPos, p3, b3);
 	cPos = mix(cPos, p4, b4);
 	cPos = mix(cPos, p5, b5);
+	cPos = mix(cPos, p6, b6);
 
 	// direction
 	vec3 look = normalize(target - cPos);
@@ -527,7 +535,7 @@ void setupCamera() {
 
 void main(void) {
 	// local time
-	lTime = mod(time, SNOW_SCENE_END_TIME);
+	lTime = mod(time, SNOW_SCENE_END_TIME + 1.0);
 
 	// fragment position
 	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
