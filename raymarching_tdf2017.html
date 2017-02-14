@@ -535,11 +535,10 @@ void main(void) {
 	// camera and ray
 	Ray ray;
 
-	if ( debugCamera ) {
-		cPos  = cameraPos;
-		cDir  = cameraDir;
-	} else {
-		setupCamera();
+	setupCamera();
+	if (debugCamera) {
+		cPos = cameraPos;
+		cDir = cameraDir;
 	}
 
 	float targetDepth = 1.3;
