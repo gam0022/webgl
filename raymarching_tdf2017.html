@@ -578,9 +578,9 @@ void cameraControl(inout Camera camera) {
 	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
 	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0);
 
-	float v = 0.5 + t5 * 0.1;
+	float v = 0.3 + t5 * 0.1;
 	vec3 p5 = vec3(0.0, 0.1, 5.0 - t5 * 0.1);
-	vec3 p6 = vec3(2.0 * cos(v), 0.1, (0.5 + t6 * 0.01) * sin(v));
+	vec3 p6 = vec3(1.7 * cos(v), 0.1, (0.5 + t6 * 0.01) * sin(v));
 	vec3 p7 = vec3(0.0, 0.0, 0.5 + t7 * 0.1);
 
 	camera.eye = mix(p0,         p1, b1);
@@ -664,7 +664,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 15.0;
+			var offsetTime = 119.0;
 
 			var config = {
 				saveImage: function() {
