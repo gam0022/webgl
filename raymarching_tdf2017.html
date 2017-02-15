@@ -470,8 +470,7 @@ float calcShadow(in vec3 p, in vec3 rd) {
 #define WIDTH .3
 #define SPEED .6
 
-float screenSpaceSnow(vec2 uv)
-{
+float screenSpaceSnow(vec2 uv) {
 	const mat3 p = mat3(13.323122,23.5112,21.71123,21.1212,28.7312,11.9312,21.8112,14.7212,61.3934);
 	float acc = 0.0;
 	float dof = 5.*sin(lTime*.1);
@@ -518,8 +517,10 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
 	} else {
-		vec3 base = vec3(0.4, 0.55, 0.8) * (1.0 - 0.8 * ray.direction.y) * 0.9;
+		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
+		vec3 cloudySky = vec3(0.7);
 		vec3 cloud = vec3(1.0, 0.95, 1.0);
+		vec3 base = mix(sunnySky, cloudySky, step(UFO_SCENE_END_TIME, lTime)) * (1.0 - 0.8 * ray.direction.y) * 0.9;
 
 		// Sun
 		float sundot = clamp(dot(ray.direction, lightDir), 0.0, 1.0);
@@ -654,7 +655,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 0.0;
+			var offsetTime = 120.0;
 
 			var config = {
 				saveImage: function() {
