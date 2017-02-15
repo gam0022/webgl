@@ -115,7 +115,7 @@ struct Intersection {
 	vec2 uv;
 	float count;
 
-	int material;
+	//int material;
 	vec3 color;
 	float reflection;
 };
@@ -334,9 +334,9 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene( vec3 p ) {
-	if (lTime < META_SCENE_END_TIME + 20.0) {
+	if (lTime < META_SCENE_END_TIME + 10.0) {
 		float d = dMeta(p);
-		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME) * 3.0, 1.0, 10.0));
+		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME) * 2.0, 1.0, 20.0));
 		return d;
 	} else if (lTime <= UFO_SCENE_END_TIME) {
 		return dUfo(p);
@@ -401,8 +401,21 @@ vec3 calcNormal( vec3 p ) {
 			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
 }
 
+float calcRate(float a, float b) {
+	return a / (a + b);
+}
+
 void setMaterialAndUv(inout Intersection intersection, vec3 p) {
-	intersection.material = METAL_MATERIAL;
+	//intersection.material = METAL_MATERIAL;
+
+	if (lTime < META_SCENE_END_TIME + 10.0) {
+		float d1 = dUfo(p);
+		float d2 = dMeta(p);
+		float rate = calcRate(abs(d1), abs(d2));
+		intersection.reflection = rate;
+	}
+
+	intersection.reflection = mix(intersection.reflection, 0.7, clamp((lTime - META_SCENE_END_TIME) * 0.1, 0.0, 1.0));
 
 	//if ( false && lTime <= META_SCENE_END_TIME ) {
 	//	intersection.material = MIRROR_MATERIAL;
@@ -501,20 +514,10 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		if ( intersection.material == METAL_MATERIAL ) {
-			//intersection.color = vec3( 0.2 ) + 0.2 * diffuse + specular - 0.01 * float( intersection.count );
-			//vec2 uv = intersection.uv;
-			//vec2 dg = circuitPattern( uv );
-			//float glow = max( sin( length( uv ) - 1.8 * lTime ) * 2.5, 0.0 );
-			//float pattern = max( dg.x - 1.0, 0.0 );
-			//intersection.color = vec3(0.2) + 0.5 * diffuse * ao + 0.1 * specular;
-			intersection.color = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
-			intersection.reflection = 0.7;
-		} else {
-			intersection.color = vec3(0.0);
-			intersection.reflection = 1.0;
-		}
+		vec3 ruin  = vec3(0.8, 0.2, 0.2) * diffuse * ao * shadow + 0.1 * specular;
+		vec3 metal = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
 
+		intersection.color = mix(ruin, metal, intersection.reflection + 0.2);
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
 	} else {
 		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
@@ -661,7 +664,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 115.0;
+			var offsetTime = 15.0;
 
 			var config = {
 				saveImage: function() {
