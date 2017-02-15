@@ -97,8 +97,8 @@ Ray cameraShootRay(Camera c, vec2 uv)
     c.up = vec3(0.0, 1.0, 0.0);
 
     //c.forward = normalize(c.target - c.eye);
-    c.right = cross(c.forward, c.up);
-    c.up = cross(c.right, c.forward);
+    c.right = normalize(cross(c.forward, c.up));
+    c.up    = normalize(cross(c.right, c.forward));
 
     Ray r;
     r.origin = c.eye;
@@ -541,7 +541,7 @@ void cameraControl(inout Camera camera) {
 
 	// direction
 	vec3 look = normalize(target - camera.eye);
-	vec3 down = vec3(-0.1, -1.0, -0.2);
+	vec3 down = vec3(-0.2, -1.0, -0.2);
 
 	camera.forward = mix(look, down, b1);
 	camera.forward = mix(camera.forward, look, b2);
