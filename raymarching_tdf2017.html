@@ -188,7 +188,7 @@ float smin(float d1, float d2, float k){
 	return -log(h) / k;
 }
 
-// thanks to https://www.shadertoy.com/view/MdVGRc
+// https://www.shadertoy.com/view/MdVGRc
 float dMbox( vec3 p ) {
   const float scale = 2.7;
   const int n = 12;
@@ -354,7 +354,7 @@ vec3 hsv2rgb( vec3 c ) {
 	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
 }
 
-// thanks to http://glslsandbox.com/e#21290.5
+// http://glslsandbox.com/e#21290.5
 vec2 circuitPattern( vec2 p ) {
 
 	p = fract(p);
@@ -462,6 +462,36 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	return shadowIntensity + (1.0 - shadowIntensity) * bright;
 }
 
+
+// Just snow by baldand 
+// https://www.shadertoy.com/view/ldsGDn
+#define LAYERS 50
+#define DEPTH .5
+#define WIDTH .3
+#define SPEED .6
+
+float screenSpaceSnow(vec2 uv)
+{
+	const mat3 p = mat3(13.323122,23.5112,21.71123,21.1212,28.7312,11.9312,21.8112,14.7212,61.3934);
+	float acc = 0.0;
+	float dof = 5.*sin(lTime*.1);
+	for (int i=0;i<LAYERS;i++) {
+		float fi = float(i);
+		vec2 q = uv*(1.+fi*DEPTH);
+		q += vec2(q.y*(WIDTH*mod(fi*7.238917,1.)-WIDTH*.5),SPEED*lTime/(1.+fi*DEPTH*.03));
+		vec3 n = vec3(floor(q),31.189+fi);
+		vec3 m = floor(n)*.00001 + fract(n);
+		vec3 mp = (31415.9+m)/fract(p*m);
+		vec3 r = fract(mp);
+		vec2 s = abs(mod(q,1.)-.5+.9*r.xy-.45);
+		s += .01*abs(2.*fract(10.*q.yx)-1.);
+		float d = .6*max(s.x-s.y,s.x+s.y)+max(s.x,s.y)-.01;
+		float edge = .005+.05*min(.5*abs(fi-5.-dof),1.);
+		acc += smoothstep(edge,-edge,d)*(r.x/(1.+.02*fi*DEPTH));
+	}
+	return acc;
+}
+
 void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersectScene( intersection, ray );
@@ -504,6 +534,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(rd, 0.0), 4.0));
 	}
 
+	// Whiteout
 	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 5.0));
 	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 0.5));
 }
@@ -588,7 +619,9 @@ void main(void) {
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
 
-	gl_FragColor = vec4( color, 1.0 );
+	color += screenSpaceSnow(uv) * step(UFO_SCENE_END_TIME, lTime);
+
+	gl_FragColor = vec4(color, 1.0);
 }
 
 		</script>
@@ -621,7 +654,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 30.0;
+			var offsetTime = 0.0;
 
 			var config = {
 				saveImage: function() {
