@@ -75,8 +75,6 @@ const float PIQ = 0.78539816339;
 
 // globals
 const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
-vec3 cPos, cDir, target;
-float tempo;
 float lTime;
 
 // ray
@@ -91,6 +89,7 @@ struct Camera {
 	vec3 forward, right, up;
 	float zoom;
 };
+Camera camera;// global
 
 Ray cameraShootRay(Camera c, vec2 uv)
 {
@@ -269,8 +268,8 @@ float dMix(inout vec3 p) {
 float dMeta(inout vec3 p) {
 	float a = 1.0 + cos(lTime * 0.3);
 	float b = 0.2 * sin(lTime);
-	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
-	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
+	float d1 = dSphere(p - camera.target - vec3(a, 0, b), 1.0);
+	float d2 = dSphere(p - camera.target + vec3(a, 0, b), 1.0);
 	float d = smin(d1, d2, 1.0);
 	return d;
 }
@@ -513,13 +512,13 @@ void cameraControl(inout Camera camera) {
 	float b5 = step(1.0, t5);
 	float b6 = easeInOutCubic(clamp(t6, 0.0, 1.0));
 
-	target = vec3(0.0);
-	target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
-	target.y = mix(target.y, 1.0 + t2 * 0.3, b2);
-	target.y = mix(target.y, 0.0, b3);
+	camera.target = vec3(0.0);
+	camera.target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
+	camera.target.y = mix(camera.target.y, 1.0 + t2 * 0.3, b2);
+	camera.target.y = mix(camera.target.y, 0.0, b3);
 
 	// position
-	vec3 p0 = target + vec3(0.0, 0.0, -5.0);
+	vec3 p0 = camera.target + vec3(0.0, 0.0, -5.0);
 	vec3 p1 = vec3(1.0, 0.3 * abs(t1 - 2.5) - 1.0, 1.0);
 	vec3 p2 = vec3(3.5 + t2 * 0.8, 1.0 + t2 * 0.1, 0.0);
 	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
@@ -537,7 +536,7 @@ void cameraControl(inout Camera camera) {
 	camera.eye = mix(camera.eye, p6, b6);
 
 	// direction
-	camera.forward = normalize(target - camera.eye);
+	camera.forward = normalize(camera.target - camera.eye);
 }
 
 void main(void) {
@@ -548,9 +547,6 @@ void main(void) {
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
-	Camera camera;
-	//camera.eye = cPos;
-	//camera.target = target;
 	camera.up = vec3(0.0, 1.0, 0.0);
 	camera.zoom = 1.3;
 	cameraControl(camera);
