@@ -85,6 +85,42 @@ struct Ray {
 	vec3 direction;
 };
 
+// camera
+struct Camera {
+	vec3 eye, target;
+	vec3 forward, right, up;
+	float zoom;
+};
+
+Ray cameraShootRay(Camera c, vec2 uv)
+{
+    c.up = vec3(0.0, 1.0, 0.0);
+
+    //c.forward = normalize(c.target - c.eye);
+    c.right = cross(c.forward, c.up);
+    c.up = cross(c.right, c.forward);
+
+    Ray r;
+    r.origin = c.eye;
+    r.direction = normalize(uv.x * c.right + uv.y * c.up + c.zoom * c.forward);
+
+    return r;
+}
+
+// intersection
+struct Intersection {
+	bool hit;
+	vec3 position;
+	float distance;
+	vec3 normal;
+	vec2 uv;
+	float count;
+
+	int material;
+	vec3 color;
+	float reflection;
+};
+
 #define METAL_MATERIAL   0
 #define MIRROR_MATERIAL  1
 
@@ -115,20 +151,6 @@ float fbm(vec2 p) {
 	f += 0.0625 * noise(p);
 	return f / 0.9375;
 }
-
-// intersection
-struct Intersection {
-	bool hit;
-	vec3 position;
-	float distance;
-	vec3 normal;
-	vec2 uv;
-	float count;
-
-	int material;
-	vec3 color;
-	float reflection;
-};
 
 
 // distance functions
@@ -472,15 +494,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 0.5));
 }
 
-// gaz
-mat3 lookat(in vec3 eye, in vec3 target) {
-	vec3 w = normalize(target-eye);
-	vec3 u = normalize(cross(w,vec3(0.0,1.0,0.0)));
-	vec3 v = normalize(cross(u,w));
-    return mat3(u,v,w);
-}
-
-void setupCamera() {
+void cameraControl(inout Camera camera) {
 	// time
 	float t1 = lTime - META_SCENE_END_TIME;
 	float t2 = t1 - 30.0;
@@ -506,10 +520,9 @@ void setupCamera() {
 
 	// position
 	vec3 p0 = target + vec3(0.0, 0.0, -5.0);
-
-	float a = 0.2 * (lTime - META_SCENE_END_TIME);
+	//vec3 p1 = vec3(0.1, 10.5, -0.1);
+	float a = 0.1 * (lTime - META_SCENE_END_TIME);
 	vec3 p1 = vec3(1.0 * pow(0.1, a), abs(8.0 * cos(0.1 * lTime)), 1.0 * pow(0.1, a));
-
 	vec3 p2 = vec3(3.5 + t2 * 0.8, 1.0 + t2 * 0.1, 0.0);
 	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
 	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0);
@@ -518,19 +531,21 @@ void setupCamera() {
 	vec3 p5 = vec3(2.0 * cos(v), 0.1, (0.5 + t5 * 0.01) * sin(v));
 	vec3 p6 = vec3(0.0, 0.0, 0.5 + t6 * 0.1);
 
-	cPos = mix(p0,   p1, b1);
-	cPos = mix(cPos, p2, b2);
-	cPos = mix(cPos, p3, b3);
-	cPos = mix(cPos, p4, b4);
-	cPos = mix(cPos, p5, b5);
-	cPos = mix(cPos, p6, b6);
+	camera.eye = mix(p0,         p1, b1);
+	camera.eye = mix(camera.eye, p2, b2);
+	camera.eye = mix(camera.eye, p3, b3);
+	camera.eye = mix(camera.eye, p4, b4);
+	camera.eye = mix(camera.eye, p5, b5);
+	camera.eye = mix(camera.eye, p6, b6);
+
 
 	// direction
-	vec3 look = normalize(target - cPos);
-	vec3 down = vec3(-0.2, -1.0, -0.2);
+	vec3 look = normalize(target - camera.eye);
+	vec3 down = vec3(-0.1, -1.0, -0.2);
 
-	cDir = mix(look, down, b1);
-	cDir = mix(cDir, look, b2);
+	camera.forward = mix(look, down, b1);
+	camera.forward = mix(camera.forward, look, b2);
+	//camera.forward = look;
 }
 
 void main(void) {
@@ -538,28 +553,22 @@ void main(void) {
 	lTime = mod(time, SNOW_SCENE_END_TIME + 1.0);
 
 	// fragment position
-	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
+	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
-	Ray ray;
+	Camera camera;
+	//camera.eye = cPos;
+	//camera.target = target;
+	camera.up = vec3(0.0, 1.0, 0.0);
+	camera.zoom = 1.3;
+	cameraControl(camera);
 
-	setupCamera();
 	if (debugCamera) {
-		cPos = cameraPos;
-		cDir = cameraDir;
+		camera.eye     = cameraPos;
+		camera.forward = cameraDir;
 	}
 
-	float targetDepth = 1.3;
-	vec3 up =  vec3( 0.0, 1.0 ,0.0 );
-	vec3 cSide = normalize( cross( cDir, up ) );
-	vec3 cUp   = normalize( cross( cSide, cDir ) );
-	ray.origin = cPos;
-	ray.direction = normalize( cSide * fragPos.x + cUp * fragPos.y + cDir * targetDepth );
-
-	// music's tempo
-	tempo = sin( PI * lTime );
-	//tempo = sin( PI * lTime ) + sin( 3.0 * PI * lTime ) + sin( 2.0 * PI * lTime ) + sin( PI * lTime );
-	//tempo /= 4.0;
+	Ray ray = cameraShootRay(camera, uv);
 
 	vec3 color = vec3( 0.0 );
 	float reflection = 1.0;
@@ -576,10 +585,7 @@ void main(void) {
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
 
-	//color += 0.2 * tempo;
-
 	gl_FragColor = vec4( color, 1.0 );
-
 }
 
 		</script>
@@ -612,7 +618,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 0.0;
+			var offsetTime = 30.0;
 
 			var config = {
 				saveImage: function() {
