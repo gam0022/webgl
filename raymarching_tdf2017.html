@@ -93,10 +93,8 @@ Camera camera;// global
 
 Ray cameraShootRay(Camera c, vec2 uv)
 {
-    vec3 yUp = vec3(0.0, 1.0, 0.0);
-
     c.forward = normalize(c.target - c.eye);
-    c.right = normalize(cross(c.forward, yUp));
+    c.right = normalize(cross(c.forward, c.up));
     c.up    = normalize(cross(c.right, c.forward));
 
     Ray r;
@@ -153,25 +151,32 @@ float fbm(vec2 p) {
 	return f / 0.9375;
 }
 
+float easeInCubic( float t ) {
+	return t * t * t;
+}
+
+float easeInOutCubic( float t ) {
+	return t < 0.5 ? 4.0 * t * t * t : ( t - 1.0 ) * ( 2.0 * t - 2.0 ) * ( 2.0 * t - 2.0 ) + 1.0;
+}
+
+float gauss(float x) {
+	float a = 50.0;
+	return exp(-x * x / a);
+}
+
 
 // Distance Functions
 
 // operations
-vec3 opRep( vec3 p, float interval ) {
-	return mod( p, interval ) - 0.5 * interval;
-}
+//vec3 opRep( vec3 p, float interval ) {
+//	return mod( p, interval ) - 0.5 * interval;
+//}
+#define opRep(p, interval) (mod(p, interval) - 0.5 * interval)
 
-vec2 opRep( vec2 p, float interval ) {
-	return mod( p, interval ) - 0.5 * interval;
-}
-
-float opRep( float p, float interval ) {
-	return mod( p, interval ) - 0.5 * interval;
-}
-
-vec2 opRepLimit(vec2 p, float interval, float limit) {
-	return mod(clamp(p, -limit, limit), interval) - 0.5 * interval;
-}
+//vec2 opRepLimit(vec2 p, float interval, float limit) {
+//	return mod(clamp(p, -limit, limit), interval) - 0.5 * interval;
+//}
+#define opRepLimit(p, interval, limit) (mod(clamp(p, -limit, limit), interval) - 0.5 * interval)
 
 // https://www.shadertoy.com/view/Mlf3Wj
 mat2 rotate(in float a) {
@@ -187,7 +192,7 @@ vec2 fold(in vec2 p, in float s) {
     return p;
 }
 
-float smin(float d1, float d2, float k){
+float smin(float d1, float d2, float k) {
 	float h = exp(-k * d1) + exp(-k * d2);
 	return -log(h) / k;
 }
@@ -280,11 +285,6 @@ float dMeta(inout vec3 p) {
 	return d;
 }
 
-float gauss(float x) {
-	float a = 50.0;
-	return exp(-x * x / a);
-}
-
 float hWave(vec2 p, float t) {
 	float h = 1.0;
 	float a = 1.0;
@@ -318,14 +318,6 @@ float dWing(in vec3 p) {
 	d = max(d, -sdBox(p1, vec3(0.3 - a,       14.0 - 4.0 * a, a)));
 	d = max(d, -sdBox(p2, vec3(0.8 * a, 1.0 - a, 0.8 * a)));
 	return d;
-}
-
-float easeInCubic( float t ) {
-	return t * t * t;
-}
-
-float easeInOutCubic( float t ) {
-	return t < 0.5 ? 4.0 * t * t * t : ( t - 1.0 ) * ( 2.0 * t - 2.0 ) * ( 2.0 * t - 2.0 ) + 1.0;
 }
 
 float dUfo(inout vec3 p) {
@@ -606,15 +598,14 @@ void main(void) {
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
-	camera.up = vec3(0.0, 1.0, 0.0);
-	camera.zoom = 1.3;
 	cameraControl(camera);
-
 	if (debugCamera) {
 		camera.eye     = cameraPos;
 		camera.forward = cameraDir;
 	}
 
+	camera.up = vec3(0.0, 1.0, 0.0);// y-up
+	camera.zoom = 1.3;
 	Ray ray = cameraShootRay(camera, uv);
 
 	vec3 color = vec3( 0.0 );
