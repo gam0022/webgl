@@ -668,10 +668,11 @@ void main(void) {
 
 			var config = {
 				saveImage: function() {
-
 					renderer.render( scene, camera );
 					window.open( canvas.toDataURL() );
-
+				},
+				soucePlain: function() {
+					outputTextToTab( document.getElementById( 'fragment_shader' ).textContent );
 				},
 				camera: 'GLSL',
 				resolution: '512',
@@ -733,6 +734,7 @@ void main(void) {
 
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
+				gui.add( config, 'soucePlain' ).name( 'Souce Plain' );
 				gui.add( config, 'camera', [ 'GLSL', 'Orbit', /*'Fly'*/ ] ).name( 'Camera' );
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
@@ -800,25 +802,22 @@ void main(void) {
 			}
 
 			function onMouseMove( e ) {
-
 				mouse.x = e.offsetX / canvas.width;
 				mouse.y = e.offsetY / canvas.height;
-
 			}
 
 			function onWindowResize( e ) {
-
 				if ( config.resolution === 'full' ) {
-
 					canvas.width = window.innerWidth;
 					canvas.height = window.innerHeight;
-
 				}
-
 				renderer.setSize( canvas.width, canvas.height );
-
 			}
 
+			function outputTextToTab(text) {
+				var type = "text/plain";
+				window.open("data:" + type + ";base64," + window.btoa(text));
+			}
 		</script>
 
 	</body>
