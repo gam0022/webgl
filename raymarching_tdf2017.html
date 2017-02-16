@@ -50,11 +50,14 @@ http://opensource.org/licenses/mit-license.php
 precision highp float;
 
 #define DEBUG 1
+#define SHADER_TOY 0
 
 // uniforms
+#if SHADER_TOY == 0
 uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
+#endif
 
 // debug for camera
 #if DEBUG
@@ -672,7 +675,25 @@ void main(void) {
 					window.open( canvas.toDataURL() );
 				},
 				soucePlain: function() {
-					outputTextToTab( document.getElementById( 'fragment_shader' ).textContent );
+					outputShaderToTab( function(text){ return text; });
+				},
+				souceRelease: function() {
+					outputShaderToTab( function(text){
+						return text.replace(/#define DEBUG 1/, "#define DEBUG 0");
+					});
+				},
+				souceShaderToy: function() {
+					outputShaderToTab( function(text){
+						return text.
+							replace(/#define DEBUG 1/, "#define DEBUG 0").
+							replace(/#define SHADER_TOY 0/, "#define SHADER_TOY 1").
+							replace(/void main\(void\)/, "void mainImage( out vec4 fragColor, in vec2 fragCoord )").
+							replace(/\b(resolution)\b/g, "iResolution.xy").
+							replace(/\b(mouse)\b/g, "iMouse").
+							replace(/\b(gl_FragCoord)\b/g, "fragCoord").
+							replace(/\b(gl_FragColor)\b/g, "fragColor").
+							replace(/\b(time)\b/g, "iGlobalTime");
+					});
 				},
 				camera: 'GLSL',
 				resolution: '512',
@@ -735,6 +756,8 @@ void main(void) {
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save Image' );
 				gui.add( config, 'soucePlain' ).name( 'Souce Plain' );
+				gui.add( config, 'souceRelease' ).name( 'Souce Release' );
+				gui.add( config, 'souceShaderToy' ).name( 'Souce ShaderToy' );
 				gui.add( config, 'camera', [ 'GLSL', 'Orbit', /*'Fly'*/ ] ).name( 'Camera' );
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 
@@ -817,6 +840,12 @@ void main(void) {
 			function outputTextToTab(text) {
 				var type = "text/plain";
 				window.open("data:" + type + ";base64," + window.btoa(text));
+			}
+
+			function outputShaderToTab(filter) {
+				var rawShader = document.getElementById( 'fragment_shader' ).textContent;
+				var text = filter( rawShader );
+				outputTextToTab( text );
 			}
 		</script>
 
