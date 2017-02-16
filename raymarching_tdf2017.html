@@ -120,11 +120,13 @@ struct Intersection {
 	float reflection;
 };
 
-#define METAL_MATERIAL   0
-#define MIRROR_MATERIAL  1
+//#define METAL_MATERIAL   0
+//#define MIRROR_MATERIAL  1
 
 
 // util
+#define saturate(x) clamp(x, 0.0, 1.0)
+
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
 float noise(vec2 x) {
@@ -152,7 +154,9 @@ float fbm(vec2 p) {
 }
 
 
-// distance functions
+// Distance Functions
+
+// operations
 vec3 opRep( vec3 p, float interval ) {
 	return mod( p, interval ) - 0.5 * interval;
 }
@@ -187,6 +191,8 @@ float smin(float d1, float d2, float k){
 	float h = exp(-k * d1) + exp(-k * d2);
 	return -log(h) / k;
 }
+
+// functions
 
 // https://www.shadertoy.com/view/MdVGRc
 float dMbox( vec3 p ) {
@@ -237,8 +243,8 @@ float dFract(inout vec3 p) {
 }
 
 float dTree(vec3 p) {
-	float scale = 0.6 * clamp(1.5 * sin(0.05 * (lTime - UFO_SCENE_END_TIME - 5.0)), 0.0, 1.0);
-	float width = mix(0.3 * scale, 0.0, clamp(p.y, 0.0, 1.0));
+	float scale = 0.6 * saturate(1.5 * sin(0.05 * (lTime - UFO_SCENE_END_TIME - 5.0)));
+	float width = mix(0.3 * scale, 0.0, saturate(p.y));
 	vec3 size = vec3(width, 1.0, width);
 	float d = sdBox(p, size);
 	for (int i = 0; i < 10; i++) {
@@ -349,9 +355,9 @@ float dScene( vec3 p ) {
 
 // color functions
 vec3 hsv2rgb( vec3 c ) {
-	vec4 K = vec4( 1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0 );
-	vec3 p = abs( fract( c.xxx + K.xyz ) * 6.0 - K.www );
-	return c.z * mix( K.xxx, clamp( p - K.xxx, 0.0, 1.0 ), c.y );
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(fract(c.xxx + K.xyz ) * 6.0 - K.www);
+	return c.z * mix(K.xxx, saturate(p - K.xxx), c.y);
 }
 
 // http://glslsandbox.com/e#21290.5
@@ -364,20 +370,20 @@ vec2 circuitPattern( vec2 p ) {
 	float cp, d;
 	
 	d = p.x;
-	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
+	g += pow(saturate(1.0 - abs(d)), 1000.0);
 	d = p.y;
-	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
+	g += pow(saturate(1.0 - abs(d)), 1000.0);
 	d = p.x - 1.0;
-	g += pow(clamp(3.0 - abs(d), 0.0, 1.0), 1000.0);
+	g += pow(saturate(3.0 - abs(d)), 1000.0);
 	d = p.y - 1.0;
-	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 10000.0);
+	g += pow(saturate(1.0 - abs(d)), 10000.0);
 	
 	const int iter = 15;
 	for(int i = 0; i < iter; i ++)
 	{
 		cp = 0.5 + (r - 0.5) * 0.9;
 		d = p.x - cp;
-		g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 200.0);
+		g += pow(saturate(1.0 - abs(d)), 200.0);
 		if(d > 0.0) {
 			r = fract(r * 4829.013 * 2.0);
 			p.x = (p.x - cp) / (1.0 - cp);
@@ -415,7 +421,7 @@ void setMaterialAndUv(inout Intersection intersection, vec3 p) {
 		intersection.reflection = rate;
 	}
 
-	intersection.reflection = mix(intersection.reflection, 0.7, clamp((lTime - META_SCENE_END_TIME) * 0.1, 0.0, 1.0));
+	intersection.reflection = mix(intersection.reflection, 0.7, saturate((lTime - META_SCENE_END_TIME) * 0.1));
 
 	//if ( false && lTime <= META_SCENE_END_TIME ) {
 	//	intersection.material = MIRROR_MATERIAL;
@@ -455,7 +461,7 @@ float calcAo(in vec3 p, in vec3 n){
 		occ += (hr - dd) * sca;
 		sca *= 0.5;
 	}
-	return clamp(1.0 - occ, 0.0, 1.0);
+	return saturate(1.0 - occ);
 }
 
 float calcShadow(in vec3 p, in vec3 rd) {
@@ -510,7 +516,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 
 	if ( intersection.hit ) {
 		float diffuse = clamp(dot(lightDir, intersection.normal), 0.2, 1.0) * 0.5 + 0.5;
-		float specular = pow(clamp(dot(reflect(lightDir, intersection.normal), ray.direction), 0.0, 1.0), 10.0);
+		float specular = pow(saturate(dot(reflect(lightDir, intersection.normal), ray.direction)), 10.0);
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
@@ -526,7 +532,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		vec3 base = mix(sunnySky, cloudySky, step(UFO_SCENE_END_TIME, lTime)) * (1.0 - 0.8 * ray.direction.y) * 0.9;
 
 		// Sun
-		float sundot = clamp(dot(ray.direction, lightDir), 0.0, 1.0);
+		float sundot = saturate(dot(ray.direction, lightDir));
 		base += 0.25 * vec3(1.0, 0.7, 0.4) * pow(sundot, 8.0);
 		base += 0.75 * vec3(1.0, 0.8, 0.5) * pow(sundot, 64.0);
 
@@ -555,14 +561,14 @@ void cameraControl(inout Camera camera) {
 	float t7 = t6 - 12.0;
 
 	// blend
-	float b1 = easeInOutCubic(clamp(t1 * 0.2, 0.0, 1.0));
-	float b2 = easeInOutCubic(clamp(t2 * 0.4, 0.0, 1.0));
-	float b3 = easeInOutCubic(clamp(t3 * 0.4, 0.0, 1.0));
-	float b4 = easeInOutCubic(clamp(t4 * 0.2, 0.0, 1.0));
+	float b1 = easeInOutCubic(saturate(t1 * 0.2));
+	float b2 = easeInOutCubic(saturate(t2 * 0.4));
+	float b3 = easeInOutCubic(saturate(t3 * 0.4));
+	float b4 = easeInOutCubic(saturate(t4 * 0.2));
 
-	float b5 = easeInOutCubic(clamp(t5, 0.0, 1.0));
-	float b6 = easeInOutCubic(clamp(t6 - 3.0, 0.0, 1.0));
-	float b7 = easeInOutCubic(clamp(t7, 0.0, 1.0));
+	float b5 = easeInOutCubic(saturate(t5));
+	float b6 = easeInOutCubic(saturate(t6 - 3.0));
+	float b7 = easeInOutCubic(saturate(t7));
 
 	camera.target = vec3(0.0);
 	camera.target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
