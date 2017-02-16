@@ -547,7 +547,7 @@ void cameraControl(inout Camera camera) {
 	float t1 = lTime - META_SCENE_END_TIME;
 	float t2 = t1 - 25.0;
 	float t3 = t2 - 16.0;
-	float t4 = t3 - 30.0;
+	float t4 = t3 - 20.0;
 
 	float t5 = lTime - UFO_SCENE_END_TIME;
 	float t6 = t5 - 6.0;
@@ -565,18 +565,20 @@ void cameraControl(inout Camera camera) {
 
 	// camera target
 	camera.target = vec3(0.0);
-	camera.target.y = 0.7 * clamp(META_SCENE_END_TIME - lTime, -4.0, 40.0);
+
+	camera.target.y = clamp(-0.7 * t1, -2.8, 100.0);
 	camera.target.y = mix(camera.target.y, 1.0 + t2 * 0.3, b2);
 	camera.target.y = mix(camera.target.y, 0.0, b3);
+
 	camera.target.x = mix(camera.target.x, -0.7, b6);
 	camera.target.x = mix(camera.target.x, 0.0, b7);
 
 	// camera position
-	vec3 p0 = camera.target + vec3(0.0, 0.0, -5.0);
-	vec3 p1 = vec3(1.0, 0.3 * abs(t1 - 0.5), 1.0);
-	vec3 p2 = vec3(3.5 + t2 * 0.8, 1.0 + t2 * 0.1, 0.0);
-	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0);
-	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0);
+	vec3 p0 = camera.target + vec3(0.0, 0.0, -5.0); // down
+	vec3 p1 = vec3(1.0, 0.3 * abs(t1 - 0.5), 1.0);  // look down
+	vec3 p2 = vec3(2.5 + t2 * 0.9, 0.5 + t2 * 0.1, 0.0); // side
+	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0); // zoom
+	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0); // leave
 
 	float v = 0.3 + t5 * 0.1;
 	vec3 p5 = vec3(0.0, 0.1, 5.0 - t5 * 0.1);
@@ -662,7 +664,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 119.0;
+			var offsetTime = 45.0;
 
 			var config = {
 				saveImage: function() {
