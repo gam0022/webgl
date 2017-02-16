@@ -47,10 +47,9 @@ http://opensource.org/licenses/mit-license.php
 		</div>
 
 		<script id="fragment_shader" type="x-shader/x-fragment">
+precision highp float;
 
-#ifdef GL_ES
-precision mediump float;
-#endif
+#define DEBUG 1
 
 // uniforms
 uniform float time;
@@ -58,9 +57,11 @@ uniform vec2 mouse;
 uniform vec2 resolution;
 
 // debug for camera
+#if DEBUG
 uniform bool debugCamera;
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
+#endif
 
 // consts
 const float INF = 1e+10;
@@ -599,10 +600,12 @@ void main(void) {
 
 	// camera and ray
 	cameraControl(camera);
+#if DEBUG
 	if (debugCamera) {
 		camera.eye     = cameraPos;
 		camera.forward = cameraDir;
 	}
+#endif
 
 	camera.up = vec3(0.0, 1.0, 0.0);// y-up
 	camera.zoom = 1.3;
