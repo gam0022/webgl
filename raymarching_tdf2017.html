@@ -344,7 +344,7 @@ float dUfo(inout vec3 p) {
 	p.xz = fold(p.xz, min(t2, 10.0));
 	p.z -= 0.5;
 
-	return dWing(p);
+	return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
 }
 
 float dScene( vec3 p ) {
