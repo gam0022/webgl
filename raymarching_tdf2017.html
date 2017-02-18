@@ -69,6 +69,7 @@ uniform vec3 cameraDir;
 // consts
 const float INF = 1e+10;
 const float EPS = 1e-2;
+const float EPS_N = 1e-3;
 const float OFFSET = EPS * 100.0;
 
 const float PI = 3.14159265359;
@@ -381,7 +382,7 @@ vec3 hsv2rgb( vec3 c ) {
 //			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
 //}
 
-#define calcNormal(p, dFunc) normalize(vec2(EPS, -EPS).xyy * dFunc( p + vec2(EPS, -EPS).xyy ) + vec2(EPS, -EPS).yyx * dFunc( p + vec2(EPS, -EPS).yyx ) + vec2(EPS, -EPS).yxy * dFunc( p + vec2(EPS, -EPS).yxy ) + vec2(EPS, -EPS).xxx * dFunc( p + vec2(EPS, -EPS).xxx ) )
+#define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc( p + vec2(EPS_N, -EPS_N).xyy ) + vec2(EPS_N, -EPS_N).yyx * dFunc( p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc( p + vec2(EPS_N, -EPS_N).yxy ) + vec2(EPS_N, -EPS_N).xxx * dFunc( p + vec2(EPS_N, -EPS_N).xxx ) )
 
 float calcRate(float a, float b) {
 	return a / (a + b);
