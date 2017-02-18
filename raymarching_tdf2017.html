@@ -374,12 +374,14 @@ vec3 hsv2rgb( vec3 c ) {
 	return c.z * mix(K.xxx, saturate(p - K.xxx), c.y);
 }
 
-vec3 calcNormal( vec3 p ) {
-	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
-	return normalize(
-		e.xyy * dScene( p + e.xyy ) + e.yyx * dScene( p + e.yyx ) + 
-			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
-}
+//vec3 calcNormal( vec3 p ) {
+//	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
+//	return normalize(
+//		e.xyy * dScene( p + e.xyy ) + e.yyx * dScene( p + e.yyx ) +
+//			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
+//}
+
+#define calcNormal(p, dFunc) normalize(vec2(EPS, -EPS).xyy * dFunc( p + vec2(EPS, -EPS).xyy ) + vec2(EPS, -EPS).yyx * dFunc( p + vec2(EPS, -EPS).yyx ) + vec2(EPS, -EPS).yxy * dFunc( p + vec2(EPS, -EPS).yxy ) + vec2(EPS, -EPS).xxx * dFunc( p + vec2(EPS, -EPS).xxx ) )
 
 float calcRate(float a, float b) {
 	return a / (a + b);
@@ -411,19 +413,19 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	intersection.distance = 0.0;
 	vec3 p = ray.origin;
 
-	for ( float i = 0.0; i < 128.0; i++ ) {
-		d = dScene( p );
+	for (float i = 0.0; i < 128.0; i++) {
+		d = dScene(p);
 		intersection.distance += d;
 		p = ray.origin + intersection.distance * ray.direction;
 		intersection.count = i;
 		if (abs(d) < EPS || intersection.distance > 100.0) break;
 	}
 
-	if ( abs( d ) < EPS ) {
+	if (abs(d) < EPS) {
 		intersection.hit = true;
 		intersection.position = p;
-		intersection.normal = calcNormal( p );
-		setMaterialAndUv( intersection, p );
+		intersection.normal = calcNormal(p, dScene);
+		setMaterialAndUv(intersection, p);
 	}
 }
 
