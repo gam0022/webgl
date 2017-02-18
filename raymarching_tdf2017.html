@@ -332,26 +332,33 @@ float dUfo(inout vec3 p) {
 	p.z -= 0.5;
 
 	float d = dWing(p);
-	float t3 = lTime - META_SCENE_END_TIME;
-	if (t3 < 10.0) {
-		d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
-	}
+	//float t3 = lTime - META_SCENE_END_TIME;
+	//if (t3 < 10.0) {
+	//	d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
+	//}
 	return d;
-	//return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
 }
 
 float dScene(vec3 p) {
-	//if (lTime < META_SCENE_END_TIME + 12.0) {
 	if (lTime < UFO_SCENE_END_TIME - 2.0) {
 		float d = dMeta(p);
 		d = smin(d, dUfo(p), clamp(lTime - META_SCENE_END_TIME, 1.0, 15.0));
 		return d;
-	//} else if (lTime <= UFO_SCENE_END_TIME) {
-	//	return dUfo(p);
 	} else {
 		//return dFract(p);
 		return dSnowCrystal(p);
 	}
+}
+
+float dSceneBump(vec3 p) {
+	float d = dScene(p);
+
+	float t3 = lTime - META_SCENE_END_TIME;
+	if (t3 < 10.0) {
+		d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
+	}
+
+	return d;
 }
 
 
@@ -484,14 +491,19 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
+		vec3 fleshNormal = calcNormal(intersection.position, dSceneBump);
+		float fleshDiffuse = clamp(dot(lightDir, fleshNormal), 0.2, 1.0) * 0.5 + 0.5;
 		vec3 fleshBase =  mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz));
-		vec3 flesh = fleshBase * diffuse * ao * shadow + 0.1 * specular;
+		vec3 flesh = fleshBase * fleshDiffuse * ao * shadow + 0.1 * specular;
 
 		float v = (META_SCENE_END_TIME <= lTime && lTime <= UFO_SCENE_END_TIME) ? 0.8 : 0.5;
 		vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.3 * sin(lTime), v));
 		vec3 metal = metalBase * diffuse * ao * shadow + 0.1 * specular;
 
 		intersection.color = mix(flesh, metal, intersection.reflection);
+		intersection.normal = mix(fleshNormal, intersection.normal, intersection.reflection);
+
+		// fog
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
 	} else {
 		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
