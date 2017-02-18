@@ -94,7 +94,6 @@ struct Camera {
 	vec3 forward, right, up;
 	float zoom;
 };
-Camera camera;// global
 
 Ray cameraShootRay(Camera c, vec2 uv)
 {
@@ -276,10 +275,15 @@ float dMix(inout vec3 p) {
 }
 
 float dMeta(inout vec3 p) {
+	// copy from cameraControl
+	vec3 target = vec3(0.0);
+	float t1 = lTime - META_SCENE_END_TIME;
+	target.y = clamp(-0.7 * t1, -2.8, 100.0);
+
 	float a = max(0.0, 2.0 - lTime * 0.1) + cos(lTime * 0.3);
 	float b = 0.2 * sin(lTime);
-	float d1 = dSphere(p - camera.target - vec3(a, 0, b), 1.0);
-	float d2 = dSphere(p - camera.target + vec3(a, 0, b), 1.0);
+	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
+	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
 	float d = smin(d1, d2, 1.0);
 	return d;
 }
@@ -337,12 +341,13 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene(vec3 p) {
-	if (lTime < META_SCENE_END_TIME + 12.0) {
+	//if (lTime < META_SCENE_END_TIME + 12.0) {
+	if (lTime < UFO_SCENE_END_TIME) {
 		float d = dMeta(p);
 		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME), 1.0, 15.0));
 		return d;
-	} else if (lTime <= UFO_SCENE_END_TIME) {
-		return dUfo(p);
+	//} else if (lTime <= UFO_SCENE_END_TIME) {
+	//	return dUfo(p);
 	} else {
 		//return dFract(p);
 		return dSnowCrystal(p);
@@ -573,6 +578,7 @@ void main(void) {
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
+	Camera camera;
 	cameraControl(camera);
 #if DEBUG
 	if (debugCamera) {
