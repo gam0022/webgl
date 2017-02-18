@@ -378,14 +378,14 @@ float calcRate(float a, float b) {
 void setMaterialAndUv(inout Intersection intersection, vec3 p) {
 	//intersection.material = METAL_MATERIAL;
 
-	if (lTime < META_SCENE_END_TIME + 10.0) {
-		float d1 = dUfo(p);
-		float d2 = dMeta(p);
-		float rate = calcRate(abs(d1), abs(d2));
-		intersection.reflection = rate;
-	}
+	float d1 = dUfo(p);
+	float d2 = dMeta(p);
+	float rate = calcRate(abs(d1), abs(d2));
+	intersection.reflection = rate;
 
-	intersection.reflection = mix(intersection.reflection, 0.7, saturate((lTime - META_SCENE_END_TIME) * 0.03));
+	float t = lTime - META_SCENE_END_TIME;
+	intersection.reflection = mix(intersection.reflection, 0.8, saturate(t * 0.1));
+	intersection.reflection = mix(intersection.reflection, 2.0, gauss((t - 13.0) * 3.0));
 
 	//if ( false && lTime <= META_SCENE_END_TIME ) {
 	//	intersection.material = MIRROR_MATERIAL;
@@ -484,10 +484,14 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		vec3 ruin  = mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz)) * diffuse * ao * shadow + 0.1 * specular;
-		vec3 metal = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
+		vec3 fleshBase =  mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz));
+		vec3 flesh = fleshBase * diffuse * ao * shadow + 0.1 * specular;
 
-		intersection.color = mix(ruin, metal, intersection.reflection + 0.2);
+		float v = (META_SCENE_END_TIME <= lTime && lTime <= UFO_SCENE_END_TIME) ? 0.8 : 0.5;
+		vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.3 * sin(lTime), v));
+		vec3 metal = metalBase * diffuse * ao * shadow + 0.1 * specular;
+
+		intersection.color = mix(flesh, metal, intersection.reflection);
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
 	} else {
 		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
@@ -641,7 +645,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 30.0;
+			var offsetTime = 0.0;
 
 			var config = {
 				saveImage: function() {
