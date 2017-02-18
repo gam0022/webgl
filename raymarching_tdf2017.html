@@ -595,15 +595,15 @@ void main(void) {
 	camera.zoom = 1.3;
 	Ray ray = cameraShootRay(camera, uv);
 
-	vec3 color = vec3( 0.0 );
+	vec3 color = vec3(0.0);
 	float reflection = 1.0;
 	Intersection intersection;
 
-	for ( int bounce = 0; bounce <= 2; bounce++ ) {
-		calcRadiance( intersection, ray, bounce );
+	for (int bounce = 0; bounce <= 2; bounce++) {
+		calcRadiance(intersection, ray, bounce);
 
 		color += reflection * intersection.color;
-		if ( !intersection.hit /* || intersection.material != METAL_MATERIAL*/ ) break;
+		if (!intersection.hit /* || intersection.material != METAL_MATERIAL*/) break;
 
 		reflection *= intersection.reflection;
 		ray.origin = intersection.position + intersection.normal * OFFSET;
@@ -645,7 +645,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 90.0;
+			var offsetTime = 0.0;
 
 			var config = {
 				saveImage: function() {
