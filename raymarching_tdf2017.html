@@ -148,17 +148,17 @@ float noise(vec2 x) {
 #define HASHSCALE3 vec3(.1031, .1030, .0973)
 #define HASHSCALE4 vec4(1031, .1030, .0973, .1099)
 
-//  3 out, 1 in...
-vec3 hash31(float p) {
-   vec3 p3 = fract(vec3(p) * HASHSCALE3);
-   p3 += dot(p3, p3.yzx+19.19);
-   return fract((p3.xxy+p3.yzz)*p3.zyx);
+//  1 out, 3 in...
+float hash13(vec3 p3) {
+	p3  = fract(p3 * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
 }
 
 float fbm(vec2 p) {
 	const mat2 m2 = mat2(0.8, -0.6, 0.6, 0.8);
 
-	p.xy += lTime;
+	p.xy += 0.1 * lTime;
 
 	float f = 0.5000 * noise(p); p = m2 * p * 2.02;
 	f += 0.2500 * noise(p); p = m2 * p * 2.03;
@@ -344,7 +344,7 @@ float dScene(vec3 p) {
 	//if (lTime < META_SCENE_END_TIME + 12.0) {
 	if (lTime < UFO_SCENE_END_TIME - 2.0) {
 		float d = dMeta(p);
-		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME), 1.0, 15.0));
+		d = smin(d, dUfo(p), clamp(lTime - META_SCENE_END_TIME, 1.0, 15.0));
 		return d;
 	//} else if (lTime <= UFO_SCENE_END_TIME) {
 	//	return dUfo(p);
@@ -505,7 +505,7 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		base += 0.75 * vec3(1.0, 0.8, 0.5) * pow(sundot, 64.0);
 
 		// Clouds
-		float rd = ray.direction.y + 0.5;
+		float rd = ray.direction.y + 0.1;
 		intersection.color = mix(base, cloud, 0.5 *
 			smoothstep(0.5, 0.8, fbm((ray.origin.xz + ray.direction.xz * (250000.0 - ray.origin.y) / rd) * 0.000008)));
 
