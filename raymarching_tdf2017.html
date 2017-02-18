@@ -328,9 +328,9 @@ float dUfo(inout vec3 p) {
 	p.z -= 0.5;
 
 	float d = dWing(p);
-	float t3 = lTime - META_SCENE_END_TIME - 5.0;
-	if (t3 < 0.0) {
-		d -= 0.08 * fbm(10.0 * p.xz + 5.0 * p.y);
+	float t3 = lTime - META_SCENE_END_TIME;
+	if (t3 < 10.0) {
+		d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
 	}
 	return d;
 	//return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
