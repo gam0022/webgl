@@ -344,7 +344,12 @@ float dUfo(inout vec3 p) {
 	p.xz = fold(p.xz, min(t2, 10.0));
 	p.z -= 0.5;
 
-	return dWing(p);
+	float d = dWing(p);
+	float t3 = lTime - META_SCENE_END_TIME - 5.0;
+	if (t3 < 0.0) {
+		d -= 0.08 * fbm(10.0 * p.xz + 5.0 * p.y);
+	}
+	return d;
 	//return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
 }
 
@@ -361,10 +366,6 @@ float dScene( vec3 p ) {
 	}
 }
 
-float dSceneRuin(vec3 p) {
-	float bump = 0.08 * fbm(10.0 * p.xz + 5.0 * p.y);
-	return dScene(p) - bump;
-}
 
 // color functions
 vec3 hsv2rgb( vec3 c ) {
@@ -495,14 +496,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		vec3 ruinNormal = intersection.normal;
-		float t = lTime - META_SCENE_END_TIME - 5.0;
-		if (t < 0.0) {
-			ruinNormal = calcNormal(intersection.position, dSceneRuin);
-		}
-		float diffuseRuin = clamp(dot(lightDir, ruinNormal), 0.2, 1.0);
-
-		vec3 ruin  = mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz)) * diffuseRuin * ao * shadow + 0.1 * specular;
+		vec3 ruin  = mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz)) * diffuse * ao * shadow + 0.1 * specular;
 		vec3 metal = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
 
 		intersection.color = mix(ruin, metal, intersection.reflection + 0.2);
@@ -659,7 +653,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 27.0;
+			var offsetTime = 15.0;
 
 			var config = {
 				saveImage: function() {
@@ -688,7 +682,7 @@ void main(void) {
 					});
 				},
 				camera: 'GLSL',
-				resolution: '512',
+				resolution: '256',
 			};
 
 			init();
