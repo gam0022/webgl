@@ -143,6 +143,18 @@ float noise(vec2 x) {
 	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
 
+
+#define HASHSCALE1 .1031
+#define HASHSCALE3 vec3(.1031, .1030, .0973)
+#define HASHSCALE4 vec4(1031, .1030, .0973, .1099)
+
+//  3 out, 1 in...
+vec3 hash31(float p) {
+   vec3 p3 = fract(vec3(p) * HASHSCALE3);
+   p3 += dot(p3, p3.yzx+19.19);
+   return fract((p3.xxy+p3.yzz)*p3.zyx);
+}
+
 float fbm(vec2 p) {
 	const mat2 m2 = mat2(0.8, -0.6, 0.6, 0.8);
 
@@ -516,7 +528,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		vec3 ruin  = vec3(0.8, 0.2, 0.2) * diffuse * ao * shadow + 0.1 * specular;
+		vec3 ruin  = mix(vec3(1.0, 0.2, 0.2), vec3(0.3, 0.0, 0.0), fbm(2.0 * intersection.position.xz)) * diffuse * ao * shadow + 0.1 * specular;
 		vec3 metal = hsv2rgb(vec3(0.1 * intersection.count, 0.3 + 0.3 * sin(lTime), 0.5)) * diffuse * ao * shadow + 0.1 * specular;
 
 		intersection.color = mix(ruin, metal, intersection.reflection + 0.2);
