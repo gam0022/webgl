@@ -610,7 +610,7 @@ void main(void) {
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
 
-	color += screenSpaceSnow(uv) * step(UFO_SCENE_END_TIME - 20.0, lTime);
+	color += screenSpaceSnow(uv) * saturate((lTime - UFO_SCENE_END_TIME + 20.0) * 0.1);
 
 	gl_FragColor = vec4(color, 1.0);
 }
@@ -645,7 +645,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 0.0;
+			var offsetTime = 90.0;
 
 			var config = {
 				saveImage: function() {
