@@ -247,8 +247,8 @@ float dBar( vec2 p, float interval, float width) {
 
 
 #define META_SCENE_END_TIME (32.0)
-#define UFO_SCENE_END_TIME (120.0)
-#define SNOW_SCENE_END_TIME (180.0)
+#define UFO_SCENE_END_TIME (122.0)
+#define SNOW_SCENE_END_TIME (182.0)
 
 float dFract(inout vec3 p) {
 	float radius = 1.0;
@@ -395,7 +395,7 @@ void setMaterialAndUv(inout Intersection intersection, vec3 p) {
 		intersection.reflection = rate;
 	}
 
-	intersection.reflection = mix(intersection.reflection, 0.7, saturate((lTime - META_SCENE_END_TIME) * 0.07));
+	intersection.reflection = mix(intersection.reflection, 0.7, saturate((lTime - META_SCENE_END_TIME) * 0.03));
 
 	//if ( false && lTime <= META_SCENE_END_TIME ) {
 	//	intersection.material = MIRROR_MATERIAL;
@@ -503,7 +503,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
 		vec3 cloudySky = vec3(0.7);
 		vec3 cloud = vec3(1.0, 0.95, 1.0);
-		vec3 base = mix(sunnySky, cloudySky, step(UFO_SCENE_END_TIME, lTime)) * (1.0 - 0.8 * ray.direction.y) * 0.9;
+		vec3 base = mix(sunnySky, cloudySky, step(UFO_SCENE_END_TIME - 20.0, lTime)) * (1.0 - 0.8 * ray.direction.y) * 0.9;
 
 		// Sun
 		float sundot = saturate(dot(ray.direction, lightDir));
@@ -519,7 +519,7 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 	}
 
 	// Whiteout
-	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 5.0));
+	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 1.0));
 	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 0.5));
 }
 
@@ -535,12 +535,15 @@ void cameraControl(inout Camera camera) {
 	float t7 = t6 - 12.0;
 
 	// blend
+
+	// ufo
 	float b1 = easeInOutCubic(saturate(t1 * 0.2));
 	float b2 = easeInOutCubic(saturate(t2 * 0.4));
 	float b3 = easeInOutCubic(saturate(t3 * 0.4));
 	float b4 = easeInOutCubic(saturate(t4 * 0.2));
 
-	float b5 = easeInOutCubic(saturate(t5));
+	// snow
+	float b5 = saturate(t5 + 1.0);
 	float b6 = easeInOutCubic(saturate(t6 - 3.0));
 	float b7 = easeInOutCubic(saturate(t7));
 
@@ -550,7 +553,10 @@ void cameraControl(inout Camera camera) {
 	camera.target.y = clamp(-0.7 * t1, -2.8, 100.0);
 	camera.target.y = mix(camera.target.y, 1.0 + t2 * 0.3, b2);
 	camera.target.y = mix(camera.target.y, 0.0, b3);
+	camera.target.y = mix(camera.target.y, 0.0 + 0.5 * t4, b4);
 
+	//camera.target.y = mix(camera.target.y, 0.0, t5 - 1.0);
+	camera.target.y = mix(camera.target.y, 0.0, b5);
 	camera.target.x = mix(camera.target.x, -0.7, b6);
 	camera.target.x = mix(camera.target.x, 0.0, b7);
 
@@ -559,7 +565,7 @@ void cameraControl(inout Camera camera) {
 	vec3 p1 = vec3(1.0, 0.3 * abs(t1 - 0.5), 1.0);  // look down
 	vec3 p2 = vec3(2.5 + t2 * 0.9, 0.5 + t2 * 0.1, 0.0); // side
 	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0); // zoom
-	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 1.0); // leave
+	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 2.0); // leave
 
 	float v = 0.3 + t5 * 0.1;
 	vec3 p5 = vec3(0.0, 0.1, 5.0 - t5 * 0.1);
@@ -610,7 +616,7 @@ void main(void) {
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
 
-	color += screenSpaceSnow(uv) * step(UFO_SCENE_END_TIME, lTime);
+	color += screenSpaceSnow(uv) * step(UFO_SCENE_END_TIME - 20.0, lTime);
 
 	gl_FragColor = vec4(color, 1.0);
 }
@@ -645,7 +651,7 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 25.0;
+			var offsetTime = 15.0;
 
 			var config = {
 				saveImage: function() {
@@ -674,7 +680,7 @@ void main(void) {
 					});
 				},
 				camera: 'GLSL',
-				resolution: '512',
+				resolution: '256',
 			};
 
 			init();
