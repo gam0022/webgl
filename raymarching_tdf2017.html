@@ -344,13 +344,19 @@ float dUfo(inout vec3 p) {
 	p.xz = fold(p.xz, min(t2, 10.0));
 	p.z -= 0.5;
 
-	return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
+	float d = dWing(p);
+	float t3 = lTime - META_SCENE_END_TIME - 5.0;
+	if (t3 < 0.0) {
+		d -= mix(0.08, 0.0, saturate((t3 + 10.0) * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
+	}
+	return d;
+	//return dWing(p) - 0.06 * step(lTime - 5.0, META_SCENE_END_TIME) * fbm(10.0 * p.xz + p.y);
 }
 
 float dScene( vec3 p ) {
-	if (lTime < META_SCENE_END_TIME + 10.0) {
+	if (lTime < META_SCENE_END_TIME + 12.0) {
 		float d = dMeta(p);
-		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME) * 2.0, 1.0, 20.0));
+		d = smin(d, dUfo(p), clamp((lTime - META_SCENE_END_TIME), 1.0, 15.0));
 		return d;
 	} else if (lTime <= UFO_SCENE_END_TIME) {
 		return dUfo(p);
