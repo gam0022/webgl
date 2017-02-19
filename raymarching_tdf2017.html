@@ -792,10 +792,9 @@ void main(void) {
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.time.value = offsetTime + timestamp * 0.001;
-				//material.uniforms.time.value = 147.81;
-				//material.uniforms.time.value = 62.68;
-				//material.uniforms.time.value = 93.69;
-				//material.uniforms.time.value = 67.86;
+				material.uniforms.time.value = 105;
+				material.uniforms.time.value = 148;
+				material.uniforms.time.value = 142;
 				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
