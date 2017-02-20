@@ -47,6 +47,11 @@ http://opensource.org/licenses/mit-license.php
 		</div>
 
 		<script id="fragment_shader" type="x-shader/x-fragment">
+// Title: Fusioned Bismuth (TokyoDemoFest GLSL Graphics Compo 3rd place)
+// Copyright (c) 2017 gam0022
+// Used baldand's Snow post effect. super thanks!
+// License: Attribution-NonCommercial-ShareAlike (http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US)
+
 precision highp float;
 
 #define DEBUG 1
@@ -792,9 +797,9 @@ void main(void) {
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.time.value = offsetTime + timestamp * 0.001;
-				material.uniforms.time.value = 105;
-				material.uniforms.time.value = 148;
-				material.uniforms.time.value = 142;
+				//material.uniforms.time.value = 105;
+				//material.uniforms.time.value = 148;
+				//material.uniforms.time.value = 142;
 				material.uniforms.debugCamera.value = config.camera !== 'GLSL';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
