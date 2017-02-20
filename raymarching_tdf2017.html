@@ -42,8 +42,8 @@
 	<body>
 
 		<div id="info">
-			<a href="http://threejs.org" target="_blank">three.js</a> - webgl raymarching example - carbon by <a href="https://github.com/gam0022" target="_blank">gam0022</a><br>
-			Third place prize works in GLSL Compo, Tokyo Demo Fest 2016 (<a href="http://gam0022.net/blog/2016/02/24/tokyo-demo-fest/" target="_blank">article in Japanese</a>)
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl raymarching demo - Fusioned Bismuth by <a href="https://github.com/gam0022" target="_blank">gam0022</a><br>
+			<a href="http://tokyodemofest.jp/2017/" target="_blank">Tokyo Demo Fest 2017</a> GLSL Graphics compo 3rd place
 		</div>
 
 		<script id="fragment_shader" type="x-shader/x-fragment">
@@ -743,7 +743,7 @@ void main(void) {
 				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
 
 				var gui = new dat.GUI();
-				gui.add( config, 'saveImage' ).name( 'Save Image' );
+				gui.add( config, 'saveImage' ).name( 'Save as PNG' );
 				gui.add( config, 'soucePlain' ).name( 'Souce Plain' );
 				gui.add( config, 'souceRelease' ).name( 'Souce Release' );
 				gui.add( config, 'souceShaderToy' ).name( 'Souce ShaderToy' );
@@ -803,10 +803,10 @@ void main(void) {
 				var pos = camera.getWorldPosition();
 				var dir = camera.getWorldDirection();
 
-				document.getElementById( 'info' ).innerHTML = ""
-					+ pos.x + ", " + pos.y + ", " + pos.z + "<br />"
-					+ dir.x + ", " + dir.y + ", " + dir.z + "<br />"
-					+ material.uniforms.time.value;
+				//document.getElementById( 'info' ).innerHTML = ""
+				//	+ pos.x + ", " + pos.y + ", " + pos.z + "<br />"
+				//	+ dir.x + ", " + dir.y + ", " + dir.z + "<br />"
+				//	+ material.uniforms.time.value;
 
 			}
 
