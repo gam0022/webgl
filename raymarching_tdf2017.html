@@ -770,22 +770,17 @@ void main(void) {
 
 				stats.begin();
 
-				if ( config.camera === "Fly" ) {
-
-					flyControls.update( delta );
-
-				} else if ( config.camera === "Orbit" ) {
-
-					orbitControls.update();
-
-				} else {
-
-					//camera.position.set( mouse.x - 0.5, mouse.y * 4, timestamp );
-					//camera.lookAt( new THREE.Vector3( 0.0, -0.3, 1.0 ).add( camera.position ) );
-
+				switch ( config.camera ) {
+					case "Auto":
+						// none
+						break;
+					case "Orbit":
+						orbitControls.update();
+						break;
+					case "Fly":
+						flyControls.update( delta );
+						break;
 				}
-
-				//if ( camera.position.y < 0 ) camera.position.y = 0;
 
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
@@ -793,6 +788,7 @@ void main(void) {
 				//material.uniforms.time.value = 105;
 				//material.uniforms.time.value = 148;
 				//material.uniforms.time.value = 142;
+
 				material.uniforms.debugCamera.value = config.camera !== 'Auto';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
