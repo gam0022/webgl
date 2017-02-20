@@ -720,7 +720,7 @@ void main(void) {
 				renderer.setSize( config.resolution * config.aspectRatio, config.resolution );
 
 				canvas = renderer.domElement;
-				//canvas.addEventListener( 'mousemove', onMouseMove );
+				canvas.addEventListener( 'mousemove', onMouseMove );
 				window.addEventListener( 'resize', onWindowResize );
 				document.body.appendChild( canvas );
 
