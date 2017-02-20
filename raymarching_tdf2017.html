@@ -683,8 +683,9 @@ void main(void) {
 					});
 				},
 				camera: 'GLSL',
-				resolution: '512',
-				pixelRatio: 1.0,
+				resolution: 256,
+				pixelRatio: 1,
+				aspectRatio: 16 / 9,
 			};
 
 			init();
@@ -716,7 +717,7 @@ void main(void) {
 
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( config.pixelRatio );
-				renderer.setSize( config.resolution, config.resolution );
+				renderer.setSize( config.resolution * config.aspectRatio, config.resolution );
 
 				canvas = renderer.domElement;
 				//canvas.addEventListener( 'mousemove', onMouseMove );
@@ -747,10 +748,13 @@ void main(void) {
 				gui.add( config, 'souceRelease' ).name( 'Souce Release' );
 				gui.add( config, 'souceShaderToy' ).name( 'Souce ShaderToy' );
 				gui.add( config, 'camera', [ 'GLSL', 'Orbit', /*'Fly'*/ ] ).name( 'Camera' );
-				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+				gui.add( config, 'resolution', [ 256, 512, 800, 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 					onWindowResize();
 				} );
 				gui.add( config, 'pixelRatio', { '4x': 0.25, '2x' : 0.5, '1x': 1.0, '0.5x': 2.0 } ).name( 'Pixel Ratio' ).onChange( function( value ) {
+					onWindowResize();
+				} );
+				gui.add( config, 'aspectRatio', { '16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0 } ).name( 'Aspect Ratio' ).onChange( function( value ) {
 					onWindowResize();
 				} );
 
@@ -816,7 +820,7 @@ void main(void) {
 					canvas.width  = window.innerWidth;
 					canvas.height = window.innerHeight;
 				} else {
-					canvas.width  = config.resolution;
+					canvas.width  = config.aspectRatio * config.resolution;
 					canvas.height = config.resolution;
 				}
 				renderer.setSize( canvas.width, canvas.height );
