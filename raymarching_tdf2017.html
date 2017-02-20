@@ -657,7 +657,7 @@ void main(void) {
 
 			var config = {
 				saveImage: function() {
-					renderer.render( scene, camera );
+					render(true);
 					window.open( canvas.toDataURL() );
 				},
 				soucePlain: function() {
@@ -694,7 +694,7 @@ void main(void) {
 			};
 
 			init();
-			render();
+			animate();
 
 			function init() {
 
@@ -755,12 +755,15 @@ void main(void) {
 				gui.add( config, 'camera', [ 'Auto', 'Orbit' ] ).name( 'Camera' );
 				gui.add( config, 'resolution', [ 256, 512, 800, 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 					onWindowResize();
+					render(true);
 				} );
 				gui.add( config, 'aspectRatio', { '16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0 } ).name( 'Aspect Ratio' ).onChange( function( value ) {
 					onWindowResize();
+					render(true);
 				} );
-				gui.add( config, 'pixelRatio', { '4x': 0.25, '2x' : 0.5, '1x': 1.0, '0.5x': 2.0 } ).name( 'Pixel Ratio' ).onChange( function( value ) {
+				gui.add( config, 'pixelRatio', { '1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0 } ).name( 'Pixel Ratio' ).onChange( function( value ) {
 					onWindowResize();
+					render(true);
 				} );
 				gui.add( config, 'time', 0, 182 ).step( 0.1 ).name( 'time' ).listen();
 				gui.add( config, 'pause' ).name( 'Pause' );
@@ -770,8 +773,7 @@ void main(void) {
 
 			}
 
-			function render( timestamp ) {
-
+			function animate( timestamp ) {
 				var delta = clock.getDelta();
 
 				if ( !config.pause ) {
@@ -780,6 +782,15 @@ void main(void) {
 
 				stats.begin();
 
+				var needsUpdate = config.time !== material.uniforms.time.value;
+				render(needsUpdate);
+
+				stats.end();
+
+				requestAnimationFrame( animate );
+			}
+
+			function render(needsUpdate) {
 				switch ( config.camera ) {
 					case 'Auto':
 						// none
@@ -798,15 +809,11 @@ void main(void) {
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
 
-				var needsUpdate = config.time !== material.uniforms.time.value;
 				material.uniforms.time.value = config.time;
 
 				if (needsUpdate) {
 					renderer.render( scene, camera );
 				}
-
-				stats.end();
-				requestAnimationFrame( render );
 
 				if (false) {
 					var pos = camera.getWorldPosition();
@@ -817,7 +824,6 @@ void main(void) {
 						+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
 						+ material.uniforms.time.value;
 				}
-
 			}
 
 			function onMouseMove( e ) {
