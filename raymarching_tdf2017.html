@@ -665,20 +665,20 @@ void main(void) {
 				},
 				souceRelease: function() {
 					outputShaderToTab( function(text){
-						return text.replace(/#define DEBUG 1/, "#define DEBUG 0");
+						return text.replace(/#define DEBUG 1/, '#define DEBUG 0');
 					});
 				},
 				souceShaderToy: function() {
 					outputShaderToTab( function(text){
 						return text.
-							replace(/#define DEBUG 1/, "#define DEBUG 0").
-							replace(/#define SHADER_TOY 0/, "#define SHADER_TOY 1").
-							replace(/void main\(void\)/, "void mainImage( out vec4 fragColor, in vec2 fragCoord )").
-							replace(/\b(resolution)\b/g, "iResolution.xy").
-							replace(/\b(mouse)\b/g, "iMouse").
-							replace(/\b(gl_FragCoord)\b/g, "fragCoord").
-							replace(/\b(gl_FragColor)\b/g, "fragColor").
-							replace(/\b(time)\b/g, "iGlobalTime");
+							replace(/#define DEBUG 1/, '#define DEBUG 0').
+							replace(/#define SHADER_TOY 0/, '#define SHADER_TOY 1').
+							replace(/void main\(void\)/, 'void mainImage( out vec4 fragColor, in vec2 fragCoord )').
+							replace(/\b(resolution)\b/g, 'iResolution.xy').
+							replace(/\b(mouse)\b/g, 'iMouse').
+							replace(/\b(gl_FragCoord)\b/g, 'fragCoord').
+							replace(/\b(gl_FragColor)\b/g, 'fragColor').
+							replace(/\b(time)\b/g, 'iGlobalTime');
 					});
 				},
 				camera: 'Auto',
@@ -780,13 +780,13 @@ void main(void) {
 				stats.begin();
 
 				switch ( config.camera ) {
-					case "Auto":
+					case 'Auto':
 						// none
 						break;
-					case "Orbit":
+					case 'Orbit':
 						orbitControls.update();
 						break;
-					case "Fly":
+					case 'Fly':
 						flyControls.update( delta );
 						break;
 				}
@@ -809,9 +809,9 @@ void main(void) {
 				var pos = camera.getWorldPosition();
 				var dir = camera.getWorldDirection();
 
-				//document.getElementById( 'info' ).innerHTML = ""
-				//	+ pos.x + ", " + pos.y + ", " + pos.z + "<br />"
-				//	+ dir.x + ", " + dir.y + ", " + dir.z + "<br />"
+				//document.getElementById( 'info' ).innerHTML = ''
+				//	+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
+				//	+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
 				//	+ material.uniforms.time.value;
 
 			}
@@ -834,8 +834,8 @@ void main(void) {
 			}
 
 			function outputTextToTab(text) {
-				var type = "text/plain";
-				window.open("data:" + type + ";base64," + window.btoa(text));
+				var type = 'text/plain';
+				window.open('data:' + type + ';base64,' + window.btoa(text));
 			}
 
 			function outputShaderToTab(filter) {
