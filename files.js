@@ -5,7 +5,8 @@ var files = {
     "raymarching_shadow",
     "raymarching_carbon",
     "raymarching_reflect",
-    "raymarching_steel-frame"
+    "raymarching_steel-frame",
+    "raymarching_tdf2017",
   ],
   "raytracing": [
     "raytracing_gem",
