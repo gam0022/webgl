@@ -654,7 +654,6 @@ void main(void) {
 			var stats;
 
 			var clock = new THREE.Clock();
-			var offsetTime = 0.0;
 
 			var config = {
 				saveImage: function() {
@@ -685,7 +684,8 @@ void main(void) {
 				camera: 'GLSL',
 				resolution: 256,
 				pixelRatio: 1,
-				aspectRatio: 16 / 9,
+				aspectRatio: 4/3,
+				offsetTime: 0,
 			};
 
 			init();
@@ -757,6 +757,7 @@ void main(void) {
 				gui.add( config, 'aspectRatio', { '16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0 } ).name( 'Aspect Ratio' ).onChange( function( value ) {
 					onWindowResize();
 				} );
+				gui.add( config, 'offsetTime', 0, 180 ).step( 1 ).name( 'Offset Time' );
 
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
@@ -788,7 +789,7 @@ void main(void) {
 
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
-				material.uniforms.time.value = offsetTime + timestamp * 0.001;
+				material.uniforms.time.value = timestamp * 0.001 + config.offsetTime;
 				//material.uniforms.time.value = 105;
 				//material.uniforms.time.value = 148;
 				//material.uniforms.time.value = 142;
