@@ -774,12 +774,9 @@ void main(void) {
 
 				var delta = clock.getDelta();
 
-				if ( config.pause ) {
-					requestAnimationFrame( render );
-					return;
+				if ( !config.pause ) {
+					config.time += delta;
 				}
-
-				config.time += delta;
 
 				stats.begin();
 
@@ -797,12 +794,16 @@ void main(void) {
 
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
-				material.uniforms.time.value = config.time;
-
 				material.uniforms.debugCamera.value = config.camera !== 'Auto';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
-				renderer.render( scene, camera );
+
+				var needsUpdate = config.time !== material.uniforms.time.value;
+				material.uniforms.time.value = config.time;
+
+				if (needsUpdate) {
+					renderer.render( scene, camera );
+				}
 
 				stats.end();
 				requestAnimationFrame( render );
