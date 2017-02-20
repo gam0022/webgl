@@ -683,7 +683,8 @@ void main(void) {
 					});
 				},
 				camera: 'GLSL',
-				resolution: '256',
+				resolution: '512',
+				pixelRatio: 1.0,
 			};
 
 			init();
@@ -714,7 +715,7 @@ void main(void) {
 				scene.add( plane );
 
 				renderer = new THREE.WebGLRenderer();
-				//renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setPixelRatio( config.pixelRatio );
 				renderer.setSize( config.resolution, config.resolution );
 
 				canvas = renderer.domElement;
@@ -747,15 +748,10 @@ void main(void) {
 				gui.add( config, 'souceShaderToy' ).name( 'Souce ShaderToy' );
 				gui.add( config, 'camera', [ 'GLSL', 'Orbit', /*'Fly'*/ ] ).name( 'Camera' );
 				gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
-
-					if ( value !== 'full' ) {
-
-						canvas.width = value;
-						canvas.height = value;
-
-					}
 					onWindowResize();
-
+				} );
+				gui.add( config, 'pixelRatio', { '4x': 0.25, '2x' : 0.5, '1x': 1.0, '0.5x': 2.0 } ).name( 'Pixel Ratio' ).onChange( function( value ) {
+					onWindowResize();
 				} );
 
 				stats = new Stats();
@@ -817,10 +813,14 @@ void main(void) {
 
 			function onWindowResize( e ) {
 				if ( config.resolution === 'full' ) {
-					canvas.width = window.innerWidth;
+					canvas.width  = window.innerWidth;
 					canvas.height = window.innerHeight;
+				} else {
+					canvas.width  = config.resolution;
+					canvas.height = config.resolution;
 				}
 				renderer.setSize( canvas.width, canvas.height );
+				renderer.setPixelRatio( config.pixelRatio );
 			}
 
 			function outputTextToTab(text) {
