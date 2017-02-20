@@ -101,8 +101,7 @@ struct Camera {
 	float zoom;
 };
 
-Ray cameraShootRay(Camera c, vec2 uv)
-{
+Ray cameraShootRay(Camera c, vec2 uv) {
     c.forward = normalize(c.target - c.eye);
     c.right = normalize(cross(c.forward, c.up));
     c.up    = normalize(cross(c.right, c.forward));
