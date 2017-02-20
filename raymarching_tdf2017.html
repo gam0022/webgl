@@ -685,7 +685,11 @@ void main(void) {
 				resolution: 256,
 				aspectRatio: 4/3,
 				pixelRatio: 1,
+
 				time: 0,
+				//time: 105,
+				//time: 142,
+
 				pause: false,
 			};
 
@@ -794,9 +798,6 @@ void main(void) {
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.time.value = config.time;
-				//material.uniforms.time.value = 105;
-				//material.uniforms.time.value = 148;
-				//material.uniforms.time.value = 142;
 
 				material.uniforms.debugCamera.value = config.camera !== 'Auto';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
@@ -806,13 +807,15 @@ void main(void) {
 				stats.end();
 				requestAnimationFrame( render );
 
-				var pos = camera.getWorldPosition();
-				var dir = camera.getWorldDirection();
+				if (false) {
+					var pos = camera.getWorldPosition();
+					var dir = camera.getWorldDirection();
 
-				//document.getElementById( 'info' ).innerHTML = ''
-				//	+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
-				//	+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
-				//	+ material.uniforms.time.value;
+					document.getElementById( 'info' ).innerHTML = ''
+						+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
+						+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
+						+ material.uniforms.time.value;
+				}
 
 			}
 
