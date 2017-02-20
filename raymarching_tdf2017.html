@@ -744,9 +744,9 @@ void main(void) {
 
 				var gui = new dat.GUI();
 				gui.add( config, 'saveImage' ).name( 'Save as PNG' );
-				gui.add( config, 'soucePlain' ).name( 'Souce Plain' );
-				gui.add( config, 'souceRelease' ).name( 'Souce Release' );
-				gui.add( config, 'souceShaderToy' ).name( 'Souce ShaderToy' );
+				gui.add( config, 'soucePlain' ).name( 'view Shader' );
+				gui.add( config, 'souceRelease' ).name( 'GLSL sandbox' );
+				gui.add( config, 'souceShaderToy' ).name( 'ShaderToy' );
 				gui.add( config, 'camera', [ 'Auto', 'Orbit' ] ).name( 'Camera' );
 				gui.add( config, 'resolution', [ 256, 512, 800, 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 					onWindowResize();
