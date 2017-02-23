@@ -648,6 +648,7 @@ void main(void) {
 		<script>
 
 			var camera, scene, flyControls, orbitControls, renderer;
+			var prevCameraMatrixWorld;
 			var geometry, material, plane;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var canvas;
@@ -783,6 +784,24 @@ void main(void) {
 				stats.begin();
 
 				var needsUpdate = config.time !== material.uniforms.time.value;
+
+				switch ( config.camera ) {
+					case 'Auto':
+						// none
+						break;
+					case 'Orbit':
+						orbitControls.update();
+
+						if (camera && prevCameraMatrixWorld && !camera.matrixWorld.equals(prevCameraMatrixWorld)) {
+							needsUpdate = true;
+						}
+						prevCameraMatrixWorld = camera.matrixWorld.clone();
+						break;
+					case 'Fly':
+						flyControls.update(delta);
+						break;
+				}
+
 				render(needsUpdate);
 
 				stats.end();
@@ -791,18 +810,6 @@ void main(void) {
 			}
 
 			function render(needsUpdate) {
-				switch ( config.camera ) {
-					case 'Auto':
-						// none
-						break;
-					case 'Orbit':
-						orbitControls.update();
-						break;
-					case 'Fly':
-						flyControls.update( delta );
-						break;
-				}
-
 				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 				material.uniforms.mouse.value = mouse;
 				material.uniforms.debugCamera.value = config.camera !== 'Auto';
