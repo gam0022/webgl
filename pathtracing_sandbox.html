@@ -666,7 +666,8 @@ void main( void ) {
 	vec4 prevColor = texture2D( buffer, uv );
 
 	// fragment position
-	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	//vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	vec2 fragPos = (2.0 * (gl_FragCoord.xy + (hash23(vec3(float(frame), gl_FragCoord.xy)) - 0.5)) - resolution) / resolution;
 
 	// camera and ray
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
