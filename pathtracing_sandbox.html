@@ -694,7 +694,11 @@ void main( void ) {
 		}
 	}
 
-	gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
+	if ( color.r >= 0.0 && color.g >= 0.0 && color.b >= 0.0 ) {
+		gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
+	} else {
+		gl_FragColor = prevColor;
+	}
 	//gl_FragColor = vec4( color, 1.0 );
 }
 </script>
