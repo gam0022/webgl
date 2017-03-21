@@ -880,33 +880,25 @@ function createDynamicObjects() {
 	} );
 }
 
-function initTextureCube() {
-	textureCubes = {};
-	var cubeTextureLoader = new THREE.CubeTextureLoader();
-
-	var r = "textures/cube/Bridge2/";
+function createTextureCube( cubeTextureLoader, rootPath, ext ) {
 	var urls = [
-		r + "posx.jpg", r + "negx.jpg",
-		r + "posy.jpg", r + "negy.jpg",
-		r + "posz.jpg", r + "negz.jpg",
+		rootPath + "px." + ext, rootPath + "nx." + ext,
+		rootPath + "py." + ext, rootPath + "ny." + ext,
+		rootPath + "pz." + ext, rootPath + "nz." + ext,
 	];
 	var textureCube = cubeTextureLoader.load( urls );
 	textureCube.format = THREE.RGBFormat;
 	textureCube.mapping = THREE.CubeReflectionMapping;
-	textureCubes.bridge = textureCube;
-	textureCubes.generateMipmaps = false;
+	//textureCube.generateMipmaps = false;
+	return textureCube;
+}
 
-	r = "textures/cube/pisa/";
-	urls = [
-		r + "px.png", r + "nx.png",
-		r + "py.png", r + "ny.png",
-		r + "pz.png", r + "nz.png",
-	];
-	textureCube = cubeTextureLoader.load( urls );
-	textureCube.format = THREE.RGBFormat;
-	textureCube.mapping = THREE.CubeReflectionMapping;
-	textureCubes.pisa = textureCube;
-	textureCubes.generateMipmaps = false;
+function initTextureCube() {
+	textureCubes = {};
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
+
+	textureCubes.bridge = createTextureCube( cubeTextureLoader, "textures/cube/Bridge2/", "jpg" );
+	textureCubes.pisa   = createTextureCube( cubeTextureLoader, "textures/cube/pisa/", "png" );
 }
 
 function initTexture2D() {
