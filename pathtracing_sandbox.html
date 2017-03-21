@@ -661,14 +661,14 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 }
 
 vec3 calcRadiance( inout Ray ray ) {
-	// bounce
 	Intersection intersection;
 	vec3 acc = vec3( 0.0 );
 	vec3 ref = vec3( 1.0 );
 	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
 		shootRay( intersection, ray, bounce );
 
-		// レンダリング方程式は再帰的な定義だがGLSLでは再帰できないので、ループに直して計算する
+		// レンダリング方程式は再帰的に定義される
+		// GLSLでは再帰を書けないので、再帰をループに直して実装する
 		vec3 emission = intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv );
 		vec3 color    = intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
 		acc += ref * emission;
@@ -686,20 +686,22 @@ vec3 calcRadiance( inout Ray ray ) {
 }
 
 void main( void ) {
-	// previous color
+	// 前フレームまでのサンプリングの累積値を prevColor に格納
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
 	vec4 prevColor = texture2D( buffer, uv );
 
-	// fragment position
-	//vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	// スクリーン座標を正規化
+	// vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	// 乱数を加えることで AA を行う
 	vec2 fragPos = ( 2.0 * ( gl_FragCoord.xy + hash23( vec3( float( frame ), gl_FragCoord.xy ) ) - 0.5 ) - resolution ) / resolution;
 
-	// camera and ray
+	// three.js のカメラ行列からレイの原点と向きを定義
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
 	Ray ray;
 	ray.origin = cameraPosition;
 	ray.direction = normalize( rayTip.xyz );
 
+	// 放射輝度を計算し、前フレームまでのサンプリングの累積値に加算
 	gl_FragColor = vec4( prevColor.rgb + calcRadiance( ray ), 1.0 );
 }
 </script>
