@@ -899,6 +899,7 @@ function initTextureCube() {
 
 	textureCubes.bridge = createTextureCube( cubeTextureLoader, "textures/cube/Bridge2/", "jpg" );
 	textureCubes.pisa   = createTextureCube( cubeTextureLoader, "textures/cube/pisa/", "png" );
+	textureCubes.castle   = createTextureCube( cubeTextureLoader, "textures/cube/SwedishRoyalCastle/", "jpg" );
 }
 
 function initTexture2D() {
@@ -934,7 +935,7 @@ function initGUI() {
 		editor.loadSceneJSON( presetScenes[value]() );
 		editor.update();
 	} );
-	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
+	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa", "castle" ] ).name( 'EnvMap' ).onChange( function( value ) {
 		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
 		frame = 0;
 	} );
