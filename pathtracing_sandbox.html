@@ -587,7 +587,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 </script>
 
 <script id="float_fragment_shader_p2" type="x-shader/x-fragment">
-void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
+void shotRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersection.distance = INF;
 	intersection.material.colorTexture = 0;
@@ -655,8 +655,8 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 			}
 		}
 	} else {
-		intersection.material.color = textureCube( cubeMap, ray.direction ).rgb;//backgroundColor;
-		intersection.material.emission = vec3( 0.0 );
+		intersection.material.emission = textureCube( cubeMap, ray.direction ).rgb;
+		intersection.material.color    = vec3( 1.0 );
 	}
 }
 
@@ -677,29 +677,26 @@ void main( void ) {
 
 	// bounce
 	Intersection intersection;
-	vec3 color = vec3( 1.0 );
+	vec3 acc = vec3( 0.0 );
+	vec3 ref = vec3( 1.0 );
 	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
-		calcRadiance( intersection, ray, bounce );
+		shotRay( intersection, ray, bounce );
 
-		// レンダリング方程式
-		color =
-			intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv ) +
-			color * intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
+		// レンダリング方程式は再帰的な定義だがGLSLでは再帰できないので、ループに直して計算する
+		vec3 emission = intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv );
+		vec3 color    = intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
+		acc += ref * emission;
+		ref *= color;
 
 		if ( !intersection.hit ) break;
-
-		// 光源に到達しないケースなら明るさは0
-		if ( bounce == BOUNCE_LIMIT && intersection.hit ) {
-			color = vec3( 0.0 );
-		}
 	}
 
-	if ( color.r >= 0.0 && color.g >= 0.0 && color.b >= 0.0 ) {
-		gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
+	// 負の輝度値の結果は除去
+	if ( acc.r >= 0.0 && acc.g >= 0.0 && acc.b >= 0.0 ) {
+		gl_FragColor = vec4( prevColor.rgb + acc, 1.0 );
 	} else {
 		gl_FragColor = prevColor;
 	}
-	//gl_FragColor = vec4( color, 1.0 );
 }
 </script>
 
