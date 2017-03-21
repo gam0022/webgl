@@ -74,6 +74,7 @@ uniform sampler2D texture02;
 uniform sampler2D texture03;
 uniform sampler2D texture04;
 uniform sampler2D texture05;
+uniform sampler2D texture06;
 
 // camera
 uniform vec3 cameraPosition;
@@ -138,6 +139,8 @@ vec3 fetchTextureMaterial( int texture, vec2 uv ) {
 		return texture2D( texture04, uv ).rgb;
 	} else if ( texture == 5 ) {
 		return texture2D( texture05, uv ).rgb;
+	} else if ( texture == 6 ) {
+		return texture2D( texture06, uv ).rgb;
 	}
 }
 
