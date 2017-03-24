@@ -591,6 +591,10 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 </script>
 
 <script id="float_fragment_shader_p2" type="x-shader/x-fragment">
+vec3 gammaToLinear( in vec3 value, in float gammaFactor ) {
+	return pow( value, vec3( gammaFactor ) );
+}
+
 void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersection.distance = INF;
@@ -659,7 +663,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 			}
 		}
 	} else {
-		intersection.material.emission = textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb;
+		intersection.material.emission = gammaToLinear( textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb, 2.2);
 		intersection.material.color    = vec3( 1.0 );
 	}
 }
@@ -717,11 +721,16 @@ uniform int frame;
 uniform vec2 resolution;
 uniform sampler2D buffer;
 
+vec3 linearToGamma( in vec3 value, in float gammaFactor ) {
+	return pow( value, vec3( 1.0 / gammaFactor ) );
+}
+
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
-	vec4 color = texture2D( buffer, uv );
-	gl_FragColor = vec4( color.rgb / float( frame + 1 ), 1.0 );
-	//gl_FragColor = vec4( color.rgb, 1.0 );
+	vec4 accColor = texture2D( buffer, uv );
+	vec3 linearColor = accColor.rgb / float( frame + 1 );
+	vec3 gammaColor = linearToGamma( linearColor, 2.2 );
+	gl_FragColor = vec4( gammaColor, 1.0 );
 }
 </script>
 
