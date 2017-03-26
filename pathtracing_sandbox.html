@@ -762,7 +762,9 @@ var config = {
 
 	// Scene Edit
 	preset: "basic",
-	envmap: "castle",
+	//preset: "examples",
+	//envmap: "castle",
+	envmap: "pisa",
 	transformMode: function() {
 		editor.toggleTransformMode();
 	},
@@ -943,7 +945,7 @@ function initGUI() {
 
 	// Scene Edit
 	var sceneEditFolder = gui.addFolder( "Scene Edit" );
-	sceneEditFolder.add( config, 'preset', [ "basic", "table" ] ).name( 'Preset' ).onChange( function( value ) {
+	sceneEditFolder.add( config, 'preset', Object.keys(presetScenes) ).name( 'Preset' ).onChange( function( value ) {
 		editor.removeAllMesh();
 		editor.loadSceneJSON( presetScenes[value]() );
 		editor.update();

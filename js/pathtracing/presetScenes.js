@@ -132,6 +132,123 @@ var presetScenes = {
 		];
 	},
 
+	examples: function() {
+		return [
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.checkered,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 0.0, -0.05, 0.0 ],
+				scale: [ 10.0, 0.1, 10.0 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_DIFFUSE",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.2,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ -3.0, 0.7, 0.0 ],
+				scale: [ 1.4, 1.4, 1.4 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_SPECULAR",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.2,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ -1.0, 0.7, 0.0 ],
+				scale: [ 1.4, 1.4, 1.4 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_REFRACTION",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.2,
+					refractiveIndex: 2.0,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ 1.0, 0.7, 0.0 ],
+				scale: [ 1.4, 1.4, 1.4 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.2,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ 3.0, 0.7, 0.0 ],
+				scale: [ 1.4, 1.4, 1.4 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_SPECULAR",
+					color: "#000000",
+					colorTexture: 0,
+					emission: "#ffffff",
+					roughness: 0.2,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ 0.0, 2.7, -3.0 ],
+				scale: [ 1.5, 1.5, 1.5 ],
+			},
+			//{
+			//	type: "aabb",
+			//	material: {
+			//		type: "MATERIAL_TYPE_GGX_REFRACTION",
+			//		color: "#ffffff",
+			//		colorTexture: 0,
+			//		emission: "#4a4713",
+			//		roughness: 0.15,
+			//		refractiveIndex: 1.6,
+			//		colorTexture: textureChoices.none,
+			//		emissionTexture: textureChoices.earth_inverse,
+			//		roughnessTexture: textureChoices.none,
+			//	},
+			//	position: [ 0.0, 2.0, -4.0 ],
+			//	scale: [ 8.0, 4.0, 0.1 ],
+			//},
+		];
+	},
+
 	table: function() {
 		var tableMaterial = {
 			type: "MATERIAL_TYPE_GGX",
