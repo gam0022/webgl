@@ -331,28 +331,31 @@ vec4 hash44(vec4 p4)
 //
 
 // cos分布による重点サンプリング
-vec3 cosineDirection( vec2 Xi, vec3 normal ) {
-	// compute basis from normal
-	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
-	// (link provided by nimitz)
-	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
-	vec3 uu = vec3( tc.x, tc.z, -normal.x );
-	vec3 vv = vec3( tc.z, tc.y, -normal.y );
-	float a = PI2 * Xi.y;
-	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
-}
+//vec3 cosineDirection( vec2 Xi, vec3 normal ) {
+//	// compute basis from normal
+//	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
+//	// (link provided by nimitz)
+//	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
+//	vec3 uu = vec3( tc.x, tc.z, -normal.x );
+//	vec3 vv = vec3( tc.z, tc.y, -normal.y );
+//	float a = PI2 * Xi.y;
+//	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
+//}
 
+// 完全拡散反射のcos項による重点的サンプリング
+// https://github.com/githole/edupt/blob/master/radiance.h
 vec3 importanceSampleDiffuse( vec2 Xi, vec3 N ) {
-	vec3 u = cross( vec3(0.0, 1.0, 0.0), N );
+	vec3 up = abs( N.x ) > EPS ? vec3( 0.0, 1.0, 0.0 ) : vec3( 1.0, 0.0, 0.0 );
+	vec3 u = normalize( cross( up, N ) );
 	vec3 v = cross( N, u );
-	float r1 = PI2 * Xi.y;
-	float r2 = Xi.x;
-	return ( u * cos( r1 ) * + v * sin( r1 ) ) * sqrt( r2 ) + N * sqrt( 1.0 - r2 );
+	float r1 = PI2 * Xi.x;
+	float r2 = Xi.y;
+	return ( u * cos( r1 ) + v * sin( r1 ) ) * sqrt( r2 ) + N * sqrt( 1.0 - r2 );
 }
 
-// http://project-asura.com/blog/?p=3124
 // Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
-// おそらくcos分布による重点サンプリングだと思っている…
+// cos項による重点的サンプリング
+// http://project-asura.com/blog/?p=3124
 vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	float a = Roughness * Roughness;
 
@@ -365,8 +368,8 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	H.y = SinTheta * sin( Phi );
 	H.z = CosTheta;
 
-	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
-	vec3 TangentX = normalize( cross( UpVector , N ) );
+	vec3 up = abs( N.x ) > EPS ? vec3( 0.0, 1.0, 0.0 ) : vec3( 1.0, 0.0, 0.0 );
+	vec3 TangentX = normalize( cross( up, N ) );
 	vec3 TangentY = cross( N, TangentX );
 	// Tangent to world space
 	return TangentX * H.x + TangentY * H.y + N * H.z;
@@ -693,7 +696,7 @@ vec3 calcRadiance( inout Ray ray ) {
 		if ( !intersection.hit ) break;
 	}
 
-	// 負の輝度値は除去（根本対応したい）
+	// 負の輝度値は除去（GGXのサンプリング処理が原因で負の輝度のレイが混じる）
 	if ( acc.r >= 0.0 && acc.g >= 0.0 && acc.b >= 0.0 ) {
 		return acc;
 	} else {
