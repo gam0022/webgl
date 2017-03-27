@@ -4,7 +4,7 @@
 		<title>three.js webgl - pathtracing sandbox</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="stylesheet" href="js/libs/toastr.min.css" />
+		<link rel="stylesheet" href="js/libs/toastr.min.css">
 		<style>
 			body {
 				background-color: black;
@@ -342,6 +342,14 @@ vec3 cosineDirection( vec2 Xi, vec3 normal ) {
 	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
 }
 
+vec3 importanceSampleDiffuse( vec2 Xi, vec3 N ) {
+	vec3 u = cross( vec3(0.0, 1.0, 0.0), N );
+	vec3 v = cross( N, u );
+	float r1 = PI2 * Xi.y;
+	float r2 = Xi.x;
+	return ( u * cos( r1 ) * + v * sin( r1 ) ) * sqrt( r2 ) + N * sqrt( 1.0 - r2 );
+}
+
 // http://project-asura.com/blog/?p=3124
 // Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
 // おそらくcos分布による重点サンプリングだと思っている…
@@ -349,7 +357,7 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	float a = Roughness * Roughness;
 
 	float Phi = PI2 * Xi.x;
-	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y ) );
+	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + ( a*a - 1.0 ) * Xi.y ) );
 	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
 
 	vec3 H;
@@ -611,7 +619,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 		float roughness = intersection.material.roughness * fetchTextureMaterial( intersection.material.roughnessTexture, intersection.uv ).r;
 
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
-			ray.direction = cosineDirection( Xi, intersection.normal);
+			ray.direction = importanceSampleDiffuse( Xi, intersection.normal);
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.direction = reflect( ray.direction, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
