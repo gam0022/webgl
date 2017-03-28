@@ -622,7 +622,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 		float roughness = intersection.material.roughness * fetchTextureMaterial( intersection.material.roughnessTexture, intersection.uv ).r;
 
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
-			ray.direction = importanceSampleDiffuse( Xi, intersection.normal);
+			ray.direction = importanceSampleDiffuse( Xi, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.direction = reflect( ray.direction, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
