@@ -377,6 +377,7 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 
 // 屈折面のサンプリング
 // http://marupeke296.com/DXPS_PS_No7_FresnelReflection.html
+// https://en.wikipedia.org/wiki/Fresnel_equations
 // https://github.com/githole/edupt/blob/master/radiance.h
 // https://github.com/githole/gemspt/blob/master/material.h
 void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, vec3 N) {
