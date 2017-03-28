@@ -190,7 +190,7 @@ var presetScenes = {
 					colorTexture: 0,
 					emission: "#000000",
 					roughness: 0.2,
-					refractiveIndex: 2.0,
+					refractiveIndex: 1.51,
 					colorTexture: textureChoices.none,
 					emissionTexture: textureChoices.none,
 					roughnessTexture: textureChoices.none,
