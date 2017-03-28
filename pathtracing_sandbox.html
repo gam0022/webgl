@@ -395,7 +395,8 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 		// フレネル反射率Rの計算
 		// 入射角をI、屈折角をT、RsをS波の反射率、RpをP派の反射率、Rをフレネル反射率とする
 		float cosI = dot(ray.direction, -orientingNormal);
-		float cosT = sqrt(1.0 - nnt * nnt * (1.0 - cosI * cosI));
+		//float cosT = sqrt(1.0 - nnt * nnt * (1.0 - cosI * cosI));
+		float cosT = dot(refractDirection, -orientingNormal);
 		float Rs = (nnt * cosI - cosT) * (nnt * cosI - cosT) / ((nnt * cosI + cosT) * (nnt * cosI + cosT));
 		float Rp = (nnt * cosT - cosI) * (nnt * cosT - cosI) / ((nnt * cosT + cosI) * (nnt * cosT + cosI));
 		float R = 0.5 * (Rs + Rp);
