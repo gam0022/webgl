@@ -392,15 +392,15 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 		// 完全反射のケース
 		ray.direction = reflectDirection;
 	} else {
-		// フレネルの式から反射率Rspを計算
-		float A = nnt;
-		float B = dot(ray.direction, -orientingNormal);
-		float C = sqrt(1.0 - A * A * (1.0 - B * B));
-		float Rs = (A * B - C) * (A * B - C) / ((A * B + C) * (A * B + C));
-		float Rp = (A * C - B) * (A * C - B) / ((A * C + B) * (A * C + B));
-		float Rsp = 0.5 * (Rs + Rp);
+		// フレネル反射率Rの計算
+		// 入射角をI、屈折角をT、RsをS波の反射率、RpをP派の反射率、Rをフレネル反射率とする
+		float cosI = dot(ray.direction, -orientingNormal);
+		float cosT = sqrt(1.0 - nnt * nnt * (1.0 - cosI * cosI));
+		float Rs = (nnt * cosI - cosT) * (nnt * cosI - cosT) / ((nnt * cosI + cosT) * (nnt * cosI + cosT));
+		float Rp = (nnt * cosT - cosI) * (nnt * cosT - cosI) / ((nnt * cosT + cosI) * (nnt * cosT + cosI));
+		float R = 0.5 * (Rs + Rp);
 
-		if ( Xi.x <= Rsp ) {
+		if ( Xi.x <= R ) {
 			// 反射
 			ray.direction = reflectDirection;
 		} else {
