@@ -376,16 +376,40 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 }
 
 // 屈折面のサンプリング
-void sampleRefraction( vec2 Xi, inout Intersection intersection, inout Ray ray, vec3 N ) {
+// https://github.com/githole/edupt/blob/master/radiance.h
+// https://github.com/githole/gemspt/blob/master/material.h
+void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, vec3 N) {
 	vec3 rayDirection = ray.direction;
-	bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
+	bool isIncoming = dot(rayDirection, intersection.normal) < 0.0;
 	vec3 orientingNormal = isIncoming ? N : -N;
-	ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
+
+	float nt = intersection.material.refractiveIndex;
+	float nnt = isIncoming ? 1.0 / nt : nt;
+	ray.direction = refract(rayDirection, orientingNormal, nnt);
+
+	// Fresnelの反射係数のSchlick近似
+	float a = nt - 1.0, b = nt + 1.0;
+	float R0 = (a * a) / (b * b);
+	float ddn = dot(rayDirection, orientingNormal);
+	float c = 1.0 + ddn;
+	float Re = R0 + (1.0 - R0) * pow(c, 5.0); // 反射方向の光が反射してray.dirの方向に運ぶ割合。同時に屈折方向の光が反射する方向に運ぶ割合。
+	float nnt2 = pow(nnt, 2.0); // レイの運ぶ放射輝度は屈折率の異なる物体間を移動するとき、屈折率の比の二乗の分だけ変化する。
+	float Tr = (1.0 - Re) * nnt2; // 屈折方向の光が屈折してray.dirの方向に運ぶ割合
+
 	if ( ray.direction == vec3( 0.0 ) ) {
 		// 完全反射のケース
-		ray.direction = reflect( rayDirection, orientingNormal );
+		ray.direction = reflect(rayDirection, orientingNormal);
 	} else {
-		ray.origin = intersection.position - OFFSET * intersection.normal;
+		float probability = 0.25 + 0.5 * Re;
+		if ( Xi.x < probability ) {
+			// reflect
+			ray.direction = reflect(rayDirection, orientingNormal);
+			intersection.material.color *= Re / probability;
+		} else {
+			// refract
+			ray.origin = intersection.position - OFFSET * intersection.normal;
+			intersection.material.color *= Tr / (1.0 - probability);
+		}
 	}
 }
 
