@@ -375,6 +375,20 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
+// 屈折面のサンプリング
+void sampleRefraction( vec2 Xi, inout Intersection intersection, inout Ray ray, vec3 N ) {
+	vec3 rayDirection = ray.direction;
+	bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
+	vec3 orientingNormal = isIncoming ? N : -N;
+	ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
+	if ( ray.direction == vec3( 0.0 ) ) {
+		// 完全反射のケース
+		ray.direction = reflect( rayDirection, orientingNormal );
+	} else {
+		ray.origin = intersection.position - OFFSET * intersection.normal;
+	}
+}
+
 // http://d.hatena.ne.jp/hanecci/20130727/p2
 float GGX_G_1( float Roughness, float NoV ) {
     float k = 0.5 * Roughness * Roughness;
@@ -626,16 +640,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.direction = reflect( ray.direction, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
-			vec3 rayDirection = ray.direction;
-			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
-			vec3 orientingNormal = isIncoming ? intersection.normal : -intersection.normal;
-			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
-			if ( ray.direction == vec3( 0.0 ) ) {
-				// 完全反射のケース
-				ray.direction = reflect( rayDirection, orientingNormal );
-			} else {
-				ray.origin = intersection.position - OFFSET * intersection.normal;
-			}
+			sampleRefraction( Xi, intersection, ray, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
 			vec3 N = intersection.normal;
 			vec3 V = -ray.direction;
@@ -661,17 +666,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 			ray.direction = L;
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
 			vec3 H = importanceSampleGGX( Xi, roughness, intersection.normal );
-
-			vec3 rayDirection = ray.direction;
-			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
-			vec3 orientingNormal = isIncoming ? H : -H;
-			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
-			if ( ray.direction == vec3( 0.0 ) ) {
-				// 完全反射のケース
-				ray.direction = reflect( rayDirection, orientingNormal );
-			} else {
-				ray.origin = intersection.position - OFFSET * intersection.normal;
-			}
+			sampleRefraction( Xi, intersection, ray, H );
 		}
 	} else {
 		intersection.material.emission = gammaToLinear( textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb, 2.2);
