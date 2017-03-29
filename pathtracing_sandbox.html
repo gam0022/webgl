@@ -638,13 +638,14 @@ vec3 calcRadiance( inout Ray ray ) {
 
 void main( void ) {
 	// 前フレームまでのサンプリングの累積値を prevColor に格納
-	vec2 uv = gl_FragCoord.xy / resolution.xy;
+	vec2 uv = gl_FragCoord.xy / resolution;
 	vec4 prevColor = texture2D( buffer, uv );
 
 	// スクリーン座標を正規化
-	// vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
-	// 乱数を加えることで AA を行う
-	vec2 fragPos = ( 2.0 * ( gl_FragCoord.xy + hash23( vec3( float( frame ), gl_FragCoord.xy ) ) - 0.5 ) - resolution ) / resolution;
+	vec3 seed = vec3( float( frame ), gl_FragCoord.xy );
+	vec2 noise = hash23( seed ) - 0.5;
+	// vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;// AAなし
+	vec2 fragPos = ( 2.0 * ( gl_FragCoord.xy + noise ) - resolution ) / resolution;// AAあり
 
 	// three.js のカメラ行列からレイの原点と向きを定義
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionInverseMatrix * vec4( fragPos.xy, 1.0, 1.0 );
