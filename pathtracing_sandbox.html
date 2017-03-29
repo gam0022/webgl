@@ -81,8 +81,8 @@ uniform vec3 cameraPosition;// Built in three.js
 uniform mat4 viewMatrix;// Built in three.js
 
 uniform mat4 cameraWorldMatrix;
-uniform mat4 cameraProjectionMatrixInverse;
-uniform mat4 cameraViewProjectionpMatrixInverse;
+uniform mat4 cameraProjectionInverseMatrix;
+uniform mat4 cameraWorldProjectionInverseMaxtirx;
 uniform float cameraNear;
 uniform float cameraFar;
 
@@ -647,8 +647,8 @@ void main( void ) {
 	vec2 fragPos = ( 2.0 * ( gl_FragCoord.xy + hash23( vec3( float( frame ), gl_FragCoord.xy ) ) - 0.5 ) - resolution ) / resolution;
 
 	// three.js のカメラ行列からレイの原点と向きを定義
-	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
-	//vec4 rayTip = cameraViewProjectionpMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 ); これだとガタガタする（CPU演算の精度の問題？）
+	vec4 rayTip = cameraWorldMatrix * cameraProjectionInverseMatrix * vec4( fragPos.xy, 1.0, 1.0 );
+	//vec4 rayTip = cameraWorldProjectionInverseMaxtirx * vec4( fragPos.xy, 1.0, 1.0 );// これだとガタガタする（CPU演算の精度の問題？）
 	Ray ray;
 	ray.origin = cameraPosition;
 	ray.direction = normalize( rayTip.xyz );
@@ -812,10 +812,9 @@ function createDynamicObjects() {
 	readBuffer  = createRenderTarget( canvas.width, canvas.height );
 	writeBuffer = readBuffer.clone();
 
-	var cameraViewInverseMatrix = camera.matrixWorld;
 	var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
-	var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
-	cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+	var cameraWorldProjectionInverseMaxtirx = camera.matrixWorld.clone();
+	cameraWorldProjectionInverseMaxtirx.multiply( cameraProjectionInverseMatrix );
 
 	// float quad
 	floatQuad = createQuadScene( {
@@ -834,8 +833,8 @@ function createDynamicObjects() {
 			texture06: { type: 't', value: texture2Ds.gam0022_inverse },
 
 			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
-			cameraProjectionMatrixInverse: { type: 'm4', value: cameraProjectionInverseMatrix },
-			cameraViewProjectionpMatrixInverse: { type: 'm4', value: cameraViewProjectionpMatrixInverse },
+			cameraProjectionInverseMatrix: { type: 'm4', value: cameraProjectionInverseMatrix },
+			cameraWorldProjectionInverseMaxtirx: { type: 'm4', value: cameraWorldProjectionInverseMaxtirx },
 			cameraNear: { type: 'f', value: camera.near },
 			cameraFar:  { type: 'f', value: camera.far },
 		},
@@ -1076,14 +1075,13 @@ function render( timestamp ) {
 
 		// set camera uniforms
 		{
-			var cameraViewInverseMatrix = camera.matrixWorld;
 			var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
-			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
-			cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+			var cameraWorldProjectionInverseMaxtirx = camera.matrixWorld.clone();
+			cameraWorldProjectionInverseMaxtirx.multiply( cameraProjectionInverseMatrix );
 
 			floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = cameraProjectionInverseMatrix;
-			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+			floatQuad.material.uniforms.cameraProjectionInverseMatrix.value = cameraProjectionInverseMatrix;
+			floatQuad.material.uniforms.cameraWorldProjectionInverseMaxtirx.value = cameraWorldProjectionInverseMaxtirx;
 
 			floatQuad.material.uniforms.cameraNear.value = camera.near;
 			floatQuad.material.uniforms.cameraFar.value  = camera.far;
