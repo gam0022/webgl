@@ -77,8 +77,8 @@ uniform sampler2D texture05;
 uniform sampler2D texture06;
 
 // camera
-uniform vec3 cameraPosition;
-uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;// Built in three.js
+uniform mat4 viewMatrix;// Built in three.js
 
 uniform mat4 cameraWorldMatrix;
 uniform mat4 cameraProjectionMatrixInverse;
@@ -92,14 +92,16 @@ const float EPS = 1e-4;
 const float OFFSET = EPS * 10.0;
 const float PI = 3.14159265359;
 const float PI2 = 6.28318530718;
-const vec3 backgroundColor = vec3( 1.0 );
-const vec3 SpecularColor = vec3( 1.0 );
 const int BOUNCE_LIMIT = 20;
 
-// HLSL
-float saturate( float x ) {
-	return clamp( x, 0.0, 1.0 );
+//
+// Util
+//
+bool equals( float x, float y ) {
+	return abs( x - y ) < EPS;
 }
+
+#define saturate(x) clamp(x, 0.0, 1.0)
 
 
 // ray
@@ -174,13 +176,6 @@ struct AABB {
 	Material material;
 };
 
-//
-// Util
-//
-
-bool equals( float x, float y ) {
-	return abs( x - y ) < EPS;
-}
 
 //
 // Random
@@ -330,18 +325,6 @@ vec4 hash44(vec4 p4)
 // BRDF
 //
 
-// cos分布による重点サンプリング
-//vec3 cosineDirection( vec2 Xi, vec3 normal ) {
-//	// compute basis from normal
-//	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
-//	// (link provided by nimitz)
-//	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
-//	vec3 uu = vec3( tc.x, tc.z, -normal.x );
-//	vec3 vv = vec3( tc.z, tc.y, -normal.y );
-//	float a = PI2 * Xi.y;
-//	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
-//}
-
 // 完全拡散反射のcos項による重点的サンプリング
 // https://github.com/githole/edupt/blob/master/radiance.h
 vec3 importanceSampleDiffuse( vec2 Xi, vec3 N ) {
@@ -413,16 +396,6 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 		}
 	}
 }
-
-//// http://d.hatena.ne.jp/hanecci/20130727/p2
-//float GGX_G_1( float Roughness, float NoV ) {
-//    float k = 0.5 * Roughness * Roughness;
-//    return NoV / ( NoV * ( 1.0 - k ) + k );
-//}
-//
-//float GGX_G( float Roughness, float NoV, float NoL ) {
-//    return GGX_G_1( Roughness, NoV ) * GGX_G_1( Roughness, NoL );
-//}
 
 
 //
@@ -537,7 +510,6 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 		intersection.material = aabb.material;
 
 		vec3 uvw = ( intersection.position - aabb.lb ) / ( aabb.rt - aabb.lb );
-		//intersection.uv = vec2( uvw.x, uvw.z );
 
 		// 交点座標から法線を求める
 		// 高速化のためにY軸から先に判定する
@@ -563,6 +535,8 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 	}
 }
 /*
+// intersectScene の定義例
+// JavaScript のSceneEditor#createFragmentShader で生成されるため、ここでは定義しない
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
@@ -570,7 +544,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	plane.material.emission = vec3( 0.0 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
-	//intersectPlane( intersection, ray, plane );
+	intersectPlane( intersection, ray, plane );
 
 	AABB aabb;
 	aabb.material.type = MATERIAL_TYPE_GGX;
@@ -580,62 +554,13 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	aabb.rt = vec3( 5.0, 0.0, 5.0 );
 	intersectAABB( intersection, ray, aabb );
 
-	aabb.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-	aabb.lb = vec3( -4.0, 0.0, -4.0 );
-	aabb.rt = vec3( -3.0, 1.0, -3.0 );
-	intersectAABB( intersection, ray, aabb );
-
-	Material distanceMaterial;
-	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
-	distanceMaterial.color = vec3( 0.4, 0.4, 0.8 );
-	distanceMaterial.emission = vec3( 0.0 );
-	intersectDistanceFucntion( intersection, ray, distanceMaterial );
-
 	Sphere sphere;
 	sphere.material.emission = vec3( 0.0 );
-
 	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
 	sphere.material.color = vec3( 0.8, 0.4, 0.4 );
 	sphere.position = vec3( 0.0, 1.0, 1.0 );
 	sphere.radius = 1.0;
 	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_REFRACTION;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( 2.0, 0.7, 3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( -2.0, 0.7, 3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
-	sphere.material.color = vec3( 0.5, 0.25, 0.3 );
-	sphere.position = vec3( -2.0, 0.7, 3.0 );
-	sphere.radius = 0.2;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_SPECULAR;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( 3.0, 0.7, -3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_GGX;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( -3.0, 0.7, -1.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
-	sphere.material.color = vec3( 0.0 );
-	sphere.material.emission = vec3( 20.0 );
-	sphere.position = vec3( 0.0, 5.0, 0.0 );
-	sphere.radius = 1.0;
-	//intersectSphere( intersection, ray, sphere );
 }
 */
 </script>
