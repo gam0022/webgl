@@ -648,6 +648,7 @@ void main( void ) {
 
 	// three.js のカメラ行列からレイの原点と向きを定義
 	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
+	//vec4 rayTip = cameraViewProjectionpMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 ); これだとガタガタする（CPU演算の精度の問題？）
 	Ray ray;
 	ray.origin = cameraPosition;
 	ray.direction = normalize( rayTip.xyz );
@@ -811,6 +812,11 @@ function createDynamicObjects() {
 	readBuffer  = createRenderTarget( canvas.width, canvas.height );
 	writeBuffer = readBuffer.clone();
 
+	var cameraViewInverseMatrix = camera.matrixWorld;
+	var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+	var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
+	cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
+
 	// float quad
 	floatQuad = createQuadScene( {
 		uniforms: {
@@ -828,8 +834,8 @@ function createDynamicObjects() {
 			texture06: { type: 't', value: texture2Ds.gam0022_inverse },
 
 			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
-			cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
-			cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+			cameraProjectionMatrixInverse: { type: 'm4', value: cameraProjectionInverseMatrix },
+			cameraViewProjectionpMatrixInverse: { type: 'm4', value: cameraViewProjectionpMatrixInverse },
 			cameraNear: { type: 'f', value: camera.near },
 			cameraFar:  { type: 'f', value: camera.far },
 		},
@@ -1070,16 +1076,14 @@ function render( timestamp ) {
 
 		// set camera uniforms
 		{
-			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
 			var cameraViewInverseMatrix = camera.matrixWorld;
 			var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
-			//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
-			cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
+			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
 			cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
-			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
 
 			floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = cameraProjectionInverseMatrix;
+			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
 
 			floatQuad.material.uniforms.cameraNear.value = camera.near;
 			floatQuad.material.uniforms.cameraFar.value  = camera.far;
