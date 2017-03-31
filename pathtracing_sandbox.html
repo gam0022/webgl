@@ -214,24 +214,24 @@ struct AABB {
 float hash11(float p)
 {
 	vec3 p3  = fract(vec3(p) * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  1 out, 2 in...
 float hash12(vec2 p)
 {
 	vec3 p3  = fract(vec3(p.xyx) * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  1 out, 3 in...
 float hash13(vec3 p3)
 {
 	p3  = fract(p3 * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  2 out, 1 in...
@@ -239,7 +239,7 @@ vec2 hash21(float p)
 {
 	vec3 p3 = fract(vec3(p) * HASHSCALE3);
 	p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	return fract((p3.xx+p3.yz)*p3.zy);
 
 }
 
@@ -247,8 +247,8 @@ vec2 hash21(float p)
 vec2 hash22(vec2 p)
 {
 	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
-    p3 += dot(p3, p3.yzx+19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	p3 += dot(p3, p3.yzx+19.19);
+	return fract((p3.xx+p3.yz)*p3.zy);
 
 }
 
@@ -256,8 +256,8 @@ vec2 hash22(vec2 p)
 vec2 hash23(vec3 p3)
 {
 	p3 = fract(p3 * HASHSCALE3);
-    p3 += dot(p3, p3.yzx+19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	p3 += dot(p3, p3.yzx+19.19);
+	return fract((p3.xx+p3.yz)*p3.zy);
 }
 
 //  3 out, 1 in...
@@ -273,16 +273,16 @@ vec3 hash31(float p)
 vec3 hash32(vec2 p)
 {
 	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
-    p3 += dot(p3, p3.yxz+19.19);
-    return fract((p3.xxy+p3.yzz)*p3.zyx);
+	p3 += dot(p3, p3.yxz+19.19);
+	return fract((p3.xxy+p3.yzz)*p3.zyx);
 }
 
 ///  3 out, 3 in...
 vec3 hash33(vec3 p3)
 {
 	p3 = fract(p3 * HASHSCALE3);
-    p3 += dot(p3, p3.yxz+19.19);
-    return fract((p3.xxy + p3.yxx)*p3.zyx);
+	p3 += dot(p3, p3.yxz+19.19);
+	return fract((p3.xxy + p3.yxx)*p3.zyx);
 
 }
 
@@ -290,17 +290,17 @@ vec3 hash33(vec3 p3)
 vec4 hash41(float p)
 {
 	vec4 p4 = fract(vec4(p) * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
-    
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	
 }
 
 // 4 out, 2 in...
 vec4 hash42(vec2 p)
 {
 	vec4 p4 = fract(vec4(p.xyxy) * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
 
 }
 
@@ -308,17 +308,17 @@ vec4 hash42(vec2 p)
 vec4 hash43(vec3 p)
 {
 	vec4 p4 = fract(vec4(p.xyzx)  * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
 }
 
 // 4 out, 4 in...
 vec4 hash44(vec4 p4)
 {
 	p4 = fract(p4  * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
-    //return fract(vec4((p4.x + p4.y)*p4.z, (p4.x + p4.z)*p4.y, (p4.y + p4.z)*p4.w, (p4.z + p4.w)*p4.x));
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	//return fract(vec4((p4.x + p4.y)*p4.z, (p4.x + p4.z)*p4.y, (p4.y + p4.z)*p4.w, (p4.z + p4.w)*p4.x));
 }
 
 //
@@ -471,9 +471,9 @@ void intersectDistanceFucntion( inout Intersection intersection, Ray ray, Materi
 }
 
 void intersectPlane( inout Intersection intersection, Ray ray, Plane plane ){
-    float d = -dot( plane.position, plane.normal );
-    float v = dot( ray.direction, plane.normal );
-    float t = -( dot( ray.origin, plane.normal ) + d ) / v;
+	float d = -dot( plane.position, plane.normal );
+	float v = dot( ray.direction, plane.normal );
+	float t = -( dot( ray.origin, plane.normal ) + d ) / v;
 
 	if( t > EPS && t < intersection.distance ) {
 		intersection.hit = true;
@@ -622,7 +622,7 @@ void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 		}
 	} else {
 		intersection.material.emission = gammaToLinear( textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb, 2.2);
-		intersection.material.color    = vec3( 1.0 );
+		intersection.material.color	= vec3( 1.0 );
 	}
 }
 
@@ -636,7 +636,7 @@ vec3 calcRadiance( inout Ray ray ) {
 		// レンダリング方程式は再帰的に定義される
 		// GLSLでは再帰を書けないので、再帰をループに直して実装する
 		vec3 emission = intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv );
-		vec3 color    = intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
+		vec3 color	= intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
 		acc += ref * emission;
 		ref *= color;
 
@@ -723,7 +723,7 @@ var config = {
 
 	// Scene Edit
 	preset: "basic",
-	//preset: "examples",
+	preset: "cornellBox",
 	//envmap: "castle",
 	envmap: "pisa",
 	transformMode: function() {
@@ -792,7 +792,7 @@ function createDataTexture( width, height ) {
 	var data = new Float32Array( width * height * 4 );
 
 	for (var k = 0, kl = data.length; k < kl; k += 4) {
-		data[k]      = 0.0;
+		data[k]	  = 0.0;
 		data[k + 1]  = 0.0;
 		data[k + 2]  = 0.0;
 		data[k + 3]  = 1.0;
@@ -893,11 +893,11 @@ function initTexture2D() {
 		return texture;
 	}
 
-	texture2Ds.checkered       = createRepeatTexture( "textures/checkered_512.jpg" );
-	texture2Ds.earth           = createRepeatTexture( "textures/earth_2048.jpg" );
+	texture2Ds.checkered	   = createRepeatTexture( "textures/checkered_512.jpg" );
+	texture2Ds.earth		   = createRepeatTexture( "textures/earth_2048.jpg" );
 	texture2Ds.earth_inverse   = createRepeatTexture( "textures/earth_inverse_2048.jpg" );
-	texture2Ds.earth_color     = createRepeatTexture( "textures/earth_color_2048.jpg" );
-	texture2Ds.gam0022         = createRepeatTexture( "textures/gam0022_1024.png" );
+	texture2Ds.earth_color	 = createRepeatTexture( "textures/earth_color_2048.jpg" );
+	texture2Ds.gam0022		 = createRepeatTexture( "textures/gam0022_1024.png" );
 	texture2Ds.gam0022_inverse = createRepeatTexture( "textures/gam0022_inverse_1024.png" );
 }
 
