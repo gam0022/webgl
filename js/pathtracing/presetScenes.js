@@ -249,6 +249,171 @@ var presetScenes = {
 		];
 	},
 
+	cornellBox: function() {
+		return [
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					emission: "#ffffff",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 0.0, 10., 0.0 ],
+				scale: [ 3.0, 0.5, 3.0 ],
+			},
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 0.0, -0.05, 0.0 ],
+				scale: [ 10.0, 0.1, 10.0 ],
+			},
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 0.0, 10.05, 0.0 ],
+				scale: [ 10.0, 0.1, 10.0 ],
+			},
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ff3333",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ -5.05, 5.0, 0.0 ],
+				scale: [ 0.1, 10.0, 10.0 ],
+			},
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#3333ff",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 5.05, 5.0, 0.0 ],
+				scale: [ 0.1, 10.0, 10.0 ],
+			},
+			{
+				type: "aabb",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#ffffff",
+					emission: "#000000",
+					roughness: 0.9,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+
+				},
+				position: [ 0.0, 5.0, -5.05 ],
+				scale: [ 10.0, 10.0, 0.1 ],
+			},
+			//{
+			//	type: "aabb",
+			//	material: {
+			//		type: "MATERIAL_TYPE_GGX",
+			//		color: "#ffffff",
+			//		emission: "#000000",
+			//		roughness: 0.9,
+			//		refractiveIndex: 1.3,
+			//		colorTexture: textureChoices.none,
+			//		emissionTexture: textureChoices.none,
+			//		roughnessTexture: textureChoices.none,
+
+			//	},
+			//	position: [ 0.0, 5.0, 5.05 ],
+			//	scale: [ 10.0, 10.0, 0.1 ],
+			//},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_SPECULAR",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.01,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ -3.0, 1.5, -1.0 ],
+				scale: [ 3.0, 3.0, 3.0 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_GGX",
+					color: "#33ff33",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.8,
+					refractiveIndex: 1.3,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ 1.2, 2.0, -2.5 ],
+				scale: [ 4.0, 4.0, 4.0 ],
+			},
+			{
+				type: "sphere",
+				material: {
+					type: "MATERIAL_TYPE_REFRACTION",
+					color: "#ffffff",
+					colorTexture: 0,
+					emission: "#000000",
+					roughness: 0.2,
+					refractiveIndex: 1.51,
+					colorTexture: textureChoices.none,
+					emissionTexture: textureChoices.none,
+					roughnessTexture: textureChoices.none,
+				},
+				position: [ 2.5, 1.5, 1.7 ],
+				scale: [ 3.0, 3.0, 3.0 ],
+			},
+ 		];
+  },
+
 	table: function() {
 		var tableMaterial = {
 			type: "MATERIAL_TYPE_GGX",
