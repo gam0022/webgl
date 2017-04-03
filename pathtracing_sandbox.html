@@ -407,6 +407,7 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 		} else {
 			// 屈折
 			// 物体内部にレイの原点を移動する
+			//intersection.material.color *= pow( nnt, 2.0 );// 立体角の変化に伴う放射輝度の補正を入れたら暗くなったのでコメントアウト
 			ray.origin = intersection.position - OFFSET * intersection.normal;
 			ray.direction = refractDirection;
 		}
