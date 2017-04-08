@@ -4,7 +4,7 @@
 		<title>three.js webgl - pathtracing sandbox</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="stylesheet" href="js/libs/toastr.min.css" />
+		<link rel="stylesheet" href="js/libs/toastr.min.css">
 		<style>
 			body {
 				background-color: black;
@@ -54,6 +54,7 @@ void main(void) {
 </script>
 
 <script id="float_fragment_shader_p1" type="x-shader/x-fragment">
+#extension GL_EXT_shader_texture_lod : enable
 precision highp float;
 
 //
@@ -73,14 +74,15 @@ uniform sampler2D texture02;
 uniform sampler2D texture03;
 uniform sampler2D texture04;
 uniform sampler2D texture05;
+uniform sampler2D texture06;
 
 // camera
-uniform vec3 cameraPosition;
-uniform mat4 viewMatrix;
+uniform vec3 cameraPosition;// Built in three.js
+uniform mat4 viewMatrix;// Built in three.js
 
 uniform mat4 cameraWorldMatrix;
-uniform mat4 cameraProjectionMatrixInverse;
-uniform mat4 cameraViewProjectionpMatrixInverse;
+uniform mat4 cameraProjectionInverseMatrix;
+uniform mat4 cameraWorldProjectionInverseMaxtirx;
 uniform float cameraNear;
 uniform float cameraFar;
 
@@ -90,14 +92,16 @@ const float EPS = 1e-4;
 const float OFFSET = EPS * 10.0;
 const float PI = 3.14159265359;
 const float PI2 = 6.28318530718;
-const vec3 backgroundColor = vec3( 1.0 );
-const vec3 SpecularColor = vec3( 1.0 );
 const int BOUNCE_LIMIT = 20;
 
-// HLSL
-float saturate( float x ) {
-	return clamp( x, 0.0, 1.0 );
+//
+// Util
+//
+bool equals( float x, float y ) {
+	return abs( x - y ) < EPS;
 }
+
+#define saturate(x) clamp(x, 0.0, 1.0)
 
 
 // ray
@@ -137,6 +141,8 @@ vec3 fetchTextureMaterial( int texture, vec2 uv ) {
 		return texture2D( texture04, uv ).rgb;
 	} else if ( texture == 5 ) {
 		return texture2D( texture05, uv ).rgb;
+	} else if ( texture == 6 ) {
+		return texture2D( texture06, uv ).rgb;
 	}
 }
 
@@ -170,13 +176,6 @@ struct AABB {
 	Material material;
 };
 
-//
-// Util
-//
-
-bool equals( float x, float y ) {
-	return abs( x - y ) < EPS;
-}
 
 //
 // Random
@@ -215,24 +214,24 @@ bool equals( float x, float y ) {
 float hash11(float p)
 {
 	vec3 p3  = fract(vec3(p) * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  1 out, 2 in...
 float hash12(vec2 p)
 {
 	vec3 p3  = fract(vec3(p.xyx) * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  1 out, 3 in...
 float hash13(vec3 p3)
 {
 	p3  = fract(p3 * HASHSCALE1);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.x + p3.y) * p3.z);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
 //  2 out, 1 in...
@@ -240,7 +239,7 @@ vec2 hash21(float p)
 {
 	vec3 p3 = fract(vec3(p) * HASHSCALE3);
 	p3 += dot(p3, p3.yzx + 19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	return fract((p3.xx+p3.yz)*p3.zy);
 
 }
 
@@ -248,8 +247,8 @@ vec2 hash21(float p)
 vec2 hash22(vec2 p)
 {
 	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
-    p3 += dot(p3, p3.yzx+19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	p3 += dot(p3, p3.yzx+19.19);
+	return fract((p3.xx+p3.yz)*p3.zy);
 
 }
 
@@ -257,8 +256,8 @@ vec2 hash22(vec2 p)
 vec2 hash23(vec3 p3)
 {
 	p3 = fract(p3 * HASHSCALE3);
-    p3 += dot(p3, p3.yzx+19.19);
-    return fract((p3.xx+p3.yz)*p3.zy);
+	p3 += dot(p3, p3.yzx+19.19);
+	return fract((p3.xx+p3.yz)*p3.zy);
 }
 
 //  3 out, 1 in...
@@ -274,16 +273,16 @@ vec3 hash31(float p)
 vec3 hash32(vec2 p)
 {
 	vec3 p3 = fract(vec3(p.xyx) * HASHSCALE3);
-    p3 += dot(p3, p3.yxz+19.19);
-    return fract((p3.xxy+p3.yzz)*p3.zyx);
+	p3 += dot(p3, p3.yxz+19.19);
+	return fract((p3.xxy+p3.yzz)*p3.zyx);
 }
 
 ///  3 out, 3 in...
 vec3 hash33(vec3 p3)
 {
 	p3 = fract(p3 * HASHSCALE3);
-    p3 += dot(p3, p3.yxz+19.19);
-    return fract((p3.xxy + p3.yxx)*p3.zyx);
+	p3 += dot(p3, p3.yxz+19.19);
+	return fract((p3.xxy + p3.yxx)*p3.zyx);
 
 }
 
@@ -291,17 +290,17 @@ vec3 hash33(vec3 p3)
 vec4 hash41(float p)
 {
 	vec4 p4 = fract(vec4(p) * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
-    
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	
 }
 
 // 4 out, 2 in...
 vec4 hash42(vec2 p)
 {
 	vec4 p4 = fract(vec4(p.xyxy) * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
 
 }
 
@@ -309,43 +308,58 @@ vec4 hash42(vec2 p)
 vec4 hash43(vec3 p)
 {
 	vec4 p4 = fract(vec4(p.xyzx)  * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
 }
 
 // 4 out, 4 in...
 vec4 hash44(vec4 p4)
 {
 	p4 = fract(p4  * HASHSCALE4);
-    p4 += dot(p4, p4.wzxy+19.19);
-    return fract((p4.xxyz+p4.yzzw)*p4.zywx);
-    //return fract(vec4((p4.x + p4.y)*p4.z, (p4.x + p4.z)*p4.y, (p4.y + p4.z)*p4.w, (p4.z + p4.w)*p4.x));
+	p4 += dot(p4, p4.wzxy+19.19);
+	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+	//return fract(vec4((p4.x + p4.y)*p4.z, (p4.x + p4.z)*p4.y, (p4.y + p4.z)*p4.w, (p4.z + p4.w)*p4.x));
 }
 
 //
 // BRDF
 //
 
-// cos分布による重点サンプリング
-vec3 cosineDirection( vec2 Xi, vec3 normal ) {
-	// compute basis from normal
-	// see http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/content
-	// (link provided by nimitz)
-	vec3 tc = vec3( 1.0 + normal.z - normal.xy * normal.xy, -normal.x * normal.y ) / ( 1.0 + normal.z );
-	vec3 uu = vec3( tc.x, tc.z, -normal.x );
-	vec3 vv = vec3( tc.z, tc.y, -normal.y );
-	float a = PI2 * Xi.y;
-	return sqrt( Xi.x ) * ( cos( a ) * uu + sin( a ) * vv ) + sqrt( 1.0 - Xi.x ) * normal;
+// 完全拡散反射のcos項による重点サンプリング
+// https://github.com/githole/edupt/blob/master/radiance.h
+vec3 importanceSampleDiffuse(vec2 Xi, vec3 normal) {
+	vec3 up = abs(normal.x) > EPS ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tangent = normalize(cross(up, normal));
+	vec3 binormal = cross(normal, tangent);// up,tangent は直交かつ正規化されているので、normalize 不要
+
+	// θ,φは極座標系の偏角。cosθにより重点サンプリングをしたい
+	// 任意の確率密度関数fを積分した累積分布関数Fの逆関数を一様乱数に噛ませれば、
+	// 任意の確率密度を持つ確率変数を得ることができる（逆関数法）
+	// - f(θ,φ) = cos(θ)/PI
+	// - F(θ,φ) = ∬f(θ,φ) dθdφ = φ/2PI * (1 - (cosθ)^2)
+	// - F(θ) = 1 - (cosθ)^2
+	// - F(φ) = φ/2PI
+	// Fの逆関数から、角度θ,φを求めることができるので、
+	//float theta = asin(sqrt(Xi.y));// θは整理すると消去できるのでコメントアウト
+	float phi = PI2 * Xi.x;
+
+	// サンプリング方向 result は極座標から直交座標への変換によって求められる
+	// result = tangent * sin(theta) * cos(phi) + binormal * sin(theta) * sin(phi) + normal * cos(theta))
+	// ここで、r = Xi.y と置くと、result を整理できる
+	// - sin(theta) = sin(asin(sqrt(Xi.y))) = sqrt(Xi.y) = sqrt(r)
+	// - cos(theta) = sqrt(1.0 - sin(theta) * sin(theta)) = sqrt(1.0 - r)
+	float r = Xi.y;
+	return (tangent * cos(phi) + binormal * sin(phi)) * sqrt(r) + normal * sqrt(1.0 - r);
 }
 
-// http://project-asura.com/blog/?p=3124
 // Unreal Engine 4 で利用されている ImportanceSampleGGX を GLSL に移植
-// おそらくcos分布による重点サンプリングだと思っている…
+// cos項による重点サンプリング
+// http://project-asura.com/blog/?p=3124
 vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	float a = Roughness * Roughness;
 
 	float Phi = PI2 * Xi.x;
-	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y ) );
+	float CosTheta = sqrt( (1.0 - Xi.y) / ( 1.0 + ( a*a - 1.0 ) * Xi.y ) );
 	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
 
 	vec3 H;
@@ -353,21 +367,51 @@ vec3 importanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 	H.y = SinTheta * sin( Phi );
 	H.z = CosTheta;
 
-	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
-	vec3 TangentX = normalize( cross( UpVector , N ) );
+	vec3 up = abs( N.x ) > EPS ? vec3( 0.0, 1.0, 0.0 ) : vec3( 1.0, 0.0, 0.0 );
+	vec3 TangentX = normalize( cross( up, N ) );
 	vec3 TangentY = cross( N, TangentX );
 	// Tangent to world space
 	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
-// http://d.hatena.ne.jp/hanecci/20130727/p2
-float GGX_G_1( float Roughness, float NoV ) {
-    float k = 0.5 * Roughness * Roughness;
-    return NoV / ( NoV * ( 1.0 - k ) + k );
-}
+// 屈折面のサンプリング
+// http://marupeke296.com/DXPS_PS_No7_FresnelReflection.html
+// https://en.wikipedia.org/wiki/Fresnel_equations
+// https://github.com/githole/edupt/blob/master/radiance.h
+// https://github.com/githole/gemspt/blob/master/material.h
+void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, vec3 N) {
+	bool isIncoming = dot(ray.direction, intersection.normal) < 0.0;
+	vec3 orientingNormal = isIncoming ? N : -N;
+	float nt = intersection.material.refractiveIndex;
+	float nnt = isIncoming ? 1.0 / nt : nt;
 
-float GGX_G( float Roughness, float NoV, float NoL ) {
-    return GGX_G_1( Roughness, NoV ) * GGX_G_1( Roughness, NoL );
+	vec3 reflectDirection = reflect(ray.direction, orientingNormal);
+	vec3 refractDirection = refract(ray.direction, orientingNormal, nnt);
+
+	if ( refractDirection == vec3( 0.0 ) ) {
+		// 完全反射のケース
+		ray.direction = reflectDirection;
+	} else {
+		// フレネル反射率Rの計算
+		// 入射角をI、屈折角をT、RsをS波の反射率、RpをP派の反射率、Rをフレネル反射率とする
+		float cosI = dot(ray.direction, -orientingNormal);
+		//float cosT = sqrt(1.0 - nnt * nnt * (1.0 - cosI * cosI));
+		float cosT = dot(refractDirection, -orientingNormal);
+		float Rs = (nnt * cosI - cosT) * (nnt * cosI - cosT) / ((nnt * cosI + cosT) * (nnt * cosI + cosT));
+		float Rp = (nnt * cosT - cosI) * (nnt * cosT - cosI) / ((nnt * cosT + cosI) * (nnt * cosT + cosI));
+		float R = 0.5 * (Rs + Rp);
+
+		if ( Xi.x <= R ) {
+			// 反射
+			ray.direction = reflectDirection;
+		} else {
+			// 屈折
+			// 物体内部にレイの原点を移動する
+			//intersection.material.color *= pow( nnt, 2.0 );// 立体角の変化に伴う放射輝度の補正を入れたら暗くなったのでコメントアウト
+			ray.origin = intersection.position - OFFSET * intersection.normal;
+			ray.direction = refractDirection;
+		}
+	}
 }
 
 
@@ -428,9 +472,9 @@ void intersectDistanceFucntion( inout Intersection intersection, Ray ray, Materi
 }
 
 void intersectPlane( inout Intersection intersection, Ray ray, Plane plane ){
-    float d = -dot( plane.position, plane.normal );
-    float v = dot( ray.direction, plane.normal );
-    float t = -( dot( ray.origin, plane.normal ) + d ) / v;
+	float d = -dot( plane.position, plane.normal );
+	float v = dot( ray.direction, plane.normal );
+	float t = -( dot( ray.origin, plane.normal ) + d ) / v;
 
 	if( t > EPS && t < intersection.distance ) {
 		intersection.hit = true;
@@ -483,7 +527,6 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 		intersection.material = aabb.material;
 
 		vec3 uvw = ( intersection.position - aabb.lb ) / ( aabb.rt - aabb.lb );
-		//intersection.uv = vec2( uvw.x, uvw.z );
 
 		// 交点座標から法線を求める
 		// 高速化のためにY軸から先に判定する
@@ -509,6 +552,8 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 	}
 }
 /*
+// intersectScene の定義例
+// JavaScript のSceneEditor#createFragmentShader で生成されるため、ここでは定義しない
 void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	Plane plane;
 	plane.material.type = MATERIAL_TYPE_DIFFUSE;
@@ -516,7 +561,7 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	plane.material.emission = vec3( 0.0 );
 	plane.position = vec3( 0.0, 0.0, 0.0 );
 	plane.normal = vec3( 0.0, 1.0, 0.0 );
-	//intersectPlane( intersection, ray, plane );
+	intersectPlane( intersection, ray, plane );
 
 	AABB aabb;
 	aabb.material.type = MATERIAL_TYPE_GGX;
@@ -526,68 +571,23 @@ void intersectScene( inout Intersection intersection, inout Ray ray ) {
 	aabb.rt = vec3( 5.0, 0.0, 5.0 );
 	intersectAABB( intersection, ray, aabb );
 
-	aabb.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-	aabb.lb = vec3( -4.0, 0.0, -4.0 );
-	aabb.rt = vec3( -3.0, 1.0, -3.0 );
-	intersectAABB( intersection, ray, aabb );
-
-	Material distanceMaterial;
-	distanceMaterial.type = MATERIAL_TYPE_DIFFUSE;
-	distanceMaterial.color = vec3( 0.4, 0.4, 0.8 );
-	distanceMaterial.emission = vec3( 0.0 );
-	intersectDistanceFucntion( intersection, ray, distanceMaterial );
-
 	Sphere sphere;
 	sphere.material.emission = vec3( 0.0 );
-
 	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
 	sphere.material.color = vec3( 0.8, 0.4, 0.4 );
 	sphere.position = vec3( 0.0, 1.0, 1.0 );
 	sphere.radius = 1.0;
 	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_REFRACTION;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( 2.0, 0.7, 3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_GGX_REFRACTION;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( -2.0, 0.7, 3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
-	sphere.material.color = vec3( 0.5, 0.25, 0.3 );
-	sphere.position = vec3( -2.0, 0.7, 3.0 );
-	sphere.radius = 0.2;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_SPECULAR;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( 3.0, 0.7, -3.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_GGX;
-	sphere.material.color = vec3( 1.0, 1.0, 1.0 );
-	sphere.position = vec3( -3.0, 0.7, -1.0 );
-	sphere.radius = 0.7;
-	intersectSphere( intersection, ray, sphere );
-
-	sphere.material.type = MATERIAL_TYPE_DIFFUSE;
-	sphere.material.color = vec3( 0.0 );
-	sphere.material.emission = vec3( 20.0 );
-	sphere.position = vec3( 0.0, 5.0, 0.0 );
-	sphere.radius = 1.0;
-	//intersectSphere( intersection, ray, sphere );
 }
 */
 </script>
 
 <script id="float_fragment_shader_p2" type="x-shader/x-fragment">
-void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) {
+vec3 gammaToLinear( in vec3 value, in float gammaFactor ) {
+	return pow( value, vec3( gammaFactor ) );
+}
+
+void shootRay( inout Intersection intersection, inout Ray ray, int bounce ) {
 	intersection.hit = false;
 	intersection.distance = INF;
 	intersection.material.colorTexture = 0;
@@ -603,94 +603,76 @@ void calcRadiance( inout Intersection intersection, inout Ray ray, int bounce ) 
 		float roughness = intersection.material.roughness * fetchTextureMaterial( intersection.material.roughnessTexture, intersection.uv ).r;
 
 		if ( intersection.material.type == MATERIAL_TYPE_DIFFUSE ) {
-			ray.direction = cosineDirection( Xi, intersection.normal);
+			ray.direction = importanceSampleDiffuse( Xi, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_SPECULAR ) {
 			ray.direction = reflect( ray.direction, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_REFRACTION ) {
-			vec3 rayDirection = ray.direction;
-			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
-			vec3 orientingNormal = isIncoming ? intersection.normal : -intersection.normal;
-			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
-			if ( ray.direction == vec3( 0.0 ) ) {
-				// 完全反射のケース
-				ray.direction = reflect( rayDirection, orientingNormal );
-			} else {
-				ray.origin = intersection.position - OFFSET * intersection.normal;
-			}
+			sampleRefraction( Xi, intersection, ray, intersection.normal );
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX ) {
-			vec3 N = intersection.normal;
-			vec3 V = -ray.direction;
-			vec3 H = importanceSampleGGX( Xi, roughness, N );
-			vec3 L = reflect( ray.direction, H );
-			//vec3 L = 2.0 * dot( V, H ) * H - V;
+			vec3 H = importanceSampleGGX( Xi, roughness, intersection.normal );
+			ray.direction = reflect( ray.direction, H );
 
-			float NoV = saturate( dot( N, V ) );// x x
-			float NoL = saturate( dot( N, L ) );// x x
-			float NoH = saturate( dot( N, H ) );// o o
-			float VoH = saturate( dot( V, H ) );// x x
-
-			if( NoL > 0.0 ) {
-				float G = GGX_G( roughness, NoV, NoL );
-				float Fc = pow( 1.0 - VoH, 5.0 );
-				vec3 F = (1.0 - Fc) * SpecularColor + Fc;
-				intersection.material.color *= F * G * VoH / ( NoH * NoV );
-			} else {
-				// 半球外が選ばれた場合、どう対応するのがベストなのだろう…
-				// BRDFを0にすると真値よりも暗くなる気がする
+			if( dot( intersection.normal, ray.direction ) <= 0.0 ) {
+				// 半球外が選ばれた場合はBRDFを0にする
+				// 真値よりも暗くなるので、サンプリングやり直す方が理想的ではありそう
+				intersection.material.color = vec3( 0.0 );
 			}
-
-			ray.direction = L;
 		} else if ( intersection.material.type == MATERIAL_TYPE_GGX_REFRACTION ) {
 			vec3 H = importanceSampleGGX( Xi, roughness, intersection.normal );
-
-			vec3 rayDirection = ray.direction;
-			bool isIncoming = dot( rayDirection, intersection.normal ) < 0.0;
-			vec3 orientingNormal = isIncoming ? H : -H;
-			ray.direction = refract( rayDirection, orientingNormal, isIncoming ? 1.0 / intersection.material.refractiveIndex : intersection.material.refractiveIndex );
-			if ( ray.direction == vec3( 0.0 ) ) {
-				// 完全反射のケース
-				ray.direction = reflect( rayDirection, orientingNormal );
-			} else {
-				ray.origin = intersection.position - OFFSET * intersection.normal;
-			}
+			sampleRefraction( Xi, intersection, ray, H );
 		}
 	} else {
-		intersection.material.color = textureCube( cubeMap, ray.direction ).rgb;//backgroundColor;
-		intersection.material.emission = vec3( 0.0 );
+		intersection.material.emission = gammaToLinear( textureCubeLodEXT( cubeMap, ray.direction, 0.0 ).rgb, 2.2);
+		intersection.material.color	= vec3( 1.0 );
 	}
 }
 
+vec3 calcRadiance( inout Ray ray ) {
+	Intersection intersection;
+	vec3 acc = vec3( 0.0 );
+	vec3 ref = vec3( 1.0 );
+	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
+		shootRay( intersection, ray, bounce );
+
+		// レンダリング方程式は再帰的に定義される
+		// GLSLでは再帰を書けないので、再帰をループに直して実装する
+		vec3 emission = intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv );
+		vec3 color	= intersection.material.color * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
+		acc += ref * emission;
+		ref *= color;
+
+		if ( !intersection.hit ) break;
+	}
+
+	return acc;
+	//// 負の輝度値は除去（負の輝度のレイは発生しなくなったのでコメントアウト）
+	//if ( acc.r >= 0.0 && acc.g >= 0.0 && acc.b >= 0.0 ) {
+	//	return acc;
+	//} else {
+	//	return vec3( 0.0 );
+	//}
+}
+
 void main( void ) {
-	// previous color
-	vec2 uv = gl_FragCoord.xy / resolution.xy;
+	// 前フレームまでのサンプリングの累積値を prevColor に格納
+	vec2 uv = gl_FragCoord.xy / resolution;
 	vec4 prevColor = texture2D( buffer, uv );
 
-	// fragment position
-	vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;
+	// スクリーン座標を正規化
+	vec3 seed = vec3( float( frame ), gl_FragCoord.xy );
+	vec2 noise = hash23( seed ) - 0.5;
+	// vec2 fragPos = ( gl_FragCoord.xy * 2.0 - resolution ) / resolution;// AAなし
+	vec2 fragPos = ( 2.0 * ( gl_FragCoord.xy + noise ) - resolution ) / resolution;// AAあり
 
-	// camera and ray
-	vec4 rayTip = cameraWorldMatrix * cameraProjectionMatrixInverse * vec4( fragPos.xy, 1.0, 1.0 );
+	// three.js のカメラ行列からレイの原点と向きを定義
+	vec4 rayTip = cameraWorldMatrix * cameraProjectionInverseMatrix * vec4( fragPos.xy, 1.0, 1.0 );
+	//vec4 rayTip = cameraWorldProjectionInverseMaxtirx * vec4( fragPos.xy, 1.0, 1.0 );// これだとガタガタする（CPU演算の精度の問題？）
 	Ray ray;
 	ray.origin = cameraPosition;
 	ray.direction = normalize( rayTip.xyz );
 
-	// bounce
-	Intersection intersection;
-	vec3 color = vec3( 1.0 );
-	for ( int bounce = 0; bounce <= BOUNCE_LIMIT; bounce++ ) {
-		calcRadiance( intersection, ray, bounce );
-		color *= 	intersection.material.emission * fetchTextureMaterial( intersection.material.emissionTexture, intersection.uv ) + 
-					intersection.material.color    * fetchTextureMaterial( intersection.material.colorTexture, intersection.uv );
-		if ( !intersection.hit ) break;
-
-		// 光源に到達しないケースなら明るさは0
-		if ( bounce == BOUNCE_LIMIT && intersection.hit ) {
-			color = vec3( 0.0 );
-		}
-	}
-
-	gl_FragColor = vec4( prevColor.rgb + color, 1.0 );
-	//gl_FragColor = vec4( color, 1.0 );
+	// 放射輝度を計算し、前フレームまでのサンプリングの累積値に加算
+	gl_FragColor = vec4( prevColor.rgb + calcRadiance( ray ), 1.0 );
 }
 </script>
 
@@ -701,11 +683,16 @@ uniform int frame;
 uniform vec2 resolution;
 uniform sampler2D buffer;
 
+vec3 linearToGamma( in vec3 value, in float gammaFactor ) {
+	return pow( value, vec3( 1.0 / gammaFactor ) );
+}
+
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
-	vec4 color = texture2D( buffer, uv );
-	gl_FragColor = vec4( color.rgb / float( frame + 1 ), 1.0 );
-	//gl_FragColor = vec4( color.rgb, 1.0 );
+	vec4 accColor = texture2D( buffer, uv );
+	vec3 linearColor = accColor.rgb / float( frame + 1 );
+	vec3 gammaColor = linearToGamma( linearColor, 2.2 );
+	gl_FragColor = vec4( gammaColor, 1.0 );
 }
 </script>
 
@@ -737,6 +724,8 @@ var config = {
 
 	// Scene Edit
 	preset: "basic",
+	preset: "cornellBox",
+	//envmap: "castle",
 	envmap: "pisa",
 	transformMode: function() {
 		editor.toggleTransformMode();
@@ -804,7 +793,7 @@ function createDataTexture( width, height ) {
 	var data = new Float32Array( width * height * 4 );
 
 	for (var k = 0, kl = data.length; k < kl; k += 4) {
-		data[k]      = 0.0;
+		data[k]	  = 0.0;
 		data[k + 1]  = 0.0;
 		data[k + 2]  = 0.0;
 		data[k + 3]  = 1.0;
@@ -841,6 +830,10 @@ function createDynamicObjects() {
 	readBuffer  = createRenderTarget( canvas.width, canvas.height );
 	writeBuffer = readBuffer.clone();
 
+	var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+	var cameraWorldProjectionInverseMaxtirx = camera.matrixWorld.clone();
+	cameraWorldProjectionInverseMaxtirx.multiply( cameraProjectionInverseMatrix );
+
 	// float quad
 	floatQuad = createQuadScene( {
 		uniforms: {
@@ -858,8 +851,8 @@ function createDynamicObjects() {
 			texture06: { type: 't', value: texture2Ds.gam0022_inverse },
 
 			cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
-			cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
-			cameraViewProjectionpMatrixInverse: { type: 'm4', value: new THREE.Matrix4() },
+			cameraProjectionInverseMatrix: { type: 'm4', value: cameraProjectionInverseMatrix },
+			cameraWorldProjectionInverseMaxtirx: { type: 'm4', value: cameraWorldProjectionInverseMaxtirx },
 			cameraNear: { type: 'f', value: camera.near },
 			cameraFar:  { type: 'f', value: camera.far },
 		},
@@ -868,33 +861,26 @@ function createDynamicObjects() {
 	} );
 }
 
-function initTextureCube() {
-	textureCubes = {};
-	var cubeTextureLoader = new THREE.CubeTextureLoader();
-
-	var r = "textures/cube/Bridge2/";
+function createTextureCube( cubeTextureLoader, rootPath, ext ) {
 	var urls = [
-		r + "posx.jpg", r + "negx.jpg",
-		r + "posy.jpg", r + "negy.jpg",
-		r + "posz.jpg", r + "negz.jpg",
+		rootPath + "px." + ext, rootPath + "nx." + ext,
+		rootPath + "py." + ext, rootPath + "ny." + ext,
+		rootPath + "pz." + ext, rootPath + "nz." + ext,
 	];
 	var textureCube = cubeTextureLoader.load( urls );
 	textureCube.format = THREE.RGBFormat;
 	textureCube.mapping = THREE.CubeReflectionMapping;
-	textureCubes.bridge = textureCube;
-	textureCubes.generateMipmaps = false;
+	//textureCube.generateMipmaps = false;
+	return textureCube;
+}
 
-	r = "textures/cube/pisa/";
-	urls = [
-		r + "px.png", r + "nx.png",
-		r + "py.png", r + "ny.png",
-		r + "pz.png", r + "nz.png",
-	];
-	textureCube = cubeTextureLoader.load( urls );
-	textureCube.format = THREE.RGBFormat;
-	textureCube.mapping = THREE.CubeReflectionMapping;
-	textureCubes.pisa = textureCube;
-	textureCubes.generateMipmaps = false;
+function initTextureCube() {
+	textureCubes = {};
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
+
+	textureCubes.bridge = createTextureCube( cubeTextureLoader, "textures/cube/Bridge2/", "jpg" );
+	textureCubes.pisa   = createTextureCube( cubeTextureLoader, "textures/cube/pisa/", "png" );
+	textureCubes.castle   = createTextureCube( cubeTextureLoader, "textures/cube/SwedishRoyalCastle/", "jpg" );
 }
 
 function initTexture2D() {
@@ -908,11 +894,11 @@ function initTexture2D() {
 		return texture;
 	}
 
-	texture2Ds.checkered       = createRepeatTexture( "textures/checkered_512.jpg" );
-	texture2Ds.earth           = createRepeatTexture( "textures/earth_2048.jpg" );
+	texture2Ds.checkered	   = createRepeatTexture( "textures/checkered_512.jpg" );
+	texture2Ds.earth		   = createRepeatTexture( "textures/earth_2048.jpg" );
 	texture2Ds.earth_inverse   = createRepeatTexture( "textures/earth_inverse_2048.jpg" );
-	texture2Ds.earth_color     = createRepeatTexture( "textures/earth_color_2048.jpg" );
-	texture2Ds.gam0022         = createRepeatTexture( "textures/gam0022_1024.png" );
+	texture2Ds.earth_color	 = createRepeatTexture( "textures/earth_color_2048.jpg" );
+	texture2Ds.gam0022		 = createRepeatTexture( "textures/gam0022_1024.png" );
 	texture2Ds.gam0022_inverse = createRepeatTexture( "textures/gam0022_inverse_1024.png" );
 }
 
@@ -925,12 +911,12 @@ function initGUI() {
 
 	// Scene Edit
 	var sceneEditFolder = gui.addFolder( "Scene Edit" );
-	sceneEditFolder.add( config, 'preset', [ "basic", "table" ] ).name( 'Preset' ).onChange( function( value ) {
+	sceneEditFolder.add( config, 'preset', Object.keys(presetScenes) ).name( 'Preset' ).onChange( function( value ) {
 		editor.removeAllMesh();
 		editor.loadSceneJSON( presetScenes[value]() );
 		editor.update();
 	} );
-	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa" ] ).name( 'EnvMap' ).onChange( function( value ) {
+	sceneEditFolder.add( config, 'envmap', [ "bridge", "pisa", "castle" ] ).name( 'EnvMap' ).onChange( function( value ) {
 		floatQuad.material.uniforms.cubeMap.value = textureCubes[value];
 		frame = 0;
 	} );
@@ -1012,7 +998,12 @@ function init() {
 
 	// extentions
 	if ( !renderer.extensions.get( "OES_texture_float" ) ) {
-		alert( "No OES_texture_float support for float textures." );
+		alert( "OES_texture_float is not supported." );
+		return;
+	}
+
+	if ( !renderer.extensions.get( "EXT_shader_texture_lod" ) ) {
+		alert( "EXT_shader_texture_lod is not supported." );
 		return;
 	}
 
@@ -1102,16 +1093,13 @@ function render( timestamp ) {
 
 		// set camera uniforms
 		{
-			var cameraViewProjectionpMatrixInverse = camera.matrixWorld.clone();
-			var cameraViewInverseMatrix = camera.matrixWorld;
 			var cameraProjectionInverseMatrix = new THREE.Matrix4().getInverse( camera.projectionMatrix );
-			//cameraViewProjectionpMatrixInverse.multiplyMatrices( cameraViewInverseMatrix, cameraProjectionInverseMatrix );
-			cameraViewProjectionpMatrixInverse.multiply( cameraViewInverseMatrix );
-			cameraViewProjectionpMatrixInverse.multiply( cameraProjectionInverseMatrix );
-			floatQuad.material.uniforms.cameraViewProjectionpMatrixInverse.value = cameraViewProjectionpMatrixInverse;
+			var cameraWorldProjectionInverseMaxtirx = camera.matrixWorld.clone();
+			cameraWorldProjectionInverseMaxtirx.multiply( cameraProjectionInverseMatrix );
 
 			floatQuad.material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-			floatQuad.material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+			floatQuad.material.uniforms.cameraProjectionInverseMatrix.value = cameraProjectionInverseMatrix;
+			floatQuad.material.uniforms.cameraWorldProjectionInverseMaxtirx.value = cameraWorldProjectionInverseMaxtirx;
 
 			floatQuad.material.uniforms.cameraNear.value = camera.near;
 			floatQuad.material.uniforms.cameraFar.value  = camera.far;
