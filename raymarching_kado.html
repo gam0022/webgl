@@ -229,6 +229,45 @@ float dBar( vec2 p, float interval, float width) {
 #define UFO_SCENE_END_TIME (117.0)
 #define SNOW_SCENE_END_TIME (182.0)
 
+// http://blog.hvidtfeldts.net/index.php/2011/11/distance-estimated-3d-fractals-vi-the-mandelbox/
+float minRadius2 = 0.5;
+float fixedRadius2 = 1.0;
+float foldingLimit = 1.0;
+#define Iterations 8
+float Scale = 2.7;
+
+void sphereFold(inout vec3 z, inout float dz) {
+	float r2 = dot(z,z);
+	if (r2<minRadius2) {
+		// linear inner scaling
+		float temp = (fixedRadius2/minRadius2);
+		z *= temp;
+		dz*= temp;
+	} else if (r2<fixedRadius2) {
+		// this is the actual sphere inversion
+		float temp =(fixedRadius2/r2);
+		z *= temp;
+		dz*= temp;
+	}
+}
+
+void boxFold(inout vec3 z, inout float dz) {
+	z = clamp(z, -foldingLimit, foldingLimit) * 2.0 - z;
+}
+
+float DE(vec3 z) {
+	vec3 offset = z;
+	float dr = 1.0;
+	for (int n = 0; n < Iterations; n++) {
+		boxFold(z,dr);       // Reflect
+		sphereFold(z,dr);    // Sphere Inversion
+		z=Scale*z + offset;  // Scale & Translate
+		dr = dr*abs(Scale)+1.0;
+	}
+	float r = length(z);
+	return r/abs(dr);
+}
+
 float dFract(inout vec3 p) {
 	float radius = 1.0;
 	float radiusScale = 0.45 * abs(sin(0.3 * lTime));
@@ -337,23 +376,24 @@ float dUfo(inout vec3 p) {
 }
 
 float dScene(vec3 p) {
-	if (lTime < UFO_SCENE_END_TIME - 2.0) {
-		float d = dMeta(p);
-		d = smin(d, dUfo(p), clamp(lTime - META_SCENE_END_TIME, 1.0, 15.0));
-		return d;
-	} else {
-		//return dFract(p);
-		return dSnowCrystal(p);
-	}
+	//if (lTime < UFO_SCENE_END_TIME - 2.0) {
+	//	float d = dMeta(p);
+	//	d = smin(d, dUfo(p), clamp(lTime - META_SCENE_END_TIME, 1.0, 15.0));
+	//	return d;
+	//} else {
+	//	//return dFract(p);
+	//	return dSnowCrystal(p);
+	//}
+	return DE(p);
 }
 
 float dSceneBump(vec3 p) {
 	float d = dScene(p);
 
-	float t3 = lTime - META_SCENE_END_TIME;
-	if (t3 < 10.0) {
-		d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
-	}
+	//float t3 = lTime - META_SCENE_END_TIME;
+	//if (t3 < 10.0) {
+	//	d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
+	//}
 
 	return d;
 }
@@ -682,7 +722,7 @@ void main(void) {
 							replace(/\b(time)\b/g, 'iGlobalTime');
 					});
 				},
-				camera: 'Auto',
+				camera: 'Orbit',
 				resolution: 256,
 				aspectRatio: 4/3,
 				pixelRatio: 1,
