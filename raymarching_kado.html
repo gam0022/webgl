@@ -238,16 +238,16 @@ float Scale = 2.7;
 
 void sphereFold(inout vec3 z, inout float dz) {
 	float r2 = dot(z,z);
-	if (r2<minRadius2) {
+	if (r2 < minRadius2) {
 		// linear inner scaling
-		float temp = (fixedRadius2/minRadius2);
+		float temp = (fixedRadius2 / minRadius2);
 		z *= temp;
-		dz*= temp;
-	} else if (r2<fixedRadius2) {
+		dz *= temp;
+	} else if (r2 < fixedRadius2) {
 		// this is the actual sphere inversion
-		float temp =(fixedRadius2/r2);
+		float temp = fixedRadius2 / r2;
 		z *= temp;
-		dz*= temp;
+		dz *= temp;
 	}
 }
 
@@ -255,17 +255,17 @@ void boxFold(inout vec3 z, inout float dz) {
 	z = clamp(z, -foldingLimit, foldingLimit) * 2.0 - z;
 }
 
-float DE(vec3 z) {
+float dMbox(vec3 z) {
 	vec3 offset = z;
 	float dr = 1.0;
 	for (int n = 0; n < Iterations; n++) {
-		boxFold(z,dr);       // Reflect
-		sphereFold(z,dr);    // Sphere Inversion
-		z=Scale*z + offset;  // Scale & Translate
-		dr = dr*abs(Scale)+1.0;
+		boxFold(z, dr);       // Reflect
+		sphereFold(z, dr);    // Sphere Inversion
+		z = Scale * z + offset;  // Scale & Translate
+		dr = dr * abs(Scale) + 1.0;
 	}
 	float r = length(z);
-	return r/abs(dr);
+	return r / abs(dr);
 }
 
 float dFract(inout vec3 p) {
@@ -384,7 +384,7 @@ float dScene(vec3 p) {
 	//	//return dFract(p);
 	//	return dSnowCrystal(p);
 	//}
-	return DE(p);
+	return dMbox(p);
 }
 
 float dSceneBump(vec3 p) {
