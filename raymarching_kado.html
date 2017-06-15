@@ -234,7 +234,7 @@ float minRadius2 = 0.5;
 float fixedRadius2 = 1.0;
 float foldingLimit = 1.0;
 #define Iterations 8
-float Scale = 2.7;
+float Scale = 2.3;
 
 void sphereFold(inout vec3 z, inout float dz) {
 	float r2 = dot(z,z);
@@ -268,122 +268,7 @@ float dMbox(vec3 z) {
 	return r / abs(dr);
 }
 
-float dFract(inout vec3 p) {
-	float radius = 1.0;
-	float radiusScale = 0.45 * abs(sin(0.3 * lTime));
-	float d = sdBox(p, vec3(radius));
-	for (int i = 0; i < 5; i++) {
-		vec3 q = abs(p) + normalize(vec3(-1.0)) * radius * (1.0 + radiusScale);
-		d = min(d, sdBox(p, vec3(radius)));
-		p = q;
-		radius *= radiusScale;
-	}
-	return d;
-}
-
-float dTree(vec3 p) {
-	float scale = 0.6 * saturate(1.5 * sin(0.05 * (lTime - UFO_SCENE_END_TIME - 2.0)));
-	float width = mix(0.3 * scale, 0.0, saturate(p.y));
-	vec3 size = vec3(width, 1.0, width);
-	float d = sdBox(p, size);
-	for (int i = 0; i < 10; i++) {
-		vec3 q = p;
-		q.x = abs(q.x);
-		q.y -= 0.5 * size.y;
-		q.xy *= rotate(-1.2);
-		d = min(d, sdBox(p, size));
-		p = q;
-		size *= scale;
-	}
-	return d;
-}
-
-float dSnowCrystal(inout vec3 p) {
-	p.xy = fold(p.xy, 6.0);
-	return dTree(p);
-}
-
-float dMix(inout vec3 p) {
-	float sphere = dSphere(p, 1.5);
-	float box = sdBox(p, vec3(1.1));
-	float d = mix(sphere, box, 0.5 + clamp(sin(PIQ * lTime), -0.5, 0.5));
-	return d;
-}
-
-float dMeta(inout vec3 p) {
-	// copy from cameraControl
-	vec3 target = vec3(0.0);
-	float t1 = lTime - META_SCENE_END_TIME;
-	target.y = clamp(-0.7 * t1, -2.8, 100.0);
-
-	float a = max(0.0, 2.0 - lTime * 0.1) + cos(lTime * 0.3);
-	float b = 0.2 * sin(lTime);
-	float d1 = dSphere(p - target - vec3(a, 0, b), 1.0);
-	float d2 = dSphere(p - target + vec3(a, 0, b), 1.0);
-	float d = smin(d1, d2, 1.0);
-	return d;
-}
-
-float hWave(vec2 p, float t) {
-	float h = 1.0;
-	float a = 1.0;
-	float b = 6.0;
-
-	for(float i = 0.0; i < 3.0; i++) {
-		float f = pow(2.0, i);
-		h += 1.0 / f * (sin(f * a * p.x + b * t) + sin(f * a * p.y + b * t));
-	}
-
-	return h;
-}
-
-float dWing(in vec3 p) {
-	float t = lTime - META_SCENE_END_TIME;
-	float l = length(p.xz);
-	float fusion = gauss((lTime - META_SCENE_END_TIME - 5.0) * 2.0);
-
-	float a = 0.1 + 0.06 * (1.0 + sin(PI * t + l));
-	float b = min(0.2 * t, 10.0) * gauss(l) + 0.1 * fusion * hWave(p.xz, t);
-	p.y += -b + 15.0;
-
-	vec3 p1 = p;
-	p1.xz = opRepLimit(p.xz, 1.0, 20.0);
-
-	vec3 p2 = p;
-	p2 = opRep(p, 0.5);
-
-	float d =   sdBox(p1, vec3(0.2 + a * 3.0, 12.0 - a,       0.2 + a));
-	d = min(d,  sdBox(p1, vec3(0.4 - a,       13.0 - 4.0 * a, 0.1 + a)));
-	d = max(d, -sdBox(p1, vec3(0.3 - a,       14.0 - 4.0 * a, a)));
-	d = max(d, -sdBox(p2, vec3(0.8 * a, 1.0 - a, 0.8 * a)));
-	return d;
-}
-
-float dUfo(inout vec3 p) {
-	float t = max((lTime - META_SCENE_END_TIME - 10.0) * 0.5, 1.0);
-	float t1 = floor(t);
-	float t2 = t1 + easeInOutCubic(t - t1);
-
-	p.xz = fold(p.xz, min(t2, 10.0));
-	p.z -= 0.5;
-
-	float d = dWing(p);
-	//float t3 = lTime - META_SCENE_END_TIME;
-	//if (t3 < 10.0) {
-	//	d -= mix(0.08, 0.0, saturate(t3 * 0.1)) * fbm(10.0 * p.xz + 5.0 * p.y);
-	//}
-	return d;
-}
-
 float dScene(vec3 p) {
-	//if (lTime < UFO_SCENE_END_TIME - 2.0) {
-	//	float d = dMeta(p);
-	//	d = smin(d, dUfo(p), clamp(lTime - META_SCENE_END_TIME, 1.0, 15.0));
-	//	return d;
-	//} else {
-	//	//return dFract(p);
-	//	return dSnowCrystal(p);
-	//}
 	return dMbox(p);
 }
 
@@ -406,38 +291,10 @@ vec3 hsv2rgb(vec3 c) {
 	return c.z * mix(K.xxx, saturate(p - K.xxx), c.y);
 }
 
-//vec3 calcNormal( vec3 p ) {
-//	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
-//	return normalize(
-//		e.xyy * dScene( p + e.xyy ) + e.yyx * dScene( p + e.yyx ) +
-//			e.yxy * dScene( p + e.yxy ) + e.xxx * dScene( p + e.xxx ) );
-//}
-
 #define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
 
 float calcRate(float a, float b) {
 	return a / (a + b);
-}
-
-void setMaterialAndUv(inout Intersection intersection, vec3 p) {
-	//intersection.material = METAL_MATERIAL;
-
-	float d1 = dUfo(p);
-	float d2 = dMeta(p);
-	float rate = calcRate(abs(d1), abs(d2));
-	intersection.metalness = rate;
-
-	float t = lTime - META_SCENE_END_TIME;
-	intersection.metalness = mix(intersection.metalness, 1.0, saturate(t * 0.05));
-	intersection.metalness = mix(intersection.metalness, 2.0, gauss((t - 13.0) * 3.0));
-
-	//if ( false && lTime <= META_SCENE_END_TIME ) {
-	//	intersection.material = MIRROR_MATERIAL;
-	//} else {
-	//	dUfo(p);
-	//	intersection.material = METAL_MATERIAL;
-	//	intersection.uv = p.xz;
-	//}
 }
 
 void intersectScene(inout Intersection intersection, inout Ray ray ) {
@@ -457,7 +314,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 		intersection.hit = true;
 		intersection.position = p;
 		intersection.normal = calcNormal(p, dScene);
-		setMaterialAndUv(intersection, p);
+		intersection.metalness = 0.7;
 	}
 }
 
@@ -487,35 +344,6 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	}
 
 	return shadowIntensity + (1.0 - shadowIntensity) * bright;
-}
-
-
-// Just snow by baldand 
-// https://www.shadertoy.com/view/ldsGDn
-#define LAYERS 50
-#define DEPTH .5
-#define WIDTH .3
-#define SPEED .6
-
-float screenSpaceSnow(vec2 uv) {
-	const mat3 p = mat3(13.323122,23.5112,21.71123,21.1212,28.7312,11.9312,21.8112,14.7212,61.3934);
-	float acc = 0.0;
-	float dof = 5.*sin(lTime*.1);
-	for (int i=0;i<LAYERS;i++) {
-		float fi = float(i);
-		vec2 q = uv*(1.+fi*DEPTH);
-		q += vec2(q.y*(WIDTH*mod(fi*7.238917,1.)-WIDTH*.5),SPEED*lTime/(1.+fi*DEPTH*.03));
-		vec3 n = vec3(floor(q),31.189+fi);
-		vec3 m = floor(n)*.00001 + fract(n);
-		vec3 mp = (31415.9+m)/fract(p*m);
-		vec3 r = fract(mp);
-		vec2 s = abs(mod(q,1.)-.5+.9*r.xy-.45);
-		s += .01*abs(2.*fract(10.*q.yx)-1.);
-		float d = .6*max(s.x-s.y,s.x+s.y)+max(s.x,s.y)-.01;
-		float edge = .005+.05*min(.5*abs(fi-5.-dof),1.);
-		acc += smoothstep(edge,-edge,d)*(r.x/(1.+.02*fi*DEPTH));
-	}
-	return acc;
 }
 
 void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
@@ -659,8 +487,6 @@ void main(void) {
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
 
-	color += screenSpaceSnow(uv) * saturate((lTime - UFO_SCENE_END_TIME + 20.0) * 0.1);
-
 	gl_FragColor = vec4(color, 1.0);
 }
 
@@ -741,7 +567,7 @@ void main(void) {
 
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera(35, 800/600);
-				camera.position.z = 5;
+				camera.position.z = 12;
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
 
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
