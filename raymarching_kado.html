@@ -234,7 +234,7 @@ float minRadius2 = 0.5;
 float fixedRadius2 = 1.0;
 float foldingLimit = 1.0;
 #define Iterations 8
-float Scale = 2.3;
+uniform float kadoScale;
 
 void sphereFold(inout vec3 z, inout float dz) {
 	float r2 = dot(z,z);
@@ -261,8 +261,8 @@ float dMbox(vec3 z) {
 	for (int n = 0; n < Iterations; n++) {
 		boxFold(z, dr);       // Reflect
 		sphereFold(z, dr);    // Sphere Inversion
-		z = Scale * z + offset;  // Scale & Translate
-		dr = dr * abs(Scale) + 1.0;
+		z = kadoScale * z + offset;  // Scale & Translate
+		dr = dr * abs(kadoScale) + 1.0;
 	}
 	float r = length(z);
 	return r / abs(dr);
@@ -558,6 +558,9 @@ void main(void) {
 				//time: 142,
 
 				pause: false,
+
+				// mandel box
+				kadoScale: 2.7,
 			};
 
 			init();
@@ -579,6 +582,8 @@ void main(void) {
 						debugCamera: { type: 'i', value: config.camera !== 'Auto' },
 						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
 						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
+
+						kadoScale: {type: 'f', value: config.kadoScale},
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -635,6 +640,10 @@ void main(void) {
 				gui.add( config, 'time', 0, 182 ).step( 0.1 ).name( 'time' ).listen();
 				gui.add( config, 'pause' ).name( 'Pause' );
 
+				var kadoFolder = gui.addFolder( "Kado" );
+				kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
+				kadoFolder.open();
+
 				stats = new Stats();
 				document.body.appendChild( stats.domElement );
 
@@ -681,6 +690,8 @@ void main(void) {
 				material.uniforms.debugCamera.value = config.camera !== 'Auto';
 				material.uniforms.cameraPos.value = camera.getWorldPosition();
 				material.uniforms.cameraDir.value = camera.getWorldDirection();
+
+				material.uniforms.kadoScale.value = config.kadoScale;
 
 				material.uniforms.time.value = config.time;
 
