@@ -53,7 +53,6 @@
 //
 // Thanks
 // - DE used folding by gaz (https://www.shadertoy.com/view/Mlf3Wj)
-// - Just snow by baldand (https://www.shadertoy.com/view/ldsGDn)
 // - Sky and Ground by morgan3d (https://www.shadertoy.com/view/4sKGWt)
 
 precision highp float;
@@ -367,10 +366,6 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 
 		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(rd, 0.0), 4.0));
 	}
-
-	// Whiteout
-	//intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - UFO_SCENE_END_TIME) * 1.0));
-	intersection.color = mix(intersection.color, vec3(1.0), gauss((lTime - SNOW_SCENE_END_TIME) * 0.5));
 }
 
 void cameraControl(inout Camera camera) {
