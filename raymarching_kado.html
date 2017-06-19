@@ -287,8 +287,11 @@ float sdBuildings_(in vec3 p) {
 }
 
 float sdBuildings(in vec3 p) {
-	p.xz = opRep(p.xz, 0.5);
-	return sdBox(p, vec3(0.1, 0.7, 0.1));
+	float interval = 0.7;
+	vec3 q = p;
+	q.xz = opRep(q.xz, interval);
+	float height = random(p.xz - mod(p.xz, interval));
+	return sdBox(q, vec3(0.05, height, 0.05));
 }
 
 float sdGround(vec3 p) {
