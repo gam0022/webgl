@@ -124,13 +124,13 @@ struct Intersection {
 	vec2 uv;
 	float count;
 
-	//int material;
+	int material;
 	vec3 color;
-	float metalness;
+	//float metalness;
 };
 
-//#define METAL_MATERIAL   0
-//#define MIRROR_MATERIAL  1
+#define METAL_MATERIAL   0
+#define CONCRETE_MATERIAL  1
 
 
 // util
@@ -329,7 +329,13 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 		intersection.hit = true;
 		intersection.position = p;
 		intersection.normal = calcNormal(p, dScene);
-		intersection.metalness = 0.7;
+		//intersection.metalness = 0.7;
+
+		if (abs(dMbox(p)) < EPS) {
+			intersection.material = METAL_MATERIAL;
+		} else {
+			intersection.material = CONCRETE_MATERIAL;
+		}
 	}
 }
 
@@ -371,8 +377,13 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
-		intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+		if (intersection.material == METAL_MATERIAL) {
+			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
+			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+		} else {
+			vec3 concreteBase = vec3(0.5);
+			intersection.color = concreteBase * diffuse * ao * shadow;
+		}
 
 		// fog
 		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
@@ -482,9 +493,10 @@ void main(void) {
 		calcRadiance(intersection, ray, bounce);
 
 		color += reflection * intersection.color;
-		if (!intersection.hit /* || intersection.material != METAL_MATERIAL*/) break;
+		if (!intersection.hit || intersection.material != METAL_MATERIAL) break;
 
-		reflection *= (intersection.metalness * 0.7);
+		//reflection *= (intersection.metalness * 0.7);
+		reflection *= 0.7;
 		ray.origin = intersection.position + intersection.normal * OFFSET;
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
