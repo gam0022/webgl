@@ -277,13 +277,18 @@ float sdFloor(in vec3 p) {
     return p.y;
 }
 
-float sdBuildings(in vec3 p) {
+float sdBuildings_(in vec3 p) {
     vec3 pp = mod(p, 1.) - .5;
     float height = random(p.xz - mod(p.xz, 1.)) *3.;
     float nearness = max(floor(p.z) - time - 2., 0.3);
     nearness = pow(nearness, .3);
     pp.y = p.y * 0.4 * nearness - height * 0.1;
     return length(max(abs(pp) - .25, .0));
+}
+
+float sdBuildings(in vec3 p) {
+	p.xz = opRep(p.xz, 0.5);
+	return sdBox(p, vec3(0.1, 0.7, 0.1));
 }
 
 float sdGround(vec3 p) {
