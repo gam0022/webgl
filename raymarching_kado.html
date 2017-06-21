@@ -287,19 +287,28 @@ float sdBuildings_(in vec3 p) {
 }
 
 float sdBuildings(in vec3 p) {
-	float interval = 0.7;
+	float interval = 0.5;
 	vec3 q = p;
 	q.xz = opRep(q.xz, interval);
-	float height = random(p.xz - mod(p.xz, interval));
+	float height = 1.0 + random(p.xz - mod(p.xz, interval));
 	return sdBox(q, vec3(0.05, height, 0.05));
 }
 
+float sdBuildingsQuad(in vec3 p) {
+	float d = sdBuildings(p);
+	float m = 0.25;
+	d = min(d, sdBuildings(p + vec3(m, 0.0, 0.0)));
+	d = min(d, sdBuildings(p + vec3(0.0,  m, 0.0)));
+	d = min(d, sdBuildings(p + vec3(m, m, 0.0)));
+	return d;
+}
+
 float sdGround(vec3 p) {
-    return min(sdFloor(p), sdBuildings(p));
+  return min(sdFloor(p), sdBuildingsQuad(p));
 }
 
 float dScene(vec3 p) {
-	return min(dMbox(p), sdGround(p - vec3(0.0, -5.0, 0.0)));
+	return min(dMbox(p), sdGround(p - vec3(0.0, -7.0, 0.0)));
 }
 
 // color functions
