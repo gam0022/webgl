@@ -127,6 +127,7 @@ struct Intersection {
 	int material;
 	vec3 color;
 	//float metalness;
+	float reflectance;
 };
 
 #define METAL_MATERIAL   0
@@ -392,9 +393,11 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		if (intersection.material == METAL_MATERIAL) {
 			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+			intersection.reflectance = 0.7;
 		} else {
 			vec3 concreteBase = vec3(0.5);
 			intersection.color = concreteBase * diffuse * ao * shadow;
+			intersection.reflectance = 0.1;
 		}
 
 		// fog
@@ -505,10 +508,10 @@ void main(void) {
 		calcRadiance(intersection, ray, bounce);
 
 		color += reflection * intersection.color;
-		if (!intersection.hit || intersection.material != METAL_MATERIAL) break;
+		if (!intersection.hit /*|| intersection.material != METAL_MATERIAL*/) break;
 
 		//reflection *= (intersection.metalness * 0.7);
-		reflection *= 0.7;
+		reflection *= intersection.reflectance;
 		ray.origin = intersection.position + intersection.normal * OFFSET;
 		ray.direction = normalize(reflect(ray.direction, intersection.normal));
 	}
