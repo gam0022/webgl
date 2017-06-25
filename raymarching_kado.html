@@ -380,6 +380,22 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	return shadowIntensity + (1.0 - shadowIntensity) * bright;
 }
 
+float dBox(vec2 p, vec2 b) {
+	return max(abs(p.x) - b.x, abs(p.y) - b.y);
+}
+
+vec4 buildingsWallTexture(vec2 p) {
+	vec4 concreteBase = vec4(0.7, 0.7, 0.7, 0.0);
+	vec4 glassBase    = vec4(0.7, 0.7, 1.0, 0.5);
+	float d = dBox(opRep(p, 0.02), vec2(0.008, 0.005));
+	return d < 0.0 ? glassBase : concreteBase;
+}
+
+vec4 buildingsRoofTexture(vec2 p) {
+	vec4 concreteBase = vec4(0.5, 0.5, 0.5, 0.0);
+	return concreteBase;
+}
+
 void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 	intersection.hit = false;
 	intersectScene(intersection, ray);
@@ -395,9 +411,12 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
 		} else {
-			vec3 concreteBase = vec3(0.5);
-			intersection.color = concreteBase * diffuse * ao * shadow;
-			intersection.reflectance = 0.1;
+			vec4 tex =
+				buildingsWallTexture(intersection.position.xy) * abs(dot(intersection.normal, vec3(0.0, 0.0, 1.0))) +
+				buildingsWallTexture(intersection.position.zy) * abs(dot(intersection.normal, vec3(1.0, 0.0, 0.0))) +
+				buildingsRoofTexture(intersection.position.xz) * abs(dot(intersection.normal, vec3(0.0, 1.0, 0.0)));
+			intersection.color = tex.rgb * diffuse * ao * shadow;
+			intersection.reflectance = tex.a;
 		}
 
 		// fog
