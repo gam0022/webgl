@@ -138,7 +138,8 @@ struct Intersection {
 };
 
 #define METAL_MATERIAL   0
-#define CONCRETE_MATERIAL  1
+#define BUILDINGS_MATERIAL  1
+#define ROAD_MATERIAL 2
 
 
 // util
@@ -270,13 +271,13 @@ float random(in vec2 p) {
     return fract(sin(dot(p.xy, vec2(12.34, 56.78))) * 90.0);
 }
 
-// https://www.shadertoy.com/view/MsXfzB
 float sdFloor(in vec3 p) {
-    return p.y;
+    return p.y + 7.0;
 }
 
-float sdBuildings(in vec3 p) {
+float sdBuilding(in vec3 p) {
 	float interval = 0.5;
+	p.y += 7.0;
 	vec2 seed = p.xz - mod(p.xz, interval);
 	float height = 1.0 + random(seed);
 	float width = 0.03 + 0.02 * random(seed + 1.0);
@@ -287,21 +288,17 @@ float sdBuildings(in vec3 p) {
 	return sdBox(p1, vec3(width, height, depth));
 }
 
-float sdBuildingsQuad(in vec3 p) {
-	float d = sdBuildings(p);
+float sdBuildings(in vec3 p) {
+	float d = sdBuilding(p);
 	float m = 0.25;
-	d = min(d, sdBuildings(p + vec3(m, 0.0, 0.0)));
-	d = min(d, sdBuildings(p + vec3(0.0,  m, 0.0)));
-	d = min(d, sdBuildings(p + vec3(m, m, 0.0)));
+	d = min(d, sdBuilding(p + vec3(m, 0.0, 0.0)));
+	d = min(d, sdBuilding(p + vec3(0.0,  m, 0.0)));
+	d = min(d, sdBuilding(p + vec3(m, m, 0.0)));
 	return d;
 }
 
-float sdGround(vec3 p) {
-  return min(sdFloor(p), sdBuildingsQuad(p));
-}
-
 float dScene(vec3 p) {
-	return min(dMbox(p), sdGround(p - vec3(0.0, -7.0, 0.0)));
+	return min(dMbox(p), min(sdFloor(p), sdBuildings(p)));
 }
 
 // color functions
@@ -327,7 +324,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 		intersection.distance += d;
 		p = ray.origin + intersection.distance * ray.direction;
 		intersection.count = i;
-		if (abs(d) < EPS || intersection.distance > 100.0) break;
+		if (abs(d) < EPS /*|| intersection.distance > 100.0*/) break;
 	}
 
 	if (abs(d) < EPS) {
@@ -337,8 +334,10 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 
 		if (abs(dMbox(p)) < EPS) {
 			intersection.material = METAL_MATERIAL;
+		} else if (abs(sdBuildings(p)) < EPS) {
+			intersection.material = BUILDINGS_MATERIAL;
 		} else {
-			intersection.material = CONCRETE_MATERIAL;
+			intersection.material = ROAD_MATERIAL;
 		}
 	}
 }
@@ -358,8 +357,8 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	float d;
 	float distance = OFFSET;
 	float bright = 1.0;
-	float shadowIntensity = 0.5;
-	float shadowSharpness = 16.0;
+	float shadowIntensity = 0.4;
+	float shadowSharpness = 10.0;
 
 	for (int i = 0; i < 30; i++) {
 		d = dScene(p + rd * distance);
@@ -401,13 +400,16 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
-		} else {
+		} else if (intersection.material == BUILDINGS_MATERIAL) {
 			vec4 tex =
 				buildingsWallTexture(intersection.position.xy) * abs(dot(intersection.normal, vec3(0.0, 0.0, 1.0))) +
 				buildingsWallTexture(intersection.position.zy) * abs(dot(intersection.normal, vec3(1.0, 0.0, 0.0))) +
 				buildingsRoofTexture(intersection.position.xz) * abs(dot(intersection.normal, vec3(0.0, 1.0, 0.0)));
 			intersection.color = tex.rgb * diffuse * ao * shadow;
 			intersection.reflectance = tex.a;
+		} else {
+			intersection.color = vec3(0.5) * diffuse * ao * shadow;
+			intersection.reflectance = 0.0;
 		}
 
 		// fog
@@ -507,7 +509,7 @@ void main(void) {
 #endif
 
 	camera.up = vec3(0.0, 1.0, 0.0);// y-up
-	camera.zoom = 1.3;
+	camera.zoom = 2.0;
 	Ray ray = cameraShootRay(camera, uv);
 
 	kadoScale = 2.0 + cos(time * 0.1);
