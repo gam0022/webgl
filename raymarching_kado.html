@@ -55,6 +55,7 @@
 // - DE used folding by gaz (https://www.shadertoy.com/view/Mlf3Wj)
 // - Sky and Ground by morgan3d (https://www.shadertoy.com/view/4sKGWt)
 
+#extension GL_EXT_shader_texture_lod : enable
 precision highp float;
 
 #define DEBUG 1
@@ -65,6 +66,7 @@ precision highp float;
 uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
+uniform samplerCube textureCube;
 #endif
 
 // debug for camera
@@ -72,12 +74,9 @@ uniform vec2 resolution;
 uniform bool debugCamera;
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
-
 // uniform float kadoScale;
 #else
-
 // float kadoScale;
-
 #endif
 
 float kadoScale;
@@ -138,39 +137,13 @@ struct Intersection {
 };
 
 #define METAL_MATERIAL   0
-#define BUILDINGS_MATERIAL  1
-#define ROAD_MATERIAL 2
-
+//#define BUILDINGS_MATERIAL  1
+//#define ROAD_MATERIAL 2
 
 // util
 #define saturate(x) clamp(x, 0.0, 1.0)
 
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
-
-float noise(vec2 x) {
-	vec2 i = floor(x), f = fract(x);
-
-	float a = hash(i);
-	float b = hash(i + vec2(1.0, 0.0));
-	float c = hash(i + vec2(0.0, 1.0));
-	float d = hash(i + vec2(1.0, 1.0));
-
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
-}
-
-// https://www.shadertoy.com/view/4sKGWt
-float fbm(vec2 p) {
-	const mat2 m2 = mat2(0.8, -0.6, 0.6, 0.8);
-
-	p.xy += 0.1 * lTime;
-
-	float f = 0.5000 * noise(p); p = m2 * p * 2.02;
-	f += 0.2500 * noise(p); p = m2 * p * 2.03;
-	f += 0.1250 * noise(p); p = m2 * p * 2.01;
-	f += 0.0625 * noise(p);
-	return f / 0.9375;
-}
 
 float easeInCubic( float t ) {
 	return t * t * t;
@@ -266,39 +239,8 @@ float dMbox(vec3 z) {
 	return r / abs(dr);
 }
 
-
-float random(in vec2 p) {
-    return fract(sin(dot(p.xy, vec2(12.34, 56.78))) * 90.0);
-}
-
-float sdFloor(in vec3 p) {
-    return p.y + 7.0;
-}
-
-float sdBuilding(in vec3 p, float heightBase) {
-	float interval = 0.5;
-	p.y += 7.0;
-	vec2 seed = p.xz - mod(p.xz, interval);
-	float height = heightBase + 0.5 * random(seed);
-	float width = 0.03 + 0.02 * random(seed + 1.0);
-	float depth = 0.03 + 0.02 * random(seed + 2.0);
-
-	vec3 p1 = p;
-	p1.xz = opRep(p1.xz, interval);
-	return sdBox(p1, vec3(width, height, depth));
-}
-
-float sdBuildings(in vec3 p) {
-	float d = sdBuilding(p, 1.0);
-	float m = 0.25;
-	d = min(d, sdBuilding(p + vec3(m, 0.0, 0.0), 0.5));
-	d = min(d, sdBuilding(p + vec3(0.0,  m, 0.0), 0.75));
-	d = min(d, sdBuilding(p + vec3(m, m, 0.0), 0.25));
-	return d;
-}
-
 float dScene(vec3 p) {
-	return min(dMbox(p), min(sdFloor(p), sdBuildings(p)));
+	return dMbox(p);
 }
 
 // color functions
@@ -310,16 +252,12 @@ vec3 hsv2rgb(vec3 c) {
 
 #define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
 
-float calcRate(float a, float b) {
-	return a / (a + b);
-}
-
 void intersectScene(inout Intersection intersection, inout Ray ray ) {
 	float d;
 	intersection.distance = 0.0;
 	vec3 p = ray.origin;
 
-	for (float i = 0.0; i < 300.0; i++) {
+	for (float i = 0.0; i < 100.0; i++) {
 		d = dScene(p);
 		intersection.distance += d;
 		p = ray.origin + intersection.distance * ray.direction;
@@ -332,13 +270,9 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 		intersection.position = p;
 		intersection.normal = calcNormal(p, dScene);
 
-		if (abs(dMbox(p)) < EPS) {
-			intersection.material = METAL_MATERIAL;
-		} else if (abs(sdBuildings(p)) < EPS) {
-			intersection.material = BUILDINGS_MATERIAL;
-		} else {
-			intersection.material = ROAD_MATERIAL;
-		}
+		//if (abs(dMbox(p)) < EPS) {
+		intersection.material = METAL_MATERIAL;
+		//}
 	}
 }
 
@@ -370,22 +304,6 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	return shadowIntensity + (1.0 - shadowIntensity) * bright;
 }
 
-float dBox(vec2 p, vec2 b) {
-	return max(abs(p.x) - b.x, abs(p.y) - b.y);
-}
-
-vec4 buildingsWallTexture(vec2 p) {
-	vec4 concreteBase = vec4(0.7, 0.7, 1.0, 0.0);
-	vec4 glassBase    = vec4(0.2, 0.2, 0.2, 0.7);
-	float d = dBox(opRep(p, 0.02), vec2(0.008, 0.005));
-	return d < 0.0 ? glassBase : concreteBase;
-}
-
-vec4 buildingsRoofTexture(vec2 p) {
-	vec4 concreteBase = vec4(0.8, 0.8, 1.0, 0.0);
-	return concreteBase;
-}
-
 void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 	intersection.hit = false;
 	intersectScene(intersection, ray);
@@ -396,41 +314,14 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		if (intersection.material == METAL_MATERIAL) {
+		//if (intersection.material == METAL_MATERIAL) {
 			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
-		} else if (intersection.material == BUILDINGS_MATERIAL) {
-			vec4 tex =
-				buildingsWallTexture(intersection.position.xy) * abs(dot(intersection.normal, vec3(0.0, 0.0, 1.0))) +
-				buildingsWallTexture(intersection.position.zy) * abs(dot(intersection.normal, vec3(1.0, 0.0, 0.0))) +
-				buildingsRoofTexture(intersection.position.xz) * abs(dot(intersection.normal, vec3(0.0, 1.0, 0.0)));
-			intersection.color = tex.rgb * diffuse * ao * shadow;
-			intersection.reflectance = tex.a;
+		//}
+
 		} else {
-			intersection.color = vec3(0.5) * diffuse * ao * shadow;
-			intersection.reflectance = 0.0;
-		}
-
-		// fog
-		intersection.color = mix(intersection.color, 0.8 * vec3(0.7, 0.75, 0.8), min(1.0, pow(0.02 * intersection.distance, 2.0)));
-	} else {
-		vec3 sunnySky = vec3(0.4, 0.55, 0.8);
-		vec3 cloudySky = vec3(0.7);
-		vec3 cloud = vec3(1.0, 0.95, 1.0);
-		vec3 base = mix(sunnySky, cloudySky, step(UFO_SCENE_END_TIME - 20.0, lTime)) * (1.0 - 0.8 * ray.direction.y) * 0.9;
-
-		// Sun
-		float sundot = saturate(dot(ray.direction, lightDir));
-		base += 0.25 * vec3(1.0, 0.7, 0.4) * pow(sundot, 8.0);
-		base += 0.75 * vec3(1.0, 0.8, 0.5) * pow(sundot, 64.0);
-
-		// Clouds
-		float rd = ray.direction.y + 0.3;
-		intersection.color = mix(base, cloud, 0.5 *
-			smoothstep(0.5, 0.8, fbm((ray.origin.xz + ray.direction.xz * (250000.0 - ray.origin.y) / rd) * 0.000008)));
-
-		intersection.color = mix(intersection.color, vec3(0.7, 0.75, 0.8), pow(1.0 - max(rd, 0.0), 4.0));
+		intersection.color = textureCubeLodEXT( textureCube, ray.direction, 0.0 ).rgb;
 	}
 }
 
@@ -560,6 +451,7 @@ void main(void) {
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var canvas;
 			var stats;
+			var textureCube;
 
 			var clock = new THREE.Clock();
 
@@ -607,12 +499,28 @@ void main(void) {
 			init();
 			animate();
 
+			function createTextureCube(cubeTextureLoader, rootPath, ext) {
+				var urls = [
+					rootPath + "px." + ext, rootPath + "nx." + ext,
+					rootPath + "py." + ext, rootPath + "ny." + ext,
+					rootPath + "pz." + ext, rootPath + "nz." + ext,
+				];
+				var textureCube = cubeTextureLoader.load(urls);
+				textureCube.format = THREE.RGBFormat;
+				textureCube.mapping = THREE.CubeReflectionMapping;
+				//textureCube.generateMipmaps = false;
+				return textureCube;
+			}
+
 			function init() {
 
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera(35, 800/600);
 				camera.position.z = 12;
 				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+
+				var cubeTextureLoader = new THREE.CubeTextureLoader();
+				textureCube = createTextureCube( cubeTextureLoader, "textures/cube/Bridge2/", "jpg" );
 
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
 				material = new THREE.RawShaderMaterial( {
@@ -625,6 +533,7 @@ void main(void) {
 						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
 
 						kadoScale: {type: 'f', value: config.kadoScale},
+						textureCube: {type: 'tc', value: textureCube},
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
@@ -636,6 +545,11 @@ void main(void) {
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( config.pixelRatio );
 				renderer.setSize( config.resolution * config.aspectRatio, config.resolution );
+
+				if ( !renderer.extensions.get( "EXT_shader_texture_lod" ) ) {
+					alert( "EXT_shader_texture_lod is not supported." );
+					return;
+				}
 
 				canvas = renderer.domElement;
 				canvas.addEventListener( 'mousemove', onMouseMove );
