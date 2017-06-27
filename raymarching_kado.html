@@ -275,11 +275,11 @@ float sdFloor(in vec3 p) {
     return p.y + 7.0;
 }
 
-float sdBuilding(in vec3 p) {
+float sdBuilding(in vec3 p, float heightBase) {
 	float interval = 0.5;
 	p.y += 7.0;
 	vec2 seed = p.xz - mod(p.xz, interval);
-	float height = 1.0 + random(seed);
+	float height = heightBase + 0.5 * random(seed);
 	float width = 0.03 + 0.02 * random(seed + 1.0);
 	float depth = 0.03 + 0.02 * random(seed + 2.0);
 
@@ -289,11 +289,11 @@ float sdBuilding(in vec3 p) {
 }
 
 float sdBuildings(in vec3 p) {
-	float d = sdBuilding(p);
+	float d = sdBuilding(p, 1.0);
 	float m = 0.25;
-	d = min(d, sdBuilding(p + vec3(m, 0.0, 0.0)));
-	d = min(d, sdBuilding(p + vec3(0.0,  m, 0.0)));
-	d = min(d, sdBuilding(p + vec3(m, m, 0.0)));
+	d = min(d, sdBuilding(p + vec3(m, 0.0, 0.0), 0.5));
+	d = min(d, sdBuilding(p + vec3(0.0,  m, 0.0), 0.75));
+	d = min(d, sdBuilding(p + vec3(m, m, 0.0), 0.25));
 	return d;
 }
 
