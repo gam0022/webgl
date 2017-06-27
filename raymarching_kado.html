@@ -58,27 +58,16 @@
 #extension GL_EXT_shader_texture_lod : enable
 precision highp float;
 
-#define DEBUG 1
-#define SHADER_TOY 0
-
 // uniforms
-#if SHADER_TOY == 0
 uniform float time;
 uniform vec2 mouse;
 uniform vec2 resolution;
 uniform samplerCube textureCube;
-#endif
 
-// debug for camera
-#if DEBUG
 uniform bool debugCamera;
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
 // uniform float kadoScale;
-#else
-// float kadoScale;
-#endif
-
 float kadoScale;
 
 // consts
@@ -158,7 +147,6 @@ float gauss(float x) {
 	return exp(-x * x / a);
 }
 
-
 // Distance Functions
 
 // operations
@@ -197,9 +185,7 @@ float sdBox( vec3 p, vec3 b ) {
   return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
 }
 
-#define META_SCENE_END_TIME (32.0)
-#define UFO_SCENE_END_TIME (117.0)
-#define SNOW_SCENE_END_TIME (182.0)
+#define WORK_TIME (60.0)
 
 // http://blog.hvidtfeldts.net/index.php/2011/11/distance-estimated-3d-fractals-vi-the-mandelbox/
 float minRadius2 = 0.5;
@@ -325,80 +311,17 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 	}
 }
 
-void cameraControl(inout Camera camera) {
-	// time
-	float t1 = lTime - META_SCENE_END_TIME;
-	float t2 = t1 - 25.0;
-	float t3 = t2 - 16.0;
-	float t4 = t3 - 20.0;
-
-	float t5 = lTime - UFO_SCENE_END_TIME;
-	float t6 = t5 - 7.0;
-	float t7 = t6 - 10.0;
-
-	// blend
-
-	// ufo
-	float b1 = easeInOutCubic(saturate(t1 * 0.2));
-	float b2 = easeInOutCubic(saturate(t2 * 0.4));
-	float b3 = easeInOutCubic(saturate(t3 * 0.4));
-	float b4 = easeInOutCubic(saturate(t4 * 0.2));
-
-	// snow
-	float b5 = easeInOutCubic(saturate(t5 * 0.2));
-	float b6 = easeInOutCubic(saturate(t6 * 0.5));
-	float b7 = easeInOutCubic(saturate(t7));
-
-	// camera target
-	camera.target = vec3(0.0);
-
-	camera.target.y = clamp(-0.7 * t1, -2.8, 100.0);
-	camera.target.y = mix(camera.target.y, 1.0 + t2 * 0.3, b2);
-	camera.target.y = mix(camera.target.y, 0.0, b3);
-	camera.target.y = mix(camera.target.y, 0.0 + 0.6 * t4, b4);
-
-	camera.target.y = mix(camera.target.y, 0.0, b5);
-	camera.target.x = mix(camera.target.x, -0.7, b6);
-	camera.target.x = mix(camera.target.x, 0.0, b7);
-
-	// camera position
-	vec3 p0 = camera.target + vec3(0.0, 0.0, -5.0); // down
-	vec3 p1 = vec3(1.0, 0.3 * abs(t1 - 0.5), 1.0);  // look down
-	vec3 p2 = vec3(2.5 + t2 * 0.9, 0.5 + t2 * 0.1, 0.0); // side
-	vec3 p3 = vec3(0.01, 4.0 + t3 * 0.2, 0.0); // zoom
-	vec3 p4 = vec3(1.5, 10.0 + t4 * 0.1, 2.0); // leave
-
-	vec3 p5 = vec3(0.0, 0.1, 6.0 - t5 * 0.3);
-	float v = 0.3 + t5 * 0.07;
-	vec3 p6 = vec3(1.7 * cos(v) - 1.0, 0.1, (0.5 + t6 * 0.01) * sin(v));
-	vec3 p7 = vec3(0.0, 0.0, 0.5 + t7 * 0.1);
-
-	camera.eye = mix(p0,         p1, b1);
-	camera.eye = mix(camera.eye, p2, b2);
-	camera.eye = mix(camera.eye, p3, b3);
-	camera.eye = mix(camera.eye, p4, b4);
-	camera.eye = mix(camera.eye, p5, b5);
-	camera.eye = mix(camera.eye, p6, b6);
-	camera.eye = mix(camera.eye, p7, b7);
-}
-
 void main(void) {
-	// local time
-	lTime = mod(time, SNOW_SCENE_END_TIME + 1.0);
+	// loop time
+	lTime = mod(time, WORK_TIME);
 
 	// fragment position
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 	// camera and ray
 	Camera camera;
-	cameraControl(camera);
-#if DEBUG
-	if (debugCamera) {
-		camera.eye    = cameraPos;
-		camera.target = cameraPos + cameraDir;
-	}
-#endif
-
+	camera.eye    = cameraPos;
+	camera.target = cameraPos + cameraDir;
 	camera.up = vec3(0.0, 1.0, 0.0);// y-up
 	camera.zoom = 2.0;
 	Ray ray = cameraShootRay(camera, uv);
