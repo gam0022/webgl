@@ -120,12 +120,12 @@ struct Intersection {
 	vec2 uv;
 	float count;
 
-	int material;
+	//int material;
 	vec3 color;
 	float reflectance;
 };
 
-#define METAL_MATERIAL   0
+//#define METAL_MATERIAL   0
 //#define BUILDINGS_MATERIAL  1
 //#define ROAD_MATERIAL 2
 
@@ -257,7 +257,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray ) {
 		intersection.normal = calcNormal(p, dScene);
 
 		//if (abs(dMbox(p)) < EPS) {
-		intersection.material = METAL_MATERIAL;
+		//intersection.material = METAL_MATERIAL;
 		//}
 	}
 }
@@ -301,12 +301,11 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float shadow = calcShadow(intersection.position, lightDir);
 
 		//if (intersection.material == METAL_MATERIAL) {
-			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
-			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
-			intersection.reflectance = 0.7;
+		vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
+		intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+		intersection.reflectance = 0.7;
 		//}
-
-		} else {
+	} else {
 		intersection.color = textureCubeLodEXT( textureCube, ray.direction, 0.0 ).rgb;
 	}
 }

@@ -188,8 +188,8 @@ struct AABB {
 
 // https://www.shadertoy.com/view/4djSRW
 // Trying to find a Hash function that is the same on ALL systens
-// and doesn't rely on trigonometry functions that change accuracy 
-// depending on GPU. 
+// and doesn't rely on trigonometry functions that change accuracy
+// depending on GPU.
 // New one on the left, sine function on the right.
 // It appears to be the same speed, but I suppose that depends.
 
@@ -265,7 +265,7 @@ vec3 hash31(float p)
 {
    vec3 p3 = fract(vec3(p) * HASHSCALE3);
    p3 += dot(p3, p3.yzx+19.19);
-   return fract((p3.xxy+p3.yzz)*p3.zyx); 
+   return fract((p3.xxy+p3.yzz)*p3.zyx);
 }
 
 
@@ -292,7 +292,7 @@ vec4 hash41(float p)
 	vec4 p4 = fract(vec4(p) * HASHSCALE4);
 	p4 += dot(p4, p4.wzxy+19.19);
 	return fract((p4.xxyz+p4.yzzw)*p4.zywx);
-	
+
 }
 
 // 4 out, 2 in...
@@ -440,7 +440,7 @@ float sceneDistance( vec3 p ) {
 vec3 calcNormal( vec3 p ) {
 	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
 	return normalize(
-		e.xyy * sceneDistance( p + e.xyy ) + e.yyx * sceneDistance( p + e.yyx ) + 
+		e.xyy * sceneDistance( p + e.xyy ) + e.yyx * sceneDistance( p + e.yyx ) +
 			e.yxy * sceneDistance( p + e.yxy ) + e.xxx * sceneDistance( p + e.xxx ) );
 }
 
