@@ -120,14 +120,13 @@ struct Intersection {
 	vec2 uv;
 	float count;
 
-	//int material;
+	int material;
 	vec3 color;
 	float reflectance;
 };
 
-//#define METAL_MATERIAL   0
-//#define BUILDINGS_MATERIAL  1
-//#define ROAD_MATERIAL 2
+#define METAL_MATERIAL   0
+#define GROUND_MATERIAL  1
 
 // util
 #define saturate(x) clamp(x, 0.0, 1.0)
@@ -238,28 +237,58 @@ vec3 hsv2rgb(vec3 c) {
 
 #define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
 
-void intersectScene(inout Intersection intersection, inout Ray ray ) {
+float sdGround(in vec3 p) {
+    return p.y + 4.0;
+}
+
+void intersectGround(inout Intersection intersection, inout Ray ray) {
 	float d;
-	intersection.distance = 0.0;
+	float distance = 0.0;
+	vec3 p = ray.origin;
+
+	for (float i = 0.0; i < 30.0; i++) {
+		d = sdGround(p);
+		distance += d;
+		p = ray.origin + distance * ray.direction;
+		intersection.count = i;
+		if (abs(d) < EPS) break;
+	}
+
+	if (abs(d) < EPS) {
+		intersection.distance = distance;
+		intersection.hit = true;
+		intersection.position = p;
+		intersection.normal = calcNormal(p, sdGround);
+		intersection.material = GROUND_MATERIAL;
+	}
+}
+
+void intersectObjects(inout Intersection intersection, inout Ray ray) {
+	float d;
+	float distance = 0.0;
 	vec3 p = ray.origin;
 
 	for (float i = 0.0; i < 100.0; i++) {
 		d = dScene(p);
-		intersection.distance += d;
-		p = ray.origin + intersection.distance * ray.direction;
+		distance += d;
+		p = ray.origin + distance * ray.direction;
 		intersection.count = i;
-		if (abs(d) < EPS /*|| intersection.distance > 100.0*/) break;
+		if (abs(d) < EPS /*|| distance > 100.0*/) break;
 	}
 
-	if (abs(d) < EPS) {
+	if (abs(d) < EPS && distance < intersection.distance) {
+		intersection.distance = distance;
 		intersection.hit = true;
 		intersection.position = p;
 		intersection.normal = calcNormal(p, dScene);
-
-		//if (abs(dMbox(p)) < EPS) {
-		//intersection.material = METAL_MATERIAL;
-		//}
+		intersection.material = METAL_MATERIAL;
 	}
+}
+
+void intersectScene(inout Intersection intersection, inout Ray ray) {
+	intersection.distance = INF;
+	intersectGround(intersection, ray);
+	intersectObjects(intersection, ray);
 }
 
 float calcAo(in vec3 p, in vec3 n){
@@ -300,13 +329,17 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float ao = calcAo(intersection.position, intersection.normal);
 		float shadow = calcShadow(intersection.position, lightDir);
 
-		//if (intersection.material == METAL_MATERIAL) {
-		vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
-		intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
-		intersection.reflectance = 0.7;
-		//}
+		if (intersection.material == METAL_MATERIAL) {
+			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
+			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+			intersection.reflectance = 0.7;
+		} else {
+			vec3 metalBase = vec3(0.5);
+			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+			intersection.reflectance = 0.0;
+		}
 	} else {
-		intersection.color = textureCubeLodEXT( textureCube, ray.direction, 0.0 ).rgb;
+		intersection.color = textureCubeLodEXT(textureCube, ray.direction, 0.0).rgb;
 	}
 }
 
