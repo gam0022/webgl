@@ -381,6 +381,59 @@ void main(void) {
 }
 </script>
 
+<script id="perlin_noise_fragment_shader" type="x-shader/x-vertex">
+precision highp float;
+uniform vec2 resolution;
+uniform sampler2D random;
+const float PI = 3.14159265359;
+
+float rand(vec2 p) {
+	return texture2D(random, p / resolution).r;
+}
+
+float rand_(vec2 c){
+	return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+float noise(vec2 p, float freq){
+	float unit = resolution.x / freq;
+	vec2 ij = floor(p/unit);
+	vec2 xy = mod(p,unit)/unit;
+	//xy = 3.*xy*xy-2.*xy*xy*xy;
+	xy = .5*(1.-cos(PI*xy));
+	float a = rand((ij+vec2(0.,0.)));
+	float b = rand((ij+vec2(1.,0.)));
+	float c = rand((ij+vec2(0.,1.)));
+	float d = rand((ij+vec2(1.,1.)));
+	float x1 = mix(a, b, xy.x);
+	float x2 = mix(c, d, xy.x);
+	return mix(x1, x2, xy.y);
+}
+
+float pNoise(vec2 p){
+	float persistance = .5;
+	float n = 0.;
+	float normK = 0.;
+	float f = 4.;
+	float amp = 1.;
+	for (int i = 0; i<50; i++){
+		n+=amp*noise(p, f);
+		f*=2.;
+		normK+=amp;
+		amp*=persistance;
+	}
+	float nf = n/normK;
+	return nf*nf*nf*nf;
+}
+
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution;
+	vec3 color = vec3(pNoise(gl_FragCoord.xy));
+	//vec3 color = vec3(rand(uv));
+	gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
 <script id="vertex_shader" type="x-shader/x-vertex">
 attribute vec3 position;
 void main(void) {
@@ -432,11 +485,9 @@ var config = {
 	},
 	camera: 'Orbit',
 	resolution: 256,
-	aspectRatio: 4/3,
+	aspectRatio: 1,
 	pixelRatio: 1,
-
 	time: 0,
-
 	pause: false,
 
 	// mandel box
@@ -493,13 +544,45 @@ function createRandomDataTexture(width, height) {
 		width,
 		height,
 		THREE.RGBAFormat,
-		THREE.FloatType);
+		THREE.FloatType,
+		THREE.UVMapping,
+		THREE.RepeatWrapping,
+		THREE.RepeatWrapping,
+		THREE.LinearFilter,
+		THREE.LinearFilter,
+	);
 
-	texture.wrapS = THREE.RepeatWrapping;
-	texture.wrapT = THREE.RepeatWrapping;
 	texture.needsUpdate = true;
 
 	return texture;
+}
+
+function createRenderTarget(width, height) {
+	return new THREE.WebGLRenderTarget(width, height, {
+		wrapS: THREE.RepeatWrapping,
+		wrapT: THREE.RepeatWrapping,
+		minFilter: THREE.NearestFilter,
+		magFilter: THREE.NearestFilter,
+		format: THREE.RGBAFormat,
+		type: THREE.FloatType,
+		stencilBuffer: false,
+		depthBuffer: false
+	});
+}
+
+function createPerlinNoiseTexture(renderer, camera, width, height) {
+	var randomTexture	= createRandomDataTexture(width, height);
+	var output = createRenderTarget(width, height);
+	var scene = createQuadScene({
+		uniforms: {
+			resolution: {type: 'v2', value: new THREE.Vector2(width, height)},
+			random: {type: 't', value: randomTexture},
+		},
+		vertexShader: document.getElementById('vertex_shader').textContent,
+		fragmentShader: document.getElementById('perlin_noise_fragment_shader').textContent
+	});
+	renderer.render(scene.scene, camera/*, output*/);
+	return output;
 }
 
 function initTexture2D() {
@@ -514,7 +597,6 @@ function initTexture2D() {
 	}
 
 	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
-	//texture2Ds.groundHeight	= createRandomDataTexture(256, 256);
 	texture2Ds.groundNormal	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_NRM.png");
 }
 
@@ -599,6 +681,8 @@ function init() {
 
 	stats = new Stats();
 	document.body.appendChild(stats.domElement);
+
+	createPerlinNoiseTexture(renderer, camera, canvas.width, canvas.height);
 }
 
 function animate(timestamp) {
@@ -641,7 +725,7 @@ function render(needsUpdate) {
 	mainScene.material.uniforms.time.value = config.time;
 
 	if (needsUpdate) {
-		renderer.render(mainScene.scene, camera);
+		//renderer.render(mainScene.scene, camera);
 	}
 
 	if (false) {
