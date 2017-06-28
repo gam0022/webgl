@@ -46,7 +46,7 @@
 			<a href="http://tokyodemofest.jp/2017/" target="_blank">Tokyo Demo Fest 2017</a> GLSL Graphics compo 3rd place (<a href="http://gam0022.net/blog/2017/02/24/tdf2017/" target="_blank">article in Japanese</a>)
 		</div>
 
-		<script id="fragment_shader" type="x-shader/x-fragment">
+<script id="fragment_shader" type="x-shader/x-fragment">
 // Title: Fusioned Bismuth (TokyoDemoFest 2017 GLSL Graphics Compo 3rd place)
 // Copyright (c) 2017 gam0022
 // License: Attribution-NonCommercial-ShareAlike (http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US)
@@ -379,294 +379,285 @@ void main(void) {
 
 	gl_FragColor = vec4(color, 1.0);
 }
+</script>
 
-		</script>
+<script id="vertex_shader" type="x-shader/x-vertex">
+attribute vec3 position;
+void main(void) {
+	gl_Position = vec4(position, 1.0);
+}
+</script>
 
-		<script id="vertex_shader" type="x-shader/x-vertex">
+<script src="js/three.min.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
+<script src="js/libs/stats.min.js"></script>
+<script src="js/libs/dat.gui.min.js"></script>
 
-			attribute vec3 position;
+<script>
+var camera, orbitControls, renderer;
+var prevCameraMatrixWorld;
+var textureScene, mainScene;
+var mouse = new THREE.Vector2( 0.5, 0.5 );
+var canvas;
+var stats;
+var textureCube, texture2Ds;
 
-			void main(void) {
+var clock = new THREE.Clock();
 
-				gl_Position = vec4(position, 1.0);
+var config = {
+	saveImage: function() {
+		render(true);
+		window.open(canvas.toDataURL());
+	},
+	soucePlain: function() {
+		outputShaderToTab(function(text){return text;});
+	},
+	souceRelease: function() {
+		outputShaderToTab( function(text){
+			return text.replace(/#define DEBUG 1/, '#define DEBUG 0');
+		});
+	},
+	souceShaderToy: function() {
+		outputShaderToTab( function(text){
+			return text.
+				replace(/#define DEBUG 1/, '#define DEBUG 0').
+				replace(/#define SHADER_TOY 0/, '#define SHADER_TOY 1').
+				replace(/void main\(void\)/, 'void mainImage( out vec4 fragColor, in vec2 fragCoord )').
+				replace(/\b(resolution)\b/g, 'iResolution.xy').
+				replace(/\b(mouse)\b/g, 'iMouse').
+				replace(/\b(gl_FragCoord)\b/g, 'fragCoord').
+				replace(/\b(gl_FragColor)\b/g, 'fragColor').
+				replace(/\b(time)\b/g, 'iGlobalTime');
+		});
+	},
+	camera: 'Orbit',
+	resolution: 256,
+	aspectRatio: 4/3,
+	pixelRatio: 1,
 
+	time: 0,
+
+	pause: false,
+
+	// mandel box
+	kadoScale: 2.7,
+};
+
+init();
+animate();
+
+function createQuadScene(parameters) {
+	var scene = new THREE.Scene();
+	var geometry = new THREE.PlaneBufferGeometry(2.0, 2.0);
+	var material = new THREE.RawShaderMaterial({
+		uniforms: parameters.uniforms,
+		vertexShader: parameters.vertexShader,
+		fragmentShader: parameters.fragmentShader,
+	});
+	var plane = new THREE.Mesh(geometry, material);
+	plane.frustumCulled = false;
+	scene.add(plane);
+
+	return {
+		scene: scene,
+		geometry: geometry,
+		material: material,
+	};
+}
+
+function createTextureCube(cubeTextureLoader, rootPath, ext) {
+	var urls = [
+		rootPath + "px." + ext, rootPath + "nx." + ext,
+		rootPath + "py." + ext, rootPath + "ny." + ext,
+		rootPath + "pz." + ext, rootPath + "nz." + ext,
+	];
+	var textureCube = cubeTextureLoader.load(urls);
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	//textureCube.generateMipmaps = false;
+	return textureCube;
+}
+
+function initTexture2D() {
+	var loader = new THREE.TextureLoader();
+	texture2Ds = {};
+
+	var createRepeatTexture = function(url) {
+		var texture = loader.load(url);
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		return texture;
+	}
+
+	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
+	texture2Ds.groundNormal	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_NRM.png");
+}
+
+function init() {
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
+	textureCube = createTextureCube(cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg");
+
+	initTexture2D();
+
+	camera = new THREE.PerspectiveCamera(35, 800/600);
+	camera.position.z = 12;
+	camera.lookAt(new THREE.Vector3(0.0, 0.0, 0.0));
+
+	mainScene = createQuadScene({
+		uniforms: {
+			resolution: {type: 'v2', value: new THREE.Vector2(config.resolution, config.resolution)},
+			mouse: {type: 'v2', value: mouse },
+			time: {type: 'f', value: 0.0 },
+			debugCamera: {type: 'i', value: config.camera !== 'Auto'},
+			cameraPos: {type: 'v3', value: camera.getWorldPosition()},
+			cameraDir: {type: 'v3', value: camera.getWorldDirection()},
+
+			kadoScale: {type: 'f', value: config.kadoScale},
+			textureCube: {type: 'tc', value: textureCube},
+			groundHeight: {type: 't', value: texture2Ds.groundHeight},
+			groundNormal: {type: 't', value: texture2Ds.groundNormal},
+		},
+		vertexShader: document.getElementById('vertex_shader').textContent,
+		fragmentShader: document.getElementById('fragment_shader').textContent
+	});
+
+	renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio(config.pixelRatio);
+	renderer.setSize(config.resolution * config.aspectRatio, config.resolution);
+
+	if (!renderer.extensions.get("EXT_shader_texture_lod")) {
+		alert("EXT_shader_texture_lod is not supported.");
+		return;
+	}
+
+	canvas = renderer.domElement;
+	canvas.addEventListener('mousemove', onMouseMove);
+	window.addEventListener('resize', onWindowResize);
+	document.body.appendChild(canvas);
+
+	orbitControls = new THREE.OrbitControls(camera, canvas);
+	orbitControls.enablePan = true;
+	//orbitControls.keyPanSpeed = 0.01;
+	orbitControls.enableDamping = false;
+	//orbitControls.dampingFactor = 0.015;
+	orbitControls.enableZoom = true;
+	//orbitControls.zoomSpeed = 0.001;
+	//orbitControls.rotateSpeed = 0.8;
+	orbitControls.autoRotate = false;
+	orbitControls.autoRotateSpeed = 0.0;
+	orbitControls.target = new THREE.Vector3(0.0, 0.0, 0.0);
+
+	var gui = new dat.GUI();
+	gui.add(config, 'saveImage').name('Save as PNG');
+	//gui.add(config, 'soucePlain').name('view Shader');
+	gui.add(config, 'souceRelease').name('GLSL sandbox');
+	gui.add(config, 'souceShaderToy').name('ShaderToy');
+	gui.add(config, 'camera', ['Auto', 'Orbit']).name('Camera');
+	gui.add(config, 'resolution', [256, 512, 800, 'full']).name('Resolution').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'aspectRatio', {'16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0}).name('Aspect Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'time', 0, 182).step(0.1).name('time').listen();
+	gui.add(config, 'pause').name('Pause');
+
+	var kadoFolder = gui.addFolder("Kado");
+	kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
+	kadoFolder.open();
+
+	stats = new Stats();
+	document.body.appendChild(stats.domElement);
+}
+
+function animate(timestamp) {
+	var delta = clock.getDelta();
+
+	if (!config.pause) {
+		config.time += delta;
+	}
+
+	stats.begin();
+
+	var needsUpdate = config.time !== mainScene.material.uniforms.time.value;
+
+	switch (config.camera) {
+		case 'Auto':
+			// none
+			break;
+		case 'Orbit':
+			orbitControls.update();
+
+			if (camera && prevCameraMatrixWorld && !camera.matrixWorld.equals(prevCameraMatrixWorld)) {
+				needsUpdate = true;
 			}
+			prevCameraMatrixWorld = camera.matrixWorld.clone();
+			break;
+	}
 
-		</script>
+	render(needsUpdate);
+	stats.end();
+	requestAnimationFrame(animate);
+}
 
-		<script src="js/three.min.js"></script>
-		<script src="js/controls/OrbitControls.js"></script>
-		<script src="js/libs/stats.min.js"></script>
-		<script src="js/libs/dat.gui.min.js"></script>
+function render(needsUpdate) {
+	mainScene.material.uniforms.resolution.value = new THREE.Vector2(canvas.width, canvas.height);
+	mainScene.material.uniforms.mouse.value = mouse;
+	mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
+	mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
+	mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
+	mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.time.value = config.time;
 
-		<script>
-			var camera, orbitControls, renderer;
-			var prevCameraMatrixWorld;
-			var textureScene, mainScene;
-			var mouse = new THREE.Vector2( 0.5, 0.5 );
-			var canvas;
-			var stats;
-			var textureCube, texture2Ds;
+	if (needsUpdate) {
+		renderer.render(mainScene.scene, camera);
+	}
 
-			var clock = new THREE.Clock();
+	if (false) {
+		var pos = camera.getWorldPosition();
+		var dir = camera.getWorldDirection();
 
-			var config = {
-				saveImage: function() {
-					render(true);
-					window.open( canvas.toDataURL() );
-				},
-				soucePlain: function() {
-					outputShaderToTab( function(text){ return text; });
-				},
-				souceRelease: function() {
-					outputShaderToTab( function(text){
-						return text.replace(/#define DEBUG 1/, '#define DEBUG 0');
-					});
-				},
-				souceShaderToy: function() {
-					outputShaderToTab( function(text){
-						return text.
-							replace(/#define DEBUG 1/, '#define DEBUG 0').
-							replace(/#define SHADER_TOY 0/, '#define SHADER_TOY 1').
-							replace(/void main\(void\)/, 'void mainImage( out vec4 fragColor, in vec2 fragCoord )').
-							replace(/\b(resolution)\b/g, 'iResolution.xy').
-							replace(/\b(mouse)\b/g, 'iMouse').
-							replace(/\b(gl_FragCoord)\b/g, 'fragCoord').
-							replace(/\b(gl_FragColor)\b/g, 'fragColor').
-							replace(/\b(time)\b/g, 'iGlobalTime');
-					});
-				},
-				camera: 'Orbit',
-				resolution: 256,
-				aspectRatio: 4/3,
-				pixelRatio: 1,
+		document.getElementById( 'info' ).innerHTML = ''
+			+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
+			+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
+			+ mainScene.material.uniforms.time.value;
+	}
+}
 
-				time: 0,
+function onMouseMove(e) {
+	mouse.x = e.offsetX / canvas.width;
+	mouse.y = e.offsetY / canvas.height;
+}
 
-				pause: false,
+function onWindowResize(e) {
+	if (config.resolution === 'full') {
+		canvas.width  = window.innerWidth;
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.width  = config.aspectRatio * config.resolution;
+		canvas.height = config.resolution;
+	}
+	renderer.setSize(canvas.width, canvas.height);
+	renderer.setPixelRatio(config.pixelRatio);
+}
 
-				// mandel box
-				kadoScale: 2.7,
-			};
+function outputTextToTab(text) {
+	var type = 'text/plain';
+	window.open('data:' + type + ';base64,' + window.btoa(text));
+}
 
-			init();
-			animate();
-
-			function createQuadScene(parameters) {
-				var scene = new THREE.Scene();
-				var geometry = new THREE.PlaneBufferGeometry(2.0, 2.0);
-				var material = new THREE.RawShaderMaterial( {
-					uniforms: parameters.uniforms,
-					vertexShader: parameters.vertexShader,
-					fragmentShader: parameters.fragmentShader,
-				} );
-				var plane = new THREE.Mesh(geometry, material);
-				plane.frustumCulled = false;
-				scene.add(plane);
-
-				return {
-					scene: scene,
-					geometry: geometry,
-					material: material,
-				};
-			}
-
-			function createTextureCube(cubeTextureLoader, rootPath, ext) {
-				var urls = [
-					rootPath + "px." + ext, rootPath + "nx." + ext,
-					rootPath + "py." + ext, rootPath + "ny." + ext,
-					rootPath + "pz." + ext, rootPath + "nz." + ext,
-				];
-				var textureCube = cubeTextureLoader.load(urls);
-				textureCube.format = THREE.RGBFormat;
-				textureCube.mapping = THREE.CubeReflectionMapping;
-				//textureCube.generateMipmaps = false;
-				return textureCube;
-			}
-
-			function initTexture2D() {
-				var loader = new THREE.TextureLoader();
-				texture2Ds = {};
-
-				var createRepeatTexture = function(url) {
-					var texture = loader.load(url);
-					texture.wrapS = THREE.RepeatWrapping;
-					texture.wrapT = THREE.RepeatWrapping;
-					return texture;
-				}
-
-				texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
-				texture2Ds.groundNormal	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_NRM.png");
-			}
-
-			function init() {
-				var cubeTextureLoader = new THREE.CubeTextureLoader();
-				textureCube = createTextureCube( cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg" );
-
-				initTexture2D();
-
-				camera = new THREE.PerspectiveCamera(35, 800/600);
-				camera.position.z = 12;
-				camera.lookAt(new THREE.Vector3( 0.0, 0.0, 0.0 ));
-
-				mainScene = createQuadScene({
-					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2(config.resolution, config.resolution)},
-						mouse: { type: 'v2', value: mouse },
-						time: { type: 'f', value: 0.0 },
-						debugCamera: { type: 'i', value: config.camera !== 'Auto' },
-						cameraPos: { type: 'v3', value: camera.getWorldPosition() },
-						cameraDir: { type: 'v3', value: camera.getWorldDirection() },
-
-						kadoScale: {type: 'f', value: config.kadoScale},
-						textureCube: {type: 'tc', value: textureCube},
-						groundHeight: {type: 't', value: texture2Ds.groundHeight},
-						groundNormal: {type: 't', value: texture2Ds.groundNormal},
-					},
-					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
-					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
-				});
-
-				renderer = new THREE.WebGLRenderer();
-				renderer.setPixelRatio( config.pixelRatio );
-				renderer.setSize( config.resolution * config.aspectRatio, config.resolution );
-
-				if ( !renderer.extensions.get( "EXT_shader_texture_lod" ) ) {
-					alert( "EXT_shader_texture_lod is not supported." );
-					return;
-				}
-
-				canvas = renderer.domElement;
-				canvas.addEventListener( 'mousemove', onMouseMove );
-				window.addEventListener( 'resize', onWindowResize );
-				document.body.appendChild( canvas );
-
-				orbitControls = new THREE.OrbitControls( camera, canvas );
-				orbitControls.enablePan = true;
-				//orbitControls.keyPanSpeed = 0.01;
-				orbitControls.enableDamping = false;
-				//orbitControls.dampingFactor = 0.015;
-				orbitControls.enableZoom = true;
-				//orbitControls.zoomSpeed = 0.001;
-				//orbitControls.rotateSpeed = 0.8;
-				orbitControls.autoRotate = false;
-				orbitControls.autoRotateSpeed = 0.0;
-				orbitControls.target = new THREE.Vector3( 0.0, 0.0, 0.0 );
-
-				var gui = new dat.GUI();
-				gui.add( config, 'saveImage' ).name( 'Save as PNG' );
-				//gui.add( config, 'soucePlain' ).name( 'view Shader' );
-				gui.add( config, 'souceRelease' ).name( 'GLSL sandbox' );
-				gui.add( config, 'souceShaderToy' ).name( 'ShaderToy' );
-				gui.add( config, 'camera', [ 'Auto', 'Orbit' ] ).name( 'Camera' );
-				gui.add( config, 'resolution', [ 256, 512, 800, 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
-					onWindowResize();
-					render(true);
-				} );
-				gui.add( config, 'aspectRatio', { '16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0 } ).name( 'Aspect Ratio' ).onChange( function( value ) {
-					onWindowResize();
-					render(true);
-				} );
-				gui.add( config, 'pixelRatio', { '1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0 } ).name( 'Pixel Ratio' ).onChange( function( value ) {
-					onWindowResize();
-					render(true);
-				} );
-				gui.add( config, 'time', 0, 182 ).step( 0.1 ).name( 'time' ).listen();
-				gui.add( config, 'pause' ).name( 'Pause' );
-
-				var kadoFolder = gui.addFolder( "Kado" );
-				kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
-				kadoFolder.open();
-
-				stats = new Stats();
-				document.body.appendChild( stats.domElement );
-
-			}
-
-			function animate( timestamp ) {
-				var delta = clock.getDelta();
-
-				if ( !config.pause ) {
-					config.time += delta;
-				}
-
-				stats.begin();
-
-				var needsUpdate = config.time !== mainScene.material.uniforms.time.value;
-
-				switch ( config.camera ) {
-					case 'Auto':
-						// none
-						break;
-					case 'Orbit':
-						orbitControls.update();
-
-						if (camera && prevCameraMatrixWorld && !camera.matrixWorld.equals(prevCameraMatrixWorld)) {
-							needsUpdate = true;
-						}
-						prevCameraMatrixWorld = camera.matrixWorld.clone();
-						break;
-				}
-
-				render(needsUpdate);
-
-				stats.end();
-
-				requestAnimationFrame( animate );
-			}
-
-			function render(needsUpdate) {
-				mainScene.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-				mainScene.material.uniforms.mouse.value = mouse;
-				mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
-				mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
-				mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
-				mainScene.material.uniforms.kadoScale.value = config.kadoScale;
-				mainScene.material.uniforms.time.value = config.time;
-
-				if (needsUpdate) {
-					renderer.render(mainScene.scene, camera);
-				}
-
-				if (false) {
-					var pos = camera.getWorldPosition();
-					var dir = camera.getWorldDirection();
-
-					document.getElementById( 'info' ).innerHTML = ''
-						+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
-						+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
-						+ mainScene.material.uniforms.time.value;
-				}
-			}
-
-			function onMouseMove( e ) {
-				mouse.x = e.offsetX / canvas.width;
-				mouse.y = e.offsetY / canvas.height;
-			}
-
-			function onWindowResize( e ) {
-				if ( config.resolution === 'full' ) {
-					canvas.width  = window.innerWidth;
-					canvas.height = window.innerHeight;
-				} else {
-					canvas.width  = config.aspectRatio * config.resolution;
-					canvas.height = config.resolution;
-				}
-				renderer.setSize( canvas.width, canvas.height );
-				renderer.setPixelRatio( config.pixelRatio );
-			}
-
-			function outputTextToTab(text) {
-				var type = 'text/plain';
-				window.open('data:' + type + ';base64,' + window.btoa(text));
-			}
-
-			function outputShaderToTab(filter) {
-				var rawShader = document.getElementById( 'fragment_shader' ).textContent;
-				var text = filter( rawShader );
-				outputTextToTab( text );
-			}
-		</script>
+function outputShaderToTab(filter) {
+	var rawShader = document.getElementById('fragment_shader').textContent;
+	var text = filter(rawShader);
+	outputTextToTab(text);
+}
+</script>
 
 	</body>
 </html>
