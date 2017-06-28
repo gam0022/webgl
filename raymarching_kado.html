@@ -402,10 +402,9 @@ void main(void) {
 		<script src="js/libs/dat.gui.min.js"></script>
 
 		<script>
-
-			var camera, scene, flyControls, orbitControls, renderer;
+			var camera, flyControls, orbitControls, renderer;
 			var prevCameraMatrixWorld;
-			var geometry, material, plane;
+			var textureScene, mainScene;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
 			var canvas;
 			var stats;
@@ -457,6 +456,25 @@ void main(void) {
 			init();
 			animate();
 
+			function createQuadScene(parameters) {
+				var scene = new THREE.Scene();
+				var geometry = new THREE.PlaneBufferGeometry(2.0, 2.0);
+				var material = new THREE.RawShaderMaterial( {
+					uniforms: parameters.uniforms,
+					vertexShader: parameters.vertexShader,
+					fragmentShader: parameters.fragmentShader,
+				} );
+				var plane = new THREE.Mesh(geometry, material);
+				plane.frustumCulled = false;
+				scene.add(plane);
+
+				return {
+					scene: scene,
+					geometry: geometry,
+					material: material,
+				};
+			}
+
 			function createTextureCube(cubeTextureLoader, rootPath, ext) {
 				var urls = [
 					rootPath + "px." + ext, rootPath + "nx." + ext,
@@ -486,21 +504,18 @@ void main(void) {
 			}
 
 			function init() {
-
-				scene = new THREE.Scene();
-				camera = new THREE.PerspectiveCamera(35, 800/600);
-				camera.position.z = 12;
-				camera.lookAt( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
-
 				var cubeTextureLoader = new THREE.CubeTextureLoader();
 				textureCube = createTextureCube( cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg" );
 
 				initTexture2D();
 
-				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
-				material = new THREE.RawShaderMaterial( {
+				camera = new THREE.PerspectiveCamera(35, 800/600);
+				camera.position.z = 12;
+				camera.lookAt(new THREE.Vector3( 0.0, 0.0, 0.0 ));
+
+				mainScene = createQuadScene({
 					uniforms: {
-						resolution: { type: 'v2', value: new THREE.Vector2( config.resolution, config.resolution ) },
+						resolution: { type: 'v2', value: new THREE.Vector2(config.resolution, config.resolution)},
 						mouse: { type: 'v2', value: mouse },
 						time: { type: 'f', value: 0.0 },
 						debugCamera: { type: 'i', value: config.camera !== 'Auto' },
@@ -514,10 +529,7 @@ void main(void) {
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
-				} );
-				plane = new THREE.Mesh( geometry, material );
-				plane.frustumCulled = false;
-				scene.add( plane );
+				});
 
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( config.pixelRatio );
@@ -590,7 +602,7 @@ void main(void) {
 
 				stats.begin();
 
-				var needsUpdate = config.time !== material.uniforms.time.value;
+				var needsUpdate = config.time !== mainScene.material.uniforms.time.value;
 
 				switch ( config.camera ) {
 					case 'Auto':
@@ -617,18 +629,16 @@ void main(void) {
 			}
 
 			function render(needsUpdate) {
-				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-				material.uniforms.mouse.value = mouse;
-				material.uniforms.debugCamera.value = config.camera !== 'Auto';
-				material.uniforms.cameraPos.value = camera.getWorldPosition();
-				material.uniforms.cameraDir.value = camera.getWorldDirection();
-
-				material.uniforms.kadoScale.value = config.kadoScale;
-
-				material.uniforms.time.value = config.time;
+				mainScene.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
+				mainScene.material.uniforms.mouse.value = mouse;
+				mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
+				mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
+				mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
+				mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+				mainScene.material.uniforms.time.value = config.time;
 
 				if (needsUpdate) {
-					renderer.render( scene, camera );
+					renderer.render(mainScene.scene, camera);
 				}
 
 				if (false) {
@@ -638,7 +648,7 @@ void main(void) {
 					document.getElementById( 'info' ).innerHTML = ''
 						+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
 						+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
-						+ material.uniforms.time.value;
+						+ mainScene.material.uniforms.time.value;
 				}
 			}
 
