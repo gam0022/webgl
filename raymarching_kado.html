@@ -395,14 +395,12 @@ void main(void) {
 		</script>
 
 		<script src="js/three.min.js"></script>
-		<script src="js/controls/FlyControls.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
-
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
 
 		<script>
-			var camera, flyControls, orbitControls, renderer;
+			var camera, orbitControls, renderer;
 			var prevCameraMatrixWorld;
 			var textureScene, mainScene;
 			var mouse = new THREE.Vector2( 0.5, 0.5 );
@@ -444,8 +442,6 @@ void main(void) {
 				pixelRatio: 1,
 
 				time: 0,
-				//time: 105,
-				//time: 142,
 
 				pause: false,
 
@@ -545,12 +541,6 @@ void main(void) {
 				window.addEventListener( 'resize', onWindowResize );
 				document.body.appendChild( canvas );
 
-				//flyControls = new THREE.FlyControls( camera, canvas );
-				//flyControls.autoForward = true;
-				//flyControls.dragToLook = false;
-				//flyControls.rollSpeed = Math.PI / 12;
-				//flyControls.movementSpeed = 0.1;
-
 				orbitControls = new THREE.OrbitControls( camera, canvas );
 				orbitControls.enablePan = true;
 				//orbitControls.keyPanSpeed = 0.01;
@@ -615,9 +605,6 @@ void main(void) {
 							needsUpdate = true;
 						}
 						prevCameraMatrixWorld = camera.matrixWorld.clone();
-						break;
-					case 'Fly':
-						flyControls.update(delta);
 						break;
 				}
 
