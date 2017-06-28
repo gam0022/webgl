@@ -478,6 +478,30 @@ function createTextureCube(cubeTextureLoader, rootPath, ext) {
 	return textureCube;
 }
 
+function createRandomDataTexture(width, height) {
+	var data = new Float32Array(width * height * 4);
+
+	for (var k = 0, kl = data.length; k < kl; k += 4) {
+		data[k]	     = Math.random();
+		data[k + 1]  = 0.0;
+		data[k + 2]  = 0.0;
+		data[k + 3]  = 1.0;
+	}
+
+	var texture = new THREE.DataTexture(
+		data,
+		width,
+		height,
+		THREE.RGBAFormat,
+		THREE.FloatType);
+
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+	texture.needsUpdate = true;
+
+	return texture;
+}
+
 function initTexture2D() {
 	var loader = new THREE.TextureLoader();
 	texture2Ds = {};
@@ -490,6 +514,7 @@ function initTexture2D() {
 	}
 
 	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
+	//texture2Ds.groundHeight	= createRandomDataTexture(256, 256);
 	texture2Ds.groundNormal	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_NRM.png");
 }
 
