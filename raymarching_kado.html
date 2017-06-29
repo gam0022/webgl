@@ -389,6 +389,7 @@ var config = {
 	pixelRatio: 1,
 	time: 0,
 	pause: false,
+	animateWater: false,
 
 	// mandel box
 	kadoScale: 2.7,
@@ -457,7 +458,7 @@ function createRandomDataTexture(width, height) {
 	return texture;
 }
 
-function createPerlinNoiseTexture(width, height) {
+function createPerlinNoiseTexture(width, height, z) {
 	var data = new Float32Array(width * height * 4);
 	var repeat = 4;
 	var perlin = new Perlin(repeat);
@@ -465,7 +466,7 @@ function createPerlinNoiseTexture(width, height) {
 	for (var y = 0.0; y < height; y++) {
 		for (var x = 0.0; x < width; x++) {
 			var k = (y * width + x) * 4;
-			var a = perlin.OctavePerlin(x / width * repeat, y / width * repeat, 0.0, 8, 0.4);
+			var a = perlin.OctavePerlin(x / width * repeat, y / width * repeat, z, 8, 0.4);
 			data[k]	= Math.pow(a, 3.0);
 			data[k + 1]  = 0.0;
 			data[k + 2]  = 0.0;
@@ -535,10 +536,42 @@ function initTexture2D() {
 	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
 }*/
 
+function initGUI() {
+	var gui = new dat.GUI();
+	gui.add(config, 'saveImage').name('Save as PNG');
+	//gui.add(config, 'camera', ['Auto', 'Orbit']).name('Camera');
+	gui.add(config, 'resolution', [256, 512, 800, 'full']).name('Resolution').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'aspectRatio', {'16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0}).name('Aspect Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'time', 0, 60).step(0.1).name('time').listen();
+	gui.add(config, 'pause').name('Pause');
+	gui.add(config, 'animateWater').name('Animate Water');
+
+	//var kadoFolder = gui.addFolder("Kado");
+	//kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
+	//kadoFolder.open();
+
+	stats = new Stats();
+	document.body.appendChild(stats.domElement);
+}
+
 function init() {
 	renderer = new THREE.WebGLRenderer();
 	renderer.setPixelRatio(config.pixelRatio);
 	renderer.setSize(config.resolution * config.aspectRatio, config.resolution);
+	if (!renderer.extensions.get("EXT_shader_texture_lod")) {
+		alert("EXT_shader_texture_lod is not supported.");
+		return;
+	}
 
 	camera = new THREE.PerspectiveCamera(35, 800/600);
 	camera.position.z = 22;
@@ -548,7 +581,7 @@ function init() {
 	textureCube = createTextureCube(cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg");
 
 	texture2Ds = {};
-	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256);
+	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.1 * config.time);
 
 	mainScene = createQuadScene({
 		uniforms: {
@@ -567,11 +600,6 @@ function init() {
 		fragmentShader: document.getElementById('fragment_shader').textContent
 	});
 
-	if (!renderer.extensions.get("EXT_shader_texture_lod")) {
-		alert("EXT_shader_texture_lod is not supported.");
-		return;
-	}
-
 	canvas = renderer.domElement;
 	canvas.addEventListener('mousemove', onMouseMove);
 	window.addEventListener('resize', onWindowResize);
@@ -589,31 +617,7 @@ function init() {
 	orbitControls.autoRotateSpeed = 0.0;
 	orbitControls.target = new THREE.Vector3(0.0, 0.0, 0.0);
 
-	var gui = new dat.GUI();
-	gui.add(config, 'saveImage').name('Save as PNG');
-	//gui.add(config, 'camera', ['Auto', 'Orbit']).name('Camera');
-	gui.add(config, 'resolution', [256, 512, 800, 'full']).name('Resolution').onChange(function(value) {
-		onWindowResize();
-		render(true);
-	});
-	gui.add(config, 'aspectRatio', {'16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0}).name('Aspect Ratio').onChange(function(value) {
-		onWindowResize();
-		render(true);
-	});
-	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
-		onWindowResize();
-		render(true);
-	});
-	gui.add(config, 'time', 0, 60).step(0.1).name('time').listen();
-	gui.add(config, 'pause').name('Pause');
-
-	//var kadoFolder = gui.addFolder("Kado");
-	//kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
-	//kadoFolder.open();
-
-	stats = new Stats();
-	document.body.appendChild(stats.domElement);
-
+	initGUI();
 	onWindowResize();
 }
 
@@ -642,6 +646,11 @@ function animate(timestamp) {
 			break;
 	}
 
+	if (config.animateWater) {
+		texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.1 * config.time);
+		mainScene.material.uniforms.groundHeight.value = texture2Ds.groundHeight;
+	}
+
 	render(needsUpdate);
 	stats.end();
 	requestAnimationFrame(animate);
@@ -653,7 +662,7 @@ function render(needsUpdate) {
 	mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
 	mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
 	mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
-	mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	//mainScene.material.uniforms.kadoScale.value = config.kadoScale;
 	mainScene.material.uniforms.time.value = config.time;
 
 	if (needsUpdate) {
