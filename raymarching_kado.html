@@ -273,7 +273,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 			intersection.distance = t;
 			intersection.hit = true;
 			intersection.position = ray.origin + t * ray.direction;
-			intersection.normal = mix(calcNormal(intersection.position, sdGround), vec3(0.0, 1.0, 0.0), 1.0 - ray.direction.y);
+			intersection.normal = mix(calcNormal(intersection.position, sdGround), vec3(0.0, 1.0, 0.0), max(t * 0.001, 1.0) - ray.direction.y);
 			intersection.material = GROUND_MATERIAL;
 		}
 	}
