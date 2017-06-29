@@ -84,6 +84,8 @@ const float PI2 = 6.28318530718;
 const float PIH = 1.57079632679;
 const float PIQ = 0.78539816339;
 
+const float GROUND_BASE = 5.5;
+
 
 // globals
 const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
@@ -241,20 +243,16 @@ vec3 hsv2rgb(vec3 c) {
 #define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
 
 float sdGround(in vec3 p) {
-	float h = 5.5;
-	if (dot(p.xz, p.xz) <= 100000.0) {
-		return p.y - texture2D(groundHeight, p.xz * 0.1).r + h;
-	} else {
-		return p.y + h;
-	}
+	return p.y - texture2D(groundHeight, p.xz * 0.1).r + GROUND_BASE;
 }
 
+// 近くはレイマーチングによって正確に衝突判定し、遠くは平面として衝突判定を行う
 void intersectGround(inout Intersection intersection, inout Ray ray) {
 	float d;
 	float distance = 0.0;
 	vec3 p = ray.origin;
 
-	for (float i = 0.0; i < 100.0; i++) {
+	for (float i = 0.0; i < 10.0; i++) {
 		d = sdGround(p);
 		distance += d;
 		p = ray.origin + distance * ray.direction;
@@ -268,6 +266,16 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 		intersection.position = p;
 		intersection.normal = calcNormal(p, sdGround);
 		intersection.material = GROUND_MATERIAL;
+	} else {
+    float v = ray.direction.y;
+    float t = -(ray.origin.y + GROUND_BASE) / v;
+		if (t > 0.0) {
+			intersection.distance = t;
+			intersection.hit = true;
+			intersection.position = ray.origin + t * ray.direction;
+			intersection.normal = mix(calcNormal(intersection.position, sdGround), vec3(0.0, 1.0, 0.0), 1.0 - ray.direction.y);
+			intersection.material = GROUND_MATERIAL;
+		}
 	}
 }
 
@@ -395,7 +403,7 @@ uniform sampler2D random;
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution;
 	float a = texture2D(random, uv).r;
-	vec3 color = vec3(pow(a, 2.0) * 1.0);
+	vec3 color = vec3(pow(a, 2.0));
 	gl_FragColor = vec4(color, 1.0);
 }
 </script>
@@ -598,7 +606,6 @@ function initTexture2D() {
 	}
 
 	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
-	texture2Ds.groundNormal	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_NRM.png");
 }
 
 function init() {
@@ -628,7 +635,6 @@ function init() {
 			kadoScale: {type: 'f', value: config.kadoScale},
 			textureCube: {type: 'tc', value: textureCube},
 			groundHeight: {type: 't', value: texture2Ds.groundHeight},
-			//groundNormal: {type: 't', value: texture2Ds.groundNormal},
 		},
 		vertexShader: document.getElementById('vertex_shader').textContent,
 		fragmentShader: document.getElementById('fragment_shader').textContent
