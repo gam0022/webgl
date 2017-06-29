@@ -581,7 +581,7 @@ function init() {
 	textureCube = createTextureCube(cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg");
 
 	texture2Ds = {};
-	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.1 * config.time);
+	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.5 * config.time);
 
 	mainScene = createQuadScene({
 		uniforms: {
@@ -647,7 +647,7 @@ function animate(timestamp) {
 	}
 
 	if (config.animateWater) {
-		texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.1 * config.time);
+		texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.5 * config.time);
 		mainScene.material.uniforms.groundHeight.value = texture2Ds.groundHeight;
 	}
 
