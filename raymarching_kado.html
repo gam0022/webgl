@@ -214,8 +214,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 		intersection.normal = calcNormal(p, sdGround);
 		intersection.material = GROUND_MATERIAL;
 	} else {
-    float v = ray.direction.y;
-    float t = -(ray.origin.y + GROUND_BASE) / v;
+    float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
 		if (t > 0.0) {
 			intersection.distance = t;
 			intersection.hit = true;
