@@ -241,7 +241,12 @@ vec3 hsv2rgb(vec3 c) {
 #define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
 
 float sdGround(in vec3 p) {
-    return p.y - 0.3 * texture2D(groundHeight, p.xz * 0.1).r + 4.0;
+	float h = 5.5;
+	if (dot(p.xz, p.xz) <= 100000.0) {
+		return p.y - texture2D(groundHeight, p.xz * 0.1).r + h;
+	} else {
+		return p.y + h;
+	}
 }
 
 void intersectGround(inout Intersection intersection, inout Ray ray) {
@@ -249,7 +254,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 	float distance = 0.0;
 	vec3 p = ray.origin;
 
-	for (float i = 0.0; i < 60.0; i++) {
+	for (float i = 0.0; i < 100.0; i++) {
 		d = sdGround(p);
 		distance += d;
 		p = ray.origin + distance * ray.direction;
@@ -276,7 +281,7 @@ void intersectObjects(inout Intersection intersection, inout Ray ray) {
 		distance += d;
 		p = ray.origin + distance * ray.direction;
 		intersection.count = i;
-		if (abs(d) < EPS /*|| distance > 100.0*/) break;
+		if (abs(d) < EPS || distance > 30.0) break;
 	}
 
 	if (abs(d) < EPS && distance < intersection.distance) {
@@ -333,13 +338,14 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 		float shadow = calcShadow(intersection.position, lightDir);
 
 		if (intersection.material == METAL_MATERIAL) {
-			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count, 0.7 * sin(lTime), 0.9));
+			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count + sin(0.3 * lTime), 0.7 * 0.5 + abs(0.5 * sin(0.1 * lTime)), 0.9));
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
 		} else {
-			vec3 metalBase = vec3(0.5);
-			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
-			intersection.reflectance = 0.0;
+			vec3 metalBase = vec3(0.17, 0.25, 0.28);
+			intersection.color = metalBase * diffuse * ao * shadow + 0.5 * specular;
+			float f0 = 0.7;
+			intersection.reflectance = f0 + (1.0 - f0) * pow(1.0 + ray.direction.y, 5.0);
 		}
 	} else {
 		intersection.color = textureCubeLodEXT(textureCube, ray.direction, 0.0).rgb;
@@ -361,7 +367,7 @@ void main(void) {
 	camera.zoom = 2.0;
 	Ray ray = cameraShootRay(camera, uv);
 
-	kadoScale = 2.6 + 0.1 * cos(time * 0.1);
+	kadoScale = 2.6 + 0.1 * cos(time);
 
 	vec3 color = vec3(0.0);
 	float reflection = 1.0;
@@ -389,7 +395,7 @@ uniform sampler2D random;
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution;
 	float a = texture2D(random, uv).r;
-	vec3 color = vec3(pow(a, 2.0));
+	vec3 color = vec3(pow(a, 2.0) * 1.0);
 	gl_FragColor = vec4(color, 1.0);
 }
 </script>
@@ -526,7 +532,7 @@ function createPerlinNoiseTexture(width, height) {
 	for (var y = 0.0; y < height; y++) {
 		for (var x = 0.0; x < width; x++) {
 			var k = (y * width + x) * 4;
-			data[k]	= perlin.OctavePerlin(x / width * repeat, y / width * repeat, 0.0, 6, 0.5);
+			data[k]	= perlin.OctavePerlin(x / width * repeat, y / width * repeat, 0.0, 8, 0.4);
 			data[k + 1]  = 0.0;
 			data[k + 2]  = 0.0;
 			data[k + 3]  = 1.0;
