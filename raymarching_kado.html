@@ -465,7 +465,8 @@ function createPerlinNoiseTexture(width, height) {
 	for (var y = 0.0; y < height; y++) {
 		for (var x = 0.0; x < width; x++) {
 			var k = (y * width + x) * 4;
-			data[k]	= perlin.OctavePerlin(x / width * repeat, y / width * repeat, 0.0, 8, 0.4);
+			var a = perlin.OctavePerlin(x / width * repeat, y / width * repeat, 0.0, 8, 0.4);
+			data[k]	= Math.pow(a, 3.0);
 			data[k + 1]  = 0.0;
 			data[k + 2]  = 0.0;
 			data[k + 3]  = 1.0;
@@ -490,6 +491,7 @@ function createPerlinNoiseTexture(width, height) {
 	return texture;
 }
 
+/*
 function createRenderTarget(width, height) {
 	return new THREE.WebGLRenderTarget(width, height, {
 		wrapS: THREE.RepeatWrapping,
@@ -503,7 +505,7 @@ function createRenderTarget(width, height) {
 	});
 }
 
-function createGroundHeightTexture(renderer, camera, width, height) {
+function createGroundHeightTextureWithShader(renderer, camera, width, height) {
 	var randomTexture	= createPerlinNoiseTexture(width, height);
 	var output = createRenderTarget(width, height);
 	var scene = createQuadScene({
@@ -514,7 +516,7 @@ function createGroundHeightTexture(renderer, camera, width, height) {
 		vertexShader: document.getElementById('vertex_shader').textContent,
 		fragmentShader: document.getElementById('ground_fragment_shader').textContent
 	});
-	renderer.render(scene.scene, camera/*, output*/);
+	// renderer.render(scene.scene, camera);
 	renderer.render(scene.scene, camera, output);
 	return output;
 }
@@ -531,7 +533,7 @@ function initTexture2D() {
 	}
 
 	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
-}
+}*/
 
 function init() {
 	renderer = new THREE.WebGLRenderer();
@@ -546,7 +548,7 @@ function init() {
 	textureCube = createTextureCube(cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg");
 
 	texture2Ds = {};
-	texture2Ds.groundHeight = createGroundHeightTexture(renderer, camera, 256, 256);
+	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256);
 
 	mainScene = createQuadScene({
 		uniforms: {
