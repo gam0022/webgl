@@ -97,15 +97,15 @@ struct Camera {
 };
 
 Ray cameraShootRay(Camera c, vec2 uv) {
-    c.forward = normalize(c.target - c.eye);
-    c.right = normalize(cross(c.forward, c.up));
-    c.up    = normalize(cross(c.right, c.forward));
+	c.forward = normalize(c.target - c.eye);
+	c.right = normalize(cross(c.forward, c.up));
+	c.up = normalize(cross(c.right, c.forward));
 
-    Ray r;
-    r.origin = c.eye;
-    r.direction = normalize(uv.x * c.right + uv.y * c.up + c.zoom * c.forward);
+	Ray r;
+	r.origin = c.eye;
+	r.direction = normalize(uv.x * c.right + uv.y * c.up + c.zoom * c.forward);
 
-    return r;
+	return r;
 }
 
 // intersection
@@ -212,7 +212,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 		intersection.normal = calcNormal(p, sdGround);
 		intersection.material = GROUND_MATERIAL;
 	} else {
-    float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
+	float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
 		if (t > 0.0) {
 			intersection.distance = t;
 			intersection.hit = true;
