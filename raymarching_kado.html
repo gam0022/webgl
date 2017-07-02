@@ -62,8 +62,8 @@ uniform bool debugCamera;
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
 
-// uniform float kadoScale;
-float kadoScale;
+uniform float kadoScale;
+uniform float kadoScale2;
 
 // consts
 const float INF = 1e+10;
@@ -76,7 +76,7 @@ const float PI2 = 6.28318530718;
 const float PIH = 1.57079632679;
 const float PIQ = 0.78539816339;
 
-const float GROUND_BASE = 5.5;
+const float GROUND_BASE = 2.5;
 
 
 // globals
@@ -175,7 +175,9 @@ float dMbox(vec3 z) {
 }
 
 float dScene(vec3 p) {
-	return dMbox(p);
+	//return dMbox(p);
+	vec3 p1 = p * kadoScale2;
+	return min(dMbox(p), dMbox(p1));
 }
 
 // color functions
@@ -307,7 +309,7 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 void main(void) {
 	// set globals
 	lTime = mod(time, WORK_TIME);
-	kadoScale = 2.6 + 0.2 * cos(0.1 * PI2 * time);
+	//kadoScale = -3.3;
 
 	// fragment position
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
@@ -389,7 +391,8 @@ var config = {
 	animateWater: false,
 
 	// mandel box
-	kadoScale: 2.7,
+	kadoScale: -3.5,
+	kadoScale2: 1.2,
 };
 
 init();
@@ -553,9 +556,10 @@ function initGUI() {
 	gui.add(config, 'pause').name('Pause');
 	gui.add(config, 'animateWater').name('Animate Water');
 
-	//var kadoFolder = gui.addFolder("Kado");
-	//kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
-	//kadoFolder.open();
+	var kadoFolder = gui.addFolder("Kado");
+	kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
+	kadoFolder.add(config, 'kadoScale2', 1, 2).name('Scale2');
+	kadoFolder.open();
 
 	stats = new Stats();
 	document.body.appendChild(stats.domElement);
@@ -590,6 +594,7 @@ function init() {
 			cameraDir: {type: 'v3', value: camera.getWorldDirection()},
 
 			kadoScale: {type: 'f', value: config.kadoScale},
+			kadoScale2: {type: 'f', value: config.kadoScale2},
 			textureCube: {type: 'tc', value: textureCube},
 			groundHeight: {type: 't', value: texture2Ds.groundHeight},
 		},
@@ -659,7 +664,8 @@ function render(needsUpdate) {
 	mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
 	mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
 	mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
-	//mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.kadoScale2.value = config.kadoScale2;
 	mainScene.material.uniforms.time.value = config.time;
 
 	if (needsUpdate) {
