@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<!--
+// Title: MandelBox inspired by "KADO: The Right Answer"
+// Copyright (c) 2017 gam0022
+// License: MIT
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<title>three.js webgl - raymarching - carbon</title>
+		<style type="text/css">
+			body {
+				background-color: black;
+				margin: 0;
+				padding: 0;
+			}
+
+			a { color: skyblue }
+
+			canvas {
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+
+			#info {
+				color: white;
+				font-size: 13px;
+				position: absolute;
+				bottom: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl raymarching demo - MandelBox inspired by <a href="http://seikaisuru-kado.com/">"KADO: The Right Answer"</a> by <a href="https://github.com/gam0022" target="_blank">gam0022</a><br>
+			<a href="http://gam0022.net/blog/2017/06/30/raymarching-kado/" target="_blank">正解するカドの「カド」をレイマーチングでリアルタイム描画する(article in Japanese)</a>
+		</div>
+
+<script id="fragment_shader" type="x-shader/x-fragment">
+#extension GL_EXT_shader_texture_lod : enable
+precision highp float;
+
+// uniforms
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+uniform samplerCube textureCube;
+uniform sampler2D groundHeight;
+
+uniform bool debugCamera;
+uniform vec3 cameraPos;
+uniform vec3 cameraDir;
+
+// uniform float kadoScale;
+float kadoScale;
+
+// consts
+const float INF = 1e+10;
+const float EPS = 1e-2;
+const float EPS_N = 1e-3;
+const float OFFSET = EPS * 100.0;
+
+const float PI = 3.14159265359;
+const float PI2 = 6.28318530718;
+const float PIH = 1.57079632679;
+const float PIQ = 0.78539816339;
+
+const float GROUND_BASE = 5.5;
+
+
+// globals
+const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
+float lTime;
+
+// ray
+struct Ray {
+	vec3 origin;
+	vec3 direction;
+};
+
+// camera
+struct Camera {
+	vec3 eye, target;
+	vec3 forward, right, up;
+	float zoom;
+};
+
+Ray cameraShootRay(Camera c, vec2 uv) {
+	c.forward = normalize(c.target - c.eye);
+	c.right = normalize(cross(c.forward, c.up));
+	c.up = normalize(cross(c.right, c.forward));
+
+	Ray r;
+	r.origin = c.eye;
+	r.direction = normalize(uv.x * c.right + uv.y * c.up + c.zoom * c.forward);
+
+	return r;
+}
+
+// intersection
+struct Intersection {
+	bool hit;
+	vec3 position;
+	float distance;
+	vec3 normal;
+	vec2 uv;
+	float count;
+
+	int material;
+	vec3 color;
+	float reflectance;
+};
+
+#define METAL_MATERIAL   0
+#define GROUND_MATERIAL  1
+
+// util
+#define saturate(x) clamp(x, 0.0, 1.0)
+
+// Distance Functions
+float sdBox( vec3 p, vec3 b ) {
+  vec3 d = abs(p) - b;
+  return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
+}
+
+#define WORK_TIME (60.0)
+
+// http://blog.hvidtfeldts.net/index.php/2011/11/distance-estimated-3d-fractals-vi-the-mandelbox/
+float minRadius2 = 0.5;
+float fixedRadius2 = 1.0;
+float foldingLimit = 1.0;
+#define Iterations 8
+
+void sphereFold(inout vec3 z, inout float dz) {
+	float r2 = dot(z,z);
+	if (r2 < minRadius2) {
+		// linear inner scaling
+		float temp = (fixedRadius2 / minRadius2);
+		z *= temp;
+		dz *= temp;
+	} else if (r2 < fixedRadius2) {
+		// this is the actual sphere inversion
+		float temp = fixedRadius2 / r2;
+		z *= temp;
+		dz *= temp;
+	}
+}
+
+void boxFold(inout vec3 z, inout float dz) {
+	z = clamp(z, -foldingLimit, foldingLimit) * 2.0 - z;
+}
+
+float dMbox(vec3 z) {
+	vec3 offset = z;
+	float dr = 1.0;
+	for (int n = 0; n < Iterations; n++) {
+		boxFold(z, dr);       // Reflect
+		sphereFold(z, dr);    // Sphere Inversion
+		z = kadoScale * z + offset;  // Scale & Translate
+		dr = dr * abs(kadoScale) + 1.0;
+	}
+	float r = length(z);
+	return r / abs(dr);
+}
+
+float dScene(vec3 p) {
+	return dMbox(p);
+}
+
+// color functions
+vec3 hsv2rgb(vec3 c) {
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, saturate(p - K.xxx), c.y);
+}
+
+#define calcNormal(p, dFunc) normalize(vec2(EPS_N, -EPS_N).xyy * dFunc(p + vec2(EPS_N, -EPS_N).xyy) + vec2(EPS_N, -EPS_N).yyx * dFunc(p + vec2(EPS_N, -EPS_N).yyx ) + vec2(EPS_N, -EPS_N).yxy * dFunc(p + vec2(EPS_N, -EPS_N).yxy) + vec2(EPS_N, -EPS_N).xxx * dFunc(p + vec2(EPS_N, -EPS_N).xxx))
+
+float sdGround(in vec3 p) {
+	return p.y - texture2D(groundHeight, p.xz * 0.1).r + GROUND_BASE;
+}
+
+// 近くはレイマーチングによって正確に衝突判定し、遠くは平面として衝突判定を行う
+void intersectGround(inout Intersection intersection, inout Ray ray) {
+	float d;
+	float distance = 0.0;
+	vec3 p = ray.origin;
+
+	for (float i = 0.0; i < 10.0; i++) {
+		d = sdGround(p);
+		distance += d;
+		p = ray.origin + distance * ray.direction;
+		intersection.count = i;
+		if (abs(d) < EPS) break;
+	}
+
+	if (abs(d) < EPS) {
+		intersection.distance = distance;
+		intersection.hit = true;
+		intersection.position = p;
+		intersection.normal = calcNormal(p, sdGround);
+		intersection.material = GROUND_MATERIAL;
+	} else {
+	float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
+		if (t > 0.0) {
+			intersection.distance = t;
+			intersection.hit = true;
+			intersection.position = ray.origin + t * ray.direction;
+			intersection.normal = mix(calcNormal(intersection.position, sdGround), vec3(0.0, 1.0, 0.0), min(t * 0.01, 1.0) - ray.direction.y);
+			intersection.material = GROUND_MATERIAL;
+		}
+	}
+}
+
+void intersectObjects(inout Intersection intersection, inout Ray ray) {
+	float d;
+	float distance = 0.0;
+	vec3 p = ray.origin;
+
+	for (float i = 0.0; i < 100.0; i++) {
+		d = dScene(p);
+		distance += d;
+		p = ray.origin + distance * ray.direction;
+		intersection.count = i;
+		if (abs(d) < EPS || distance > 100.0) break;
+	}
+
+	if (abs(d) < EPS && distance < intersection.distance) {
+		intersection.distance = distance;
+		intersection.hit = true;
+		intersection.position = p;
+		intersection.normal = calcNormal(p, dScene);
+		intersection.material = METAL_MATERIAL;
+	}
+}
+
+void intersectScene(inout Intersection intersection, inout Ray ray) {
+	intersection.distance = INF;
+	intersectGround(intersection, ray);
+	intersectObjects(intersection, ray);
+}
+
+float calcAo(in vec3 p, in vec3 n){
+	float sca = 1.0, occ = 0.0;
+	for(float i=0.; i<5.; i++){
+		float hr = 0.05 + i * 0.08;
+		float dd = dScene(n * hr + p);
+		occ += (hr - dd) * sca;
+		sca *= 0.5;
+	}
+	return saturate(1.0 - occ);
+}
+
+float calcShadow(in vec3 p, in vec3 rd) {
+	float d;
+	float distance = OFFSET;
+	float bright = 1.0;
+	float shadowIntensity = 0.4;
+	float shadowSharpness = 10.0;
+
+	for (int i = 0; i < 30; i++) {
+		d = dScene(p + rd * distance);
+		if (d < EPS) return shadowIntensity;
+		bright = min(bright, shadowSharpness * d / distance);
+		distance += d;
+	}
+
+	return shadowIntensity + (1.0 - shadowIntensity) * bright;
+}
+
+void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
+	intersection.hit = false;
+	intersectScene(intersection, ray);
+
+	if ( intersection.hit ) {
+		float diffuse = clamp(dot(lightDir, intersection.normal), 0.2, 1.0) * 0.5 + 0.5;
+		float specular = pow(saturate(dot(reflect(lightDir, intersection.normal), ray.direction)), 10.0);
+		float ao = calcAo(intersection.position, intersection.normal);
+		float shadow = calcShadow(intersection.position, lightDir);
+
+		if (intersection.material == METAL_MATERIAL) {
+			vec3 metalBase = hsv2rgb(vec3(0.1 * intersection.count + sin(0.05 * PI2 * lTime), 0.7 * 0.5 + abs(0.05 * PI2 * sin(0.1 * lTime)), 0.9));
+			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
+			intersection.reflectance = 0.7;
+		} else {
+			vec3 metalBase = vec3(0.17, 0.25, 0.28);
+			intersection.color = metalBase * diffuse * ao * shadow + 0.5 * specular;
+			float f0 = 0.7;
+			intersection.reflectance = f0 + (1.0 - f0) * pow(1.0 + ray.direction.y, 5.0);
+		}
+	} else {
+		intersection.color = textureCubeLodEXT(textureCube, ray.direction, 0.0).rgb;
+	}
+}
+
+void main(void) {
+	// set globals
+	lTime = mod(time, WORK_TIME);
+	kadoScale = 2.6 + 0.2 * cos(0.1 * PI2 * time);
+
+	// fragment position
+	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
+
+	// camera and ray
+	Camera camera;
+	camera.eye    = cameraPos;
+	camera.target = cameraPos + cameraDir;
+	camera.up = vec3(0.0, 1.0, 0.0);// y-up
+	camera.zoom = 2.0;
+	Ray ray = cameraShootRay(camera, uv);
+
+	vec3 color = vec3(0.0);
+	float reflection = 1.0;
+	Intersection intersection;
+
+	for (int bounce = 0; bounce <= 2; bounce++) {
+		calcRadiance(intersection, ray, bounce);
+
+		color += reflection * intersection.color;
+		if (!intersection.hit) break;
+		reflection *= intersection.reflectance;
+		ray.origin = intersection.position + intersection.normal * OFFSET;
+		ray.direction = normalize(reflect(ray.direction, intersection.normal));
+	}
+
+	gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<script id="ground_fragment_shader" type="x-shader/x-vertex">
+precision highp float;
+uniform vec2 resolution;
+uniform sampler2D random;
+
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution;
+	float a = texture2D(random, uv).r;
+	vec3 color = vec3(pow(a, 2.0));
+	gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<script id="vertex_shader" type="x-shader/x-vertex">
+attribute vec3 position;
+void main(void) {
+	gl_Position = vec4(position, 1.0);
+}
+</script>
+
+<script src="js/three.min.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
+<script src="js/libs/stats.min.js"></script>
+<script src="js/libs/dat.gui.min.js"></script>
+<script src="js/common/noise.js"></script>
+
+<script>
+var camera, orbitControls, renderer;
+var prevCameraMatrixWorld;
+var textureScene, mainScene;
+var mouse = new THREE.Vector2( 0.5, 0.5 );
+var canvas;
+var stats;
+var textureCube, texture2Ds;
+
+var clock = new THREE.Clock();
+
+var config = {
+	saveImage: function() {
+		render(true);
+		window.open(canvas.toDataURL());
+	},
+	camera: 'Orbit',
+	resolution: 512,
+	aspectRatio: 1,
+	pixelRatio: 1,
+	time: 0,
+	pause: false,
+	animateWater: false,
+
+	// mandel box
+	kadoScale: 2.7,
+};
+
+init();
+animate();
+
+function createQuadScene(parameters) {
+	var scene = new THREE.Scene();
+	var geometry = new THREE.PlaneBufferGeometry(2.0, 2.0);
+	var material = new THREE.RawShaderMaterial({
+		uniforms: parameters.uniforms,
+		vertexShader: parameters.vertexShader,
+		fragmentShader: parameters.fragmentShader,
+	});
+	var plane = new THREE.Mesh(geometry, material);
+	plane.frustumCulled = false;
+	scene.add(plane);
+
+	return {
+		scene: scene,
+		geometry: geometry,
+		material: material,
+	};
+}
+
+function createTextureCube(cubeTextureLoader, rootPath, ext) {
+	var urls = [
+		rootPath + "px." + ext, rootPath + "nx." + ext,
+		rootPath + "py." + ext, rootPath + "ny." + ext,
+		rootPath + "pz." + ext, rootPath + "nz." + ext,
+	];
+	var textureCube = cubeTextureLoader.load(urls);
+	textureCube.format = THREE.RGBFormat;
+	textureCube.mapping = THREE.CubeReflectionMapping;
+	//textureCube.generateMipmaps = false;
+	return textureCube;
+}
+
+function createRandomDataTexture(width, height) {
+	var data = new Float32Array(width * height * 4);
+
+	for (var k = 0, kl = data.length; k < kl; k += 4) {
+		data[k]	     = Math.random();
+		data[k + 1]  = 0.0;
+		data[k + 2]  = 0.0;
+		data[k + 3]  = 1.0;
+	}
+
+	var texture = new THREE.DataTexture(
+		data,
+		width,
+		height,
+		THREE.RGBAFormat,
+		THREE.FloatType,
+		THREE.UVMapping,
+		THREE.RepeatWrapping,
+		THREE.RepeatWrapping,
+		THREE.LinearFilter,
+		THREE.LinearFilter,
+	);
+
+	texture.needsUpdate = true;
+
+	return texture;
+}
+
+function createPerlinNoiseTexture(width, height, z) {
+	var data = new Float32Array(width * height * 4);
+	var repeat = 4;
+	var perlin = new Perlin(repeat);
+
+	for (var y = 0.0; y < height; y++) {
+		for (var x = 0.0; x < width; x++) {
+			var k = (y * width + x) * 4;
+			var a = perlin.OctavePerlin(x / width * repeat, y / width * repeat, z, 8, 0.4);
+			data[k]	= Math.pow(a, 3.0);
+			data[k + 1]  = 0.0;
+			data[k + 2]  = 0.0;
+			data[k + 3]  = 1.0;
+		}
+	}
+
+	var texture = new THREE.DataTexture(
+		data,
+		width,
+		height,
+		THREE.RGBAFormat,
+		THREE.FloatType,
+		THREE.UVMapping,
+		THREE.RepeatWrapping,
+		THREE.RepeatWrapping,
+		THREE.LinearFilter,
+		THREE.LinearFilter,
+	);
+
+	texture.needsUpdate = true;
+
+	return texture;
+}
+
+/*
+function createRenderTarget(width, height) {
+	return new THREE.WebGLRenderTarget(width, height, {
+		wrapS: THREE.RepeatWrapping,
+		wrapT: THREE.RepeatWrapping,
+		minFilter: THREE.LinearFilter,
+		magFilter: THREE.LinearFilter,
+		format: THREE.RGBAFormat,
+		type: THREE.FloatType,
+		stencilBuffer: false,
+		depthBuffer: false
+	});
+}
+
+function createGroundHeightTextureWithShader(renderer, camera, width, height) {
+	var randomTexture	= createPerlinNoiseTexture(width, height);
+	var output = createRenderTarget(width, height);
+	var scene = createQuadScene({
+		uniforms: {
+			resolution: {type: 'v2', value: new THREE.Vector2(width, height)},
+			random: {type: 't', value: randomTexture},
+		},
+		vertexShader: document.getElementById('vertex_shader').textContent,
+		fragmentShader: document.getElementById('ground_fragment_shader').textContent
+	});
+	// renderer.render(scene.scene, camera);
+	renderer.render(scene.scene, camera, output);
+	return output;
+}
+
+function initTexture2D() {
+	var loader = new THREE.TextureLoader();
+	texture2Ds = {};
+
+	var createRepeatTexture = function(url) {
+		var texture = loader.load(url);
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		return texture;
+	}
+
+	texture2Ds.groundHeight	= createRepeatTexture("textures/kaneta/RandomNoiseTexture5_DISP.png");
+}*/
+
+function initGUI() {
+	var gui = new dat.GUI();
+	gui.add(config, 'saveImage').name('Save as PNG');
+	//gui.add(config, 'camera', ['Auto', 'Orbit']).name('Camera');
+	gui.add(config, 'resolution', [256, 512, 800, 'full']).name('Resolution').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'aspectRatio', {'16:9': 16/9, '4:3' : 4/3, '2:1': 2, '1:1': 1.0}).name('Aspect Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	gui.add(config, 'time', 0, 60).step(0.1).name('time').listen();
+	gui.add(config, 'pause').name('Pause');
+	gui.add(config, 'animateWater').name('Animate Water');
+
+	//var kadoFolder = gui.addFolder("Kado");
+	//kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
+	//kadoFolder.open();
+
+	stats = new Stats();
+	document.body.appendChild(stats.domElement);
+}
+
+function init() {
+	renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio(config.pixelRatio);
+	renderer.setSize(config.resolution * config.aspectRatio, config.resolution);
+	if (!renderer.extensions.get("EXT_shader_texture_lod")) {
+		alert("EXT_shader_texture_lod is not supported.");
+		return;
+	}
+
+	camera = new THREE.PerspectiveCamera(35, 800/600);
+	camera.position.z = 22;
+	camera.lookAt(new THREE.Vector3(0.0, 0.0, 0.0));
+
+	var cubeTextureLoader = new THREE.CubeTextureLoader();
+	textureCube = createTextureCube(cubeTextureLoader, "textures/cube/ely_cloudtop/", "jpg");
+
+	texture2Ds = {};
+	texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.5 * config.time);
+
+	mainScene = createQuadScene({
+		uniforms: {
+			resolution: {type: 'v2', value: new THREE.Vector2(config.resolution, config.resolution)},
+			mouse: {type: 'v2', value: mouse },
+			time: {type: 'f', value: 0.0 },
+			debugCamera: {type: 'i', value: config.camera !== 'Auto'},
+			cameraPos: {type: 'v3', value: camera.getWorldPosition()},
+			cameraDir: {type: 'v3', value: camera.getWorldDirection()},
+
+			kadoScale: {type: 'f', value: config.kadoScale},
+			textureCube: {type: 'tc', value: textureCube},
+			groundHeight: {type: 't', value: texture2Ds.groundHeight},
+		},
+		vertexShader: document.getElementById('vertex_shader').textContent,
+		fragmentShader: document.getElementById('fragment_shader').textContent
+	});
+
+	canvas = renderer.domElement;
+	canvas.addEventListener('mousemove', onMouseMove);
+	window.addEventListener('resize', onWindowResize);
+	document.body.appendChild(canvas);
+
+	orbitControls = new THREE.OrbitControls(camera, canvas);
+	orbitControls.enablePan = true;
+	//orbitControls.keyPanSpeed = 0.01;
+	orbitControls.enableDamping = false;
+	//orbitControls.dampingFactor = 0.015;
+	orbitControls.enableZoom = true;
+	//orbitControls.zoomSpeed = 0.001;
+	//orbitControls.rotateSpeed = 0.8;
+	orbitControls.autoRotate = false;
+	orbitControls.autoRotateSpeed = 0.0;
+	orbitControls.target = new THREE.Vector3(0.0, 0.0, 0.0);
+
+	initGUI();
+	onWindowResize();
+}
+
+function animate(timestamp) {
+	var delta = clock.getDelta();
+
+	if (!config.pause) {
+		config.time += delta;
+	}
+
+	stats.begin();
+
+	var needsUpdate = config.time !== mainScene.material.uniforms.time.value;
+
+	switch (config.camera) {
+		case 'Auto':
+			// none
+			break;
+		case 'Orbit':
+			orbitControls.update();
+
+			if (camera && prevCameraMatrixWorld && !camera.matrixWorld.equals(prevCameraMatrixWorld)) {
+				needsUpdate = true;
+			}
+			prevCameraMatrixWorld = camera.matrixWorld.clone();
+			break;
+	}
+
+	if (config.animateWater) {
+		texture2Ds.groundHeight = createPerlinNoiseTexture(256, 256, 0.5 * config.time);
+		mainScene.material.uniforms.groundHeight.value = texture2Ds.groundHeight;
+	}
+
+	render(needsUpdate);
+	stats.end();
+	requestAnimationFrame(animate);
+}
+
+function render(needsUpdate) {
+	mainScene.material.uniforms.resolution.value = new THREE.Vector2(canvas.width, canvas.height);
+	mainScene.material.uniforms.mouse.value = mouse;
+	mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
+	mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
+	mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
+	//mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.time.value = config.time;
+
+	if (needsUpdate) {
+		renderer.render(mainScene.scene, camera);
+	}
+
+	if (false) {
+		var pos = camera.getWorldPosition();
+		var dir = camera.getWorldDirection();
+
+		document.getElementById( 'info' ).innerHTML = ''
+			+ pos.x + ', ' + pos.y + ', ' + pos.z + '<br />'
+			+ dir.x + ', ' + dir.y + ', ' + dir.z + '<br />'
+			+ mainScene.material.uniforms.time.value;
+	}
+}
+
+function onMouseMove(e) {
+	mouse.x = e.offsetX / canvas.width;
+	mouse.y = e.offsetY / canvas.height;
+}
+
+function onWindowResize(e) {
+	if (config.resolution === 'full') {
+		canvas.width  = window.innerWidth;
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.width  = config.aspectRatio * config.resolution;
+		canvas.height = config.resolution;
+	}
+	renderer.setSize(canvas.width, canvas.height);
+	renderer.setPixelRatio(config.pixelRatio);
+}
+
+function outputTextToTab(text) {
+	var type = 'text/plain';
+	window.open('data:' + type + ';base64,' + window.btoa(text));
+}
+
+function outputShaderToTab(filter) {
+	var rawShader = document.getElementById('fragment_shader').textContent;
+	var text = filter(rawShader);
+	outputTextToTab(text);
+}
+</script>
+
+	</body>
+</html>

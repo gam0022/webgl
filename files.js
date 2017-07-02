@@ -1,5 +1,6 @@
 var files = {
   "raymarching": [
+    "raymarching_kado",
     "raymarching_tdf2017",
     "raymarching_hybrid",
     "raymarching_hybrid_live",
