@@ -67,7 +67,7 @@ uniform float kadoScale2;
 
 // consts
 const float INF = 1e+10;
-const float EPS = 1e-2;
+const float EPS = 1.1e-2;
 const float EPS_N = 1e-3;
 const float OFFSET = EPS * 100.0;
 
@@ -214,7 +214,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 		intersection.normal = calcNormal(p, sdGround);
 		intersection.material = GROUND_MATERIAL;
 	} else {
-	float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
+		float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
 		if (t > 0.0) {
 			intersection.distance = t;
 			intersection.hit = true;
@@ -256,7 +256,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray) {
 float calcAo(in vec3 p, in vec3 n){
 	float sca = 1.0, occ = 0.0;
 	for(float i=0.; i<5.; i++){
-		float hr = 0.05 + i * 0.08;
+		float hr = 0.05 + i * 0.6;
 		float dd = dScene(n * hr + p);
 		occ += (hr - dd) * sca;
 		sca *= 0.5;
@@ -268,7 +268,7 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	float d;
 	float distance = OFFSET;
 	float bright = 1.0;
-	float shadowIntensity = 0.4;
+	float shadowIntensity = 0.7;
 	float shadowSharpness = 10.0;
 
 	for (int i = 0; i < 30; i++) {
@@ -385,14 +385,14 @@ var config = {
 	camera: 'Orbit',
 	resolution: 512,
 	aspectRatio: 1,
-	pixelRatio: 1,
-	time: 0,
-	pause: false,
+	pixelRatio: 2,
+	time: 9.8,
+	pause: true,
 	animateWater: false,
 
 	// mandel box
-	kadoScale: -3.5,
-	kadoScale2: 1.2,
+	kadoScale: -3.55,
+	kadoScale2: 1.15,
 };
 
 init();
@@ -548,7 +548,7 @@ function initGUI() {
 		onWindowResize();
 		render(true);
 	});
-	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
+	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0, '4x' : 4.0, '8x' : 8.0}).name('Pixel Ratio').onChange(function(value) {
 		onWindowResize();
 		render(true);
 	});
@@ -557,8 +557,14 @@ function initGUI() {
 	gui.add(config, 'animateWater').name('Animate Water');
 
 	var kadoFolder = gui.addFolder("Kado");
-	kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
-	kadoFolder.add(config, 'kadoScale2', 1, 2).name('Scale2');
+	kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	kadoFolder.add(config, 'kadoScale2', 1, 2).name('Scale2').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
 	kadoFolder.open();
 
 	stats = new Stats();
@@ -575,7 +581,7 @@ function init() {
 	}
 
 	camera = new THREE.PerspectiveCamera(35, 800/600);
-	camera.position.z = 22;
+	camera.position.z = -7;
 	camera.lookAt(new THREE.Vector3(0.0, 0.0, 0.0));
 
 	var cubeTextureLoader = new THREE.CubeTextureLoader();
@@ -613,7 +619,7 @@ function init() {
 	orbitControls.enableDamping = false;
 	//orbitControls.dampingFactor = 0.015;
 	orbitControls.enableZoom = true;
-	//orbitControls.zoomSpeed = 0.001;
+	orbitControls.zoomSpeed = 0.1;
 	//orbitControls.rotateSpeed = 0.8;
 	orbitControls.autoRotate = false;
 	orbitControls.autoRotateSpeed = 0.0;
