@@ -256,7 +256,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray) {
 float calcAo(in vec3 p, in vec3 n){
 	float sca = 1.0, occ = 0.0;
 	for(float i=0.; i<5.; i++){
-		float hr = 0.05 + i * 0.6;
+		float hr = 0.05 + i * 0.5;
 		float dd = dScene(n * hr + p);
 		occ += (hr - dd) * sca;
 		sca *= 0.5;
@@ -296,8 +296,8 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
 		} else {
-			vec3 metalBase = vec3(0.17, 0.25, 0.28);
-			intersection.color = metalBase * diffuse * ao * shadow + 0.5 * specular;
+			vec3 waterBase = vec3(0.17, 0.25, 0.28);
+			intersection.color = waterBase * diffuse * shadow + 0.5 * specular;
 			float f0 = 0.7;
 			intersection.reflectance = f0 + (1.0 - f0) * pow(1.0 + ray.direction.y, 5.0);
 		}
@@ -391,7 +391,7 @@ var config = {
 	animateWater: false,
 
 	// mandel box
-	kadoScale: -3.45683723402731,
+	kadoScale: -3.4683723402731,
 	kadoScale2: 1.15,
 };
 
