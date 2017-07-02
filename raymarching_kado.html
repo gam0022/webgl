@@ -212,7 +212,7 @@ void intersectGround(inout Intersection intersection, inout Ray ray) {
 		intersection.normal = calcNormal(p, sdGround);
 		intersection.material = GROUND_MATERIAL;
 	} else {
-	float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
+		float t = -(ray.origin.y + GROUND_BASE) / ray.direction.y;
 		if (t > 0.0) {
 			intersection.distance = t;
 			intersection.hit = true;
@@ -420,7 +420,9 @@ function createTextureCube(cubeTextureLoader, rootPath, ext) {
 		rootPath + "py." + ext, rootPath + "ny." + ext,
 		rootPath + "pz." + ext, rootPath + "nz." + ext,
 	];
-	var textureCube = cubeTextureLoader.load(urls);
+	var textureCube = cubeTextureLoader.load(urls, function(texture) {
+		render(true);
+	});
 	textureCube.format = THREE.RGBFormat;
 	textureCube.mapping = THREE.CubeReflectionMapping;
 	//textureCube.generateMipmaps = false;
