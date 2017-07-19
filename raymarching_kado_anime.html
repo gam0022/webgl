@@ -62,12 +62,12 @@ uniform bool debugCamera;
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
 
-// uniform float kadoScale;
-float kadoScale;
+uniform float kadoScale;
+uniform float kadoScale2;
 
 // consts
 const float INF = 1e+10;
-const float EPS = 1e-2;
+const float EPS = 1.1e-2;
 const float EPS_N = 1e-3;
 const float OFFSET = EPS * 100.0;
 
@@ -76,7 +76,7 @@ const float PI2 = 6.28318530718;
 const float PIH = 1.57079632679;
 const float PIQ = 0.78539816339;
 
-const float GROUND_BASE = 5.5;
+const float GROUND_BASE = 2.5;
 
 
 // globals
@@ -175,7 +175,9 @@ float dMbox(vec3 z) {
 }
 
 float dScene(vec3 p) {
-	return dMbox(p);
+	//return dMbox(p);
+	vec3 p1 = p * kadoScale2;
+	return min(dMbox(p), dMbox(p1));
 }
 
 // color functions
@@ -254,7 +256,7 @@ void intersectScene(inout Intersection intersection, inout Ray ray) {
 float calcAo(in vec3 p, in vec3 n){
 	float sca = 1.0, occ = 0.0;
 	for(float i=0.; i<5.; i++){
-		float hr = 0.05 + i * 0.08;
+		float hr = 0.05 + i * 0.5;
 		float dd = dScene(n * hr + p);
 		occ += (hr - dd) * sca;
 		sca *= 0.5;
@@ -266,7 +268,7 @@ float calcShadow(in vec3 p, in vec3 rd) {
 	float d;
 	float distance = OFFSET;
 	float bright = 1.0;
-	float shadowIntensity = 0.4;
+	float shadowIntensity = 0.7;
 	float shadowSharpness = 10.0;
 
 	for (int i = 0; i < 30; i++) {
@@ -294,8 +296,8 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 			intersection.color = metalBase * diffuse * ao * shadow + 0.1 * specular;
 			intersection.reflectance = 0.7;
 		} else {
-			vec3 metalBase = vec3(0.17, 0.25, 0.28);
-			intersection.color = metalBase * diffuse * ao * shadow + 0.5 * specular;
+			vec3 waterBase = vec3(0.17, 0.25, 0.28);
+			intersection.color = waterBase * diffuse * shadow + 0.5 * specular;
 			float f0 = 0.7;
 			intersection.reflectance = f0 + (1.0 - f0) * pow(1.0 + ray.direction.y, 5.0);
 		}
@@ -307,7 +309,7 @@ void calcRadiance(inout Intersection intersection, inout Ray ray, int bounce) {
 void main(void) {
 	// set globals
 	lTime = mod(time, WORK_TIME);
-	kadoScale = 2.6 + 0.2 * cos(0.1 * PI2 * time);
+	//kadoScale = -3.3;
 
 	// fragment position
 	vec2 uv = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
@@ -383,13 +385,14 @@ var config = {
 	camera: 'Orbit',
 	resolution: 512,
 	aspectRatio: 1,
-	pixelRatio: 2.0,
-	time: 0,
+	pixelRatio: 2,
+	time: 9.8,
 	pause: true,
 	animateWater: false,
 
 	// mandel box
-	kadoScale: 2.7,
+	kadoScale: -3.4683723402731,
+	kadoScale2: 1.15,
 };
 
 init();
@@ -547,7 +550,7 @@ function initGUI() {
 		onWindowResize();
 		render(true);
 	});
-	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0}).name('Pixel Ratio').onChange(function(value) {
+	gui.add(config, 'pixelRatio', {'1/4x': 0.25, '1/2x' : 0.5, '1x': 1.0, '2x': 2.0, '4x' : 4.0, '8x' : 8.0}).name('Pixel Ratio').onChange(function(value) {
 		onWindowResize();
 		render(true);
 	});
@@ -555,9 +558,16 @@ function initGUI() {
 	gui.add(config, 'pause').name('Pause');
 	gui.add(config, 'animateWater').name('Animate Water');
 
-	//var kadoFolder = gui.addFolder("Kado");
-	//kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale');
-	//kadoFolder.open();
+	var kadoFolder = gui.addFolder("Kado");
+	kadoFolder.add(config, 'kadoScale', -5, 5).name('Scale').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	kadoFolder.add(config, 'kadoScale2', 1, 2).name('Scale2').onChange(function(value) {
+		onWindowResize();
+		render(true);
+	});
+	kadoFolder.open();
 
 	stats = new Stats();
 	document.body.appendChild(stats.domElement);
@@ -573,7 +583,7 @@ function init() {
 	}
 
 	camera = new THREE.PerspectiveCamera(35, 800/600);
-	camera.position.z = 16;
+	camera.position.z = -7;
 	camera.lookAt(new THREE.Vector3(0.0, 0.0, 0.0));
 
 	var cubeTextureLoader = new THREE.CubeTextureLoader();
@@ -592,6 +602,7 @@ function init() {
 			cameraDir: {type: 'v3', value: camera.getWorldDirection()},
 
 			kadoScale: {type: 'f', value: config.kadoScale},
+			kadoScale2: {type: 'f', value: config.kadoScale2},
 			textureCube: {type: 'tc', value: textureCube},
 			groundHeight: {type: 't', value: texture2Ds.groundHeight},
 		},
@@ -610,7 +621,7 @@ function init() {
 	orbitControls.enableDamping = false;
 	//orbitControls.dampingFactor = 0.015;
 	orbitControls.enableZoom = true;
-	//orbitControls.zoomSpeed = 0.001;
+	orbitControls.zoomSpeed = 0.1;
 	//orbitControls.rotateSpeed = 0.8;
 	orbitControls.autoRotate = false;
 	orbitControls.autoRotateSpeed = 0.0;
@@ -661,7 +672,8 @@ function render(needsUpdate) {
 	mainScene.material.uniforms.debugCamera.value = config.camera !== 'Auto';
 	mainScene.material.uniforms.cameraPos.value = camera.getWorldPosition();
 	mainScene.material.uniforms.cameraDir.value = camera.getWorldDirection();
-	//mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.kadoScale.value = config.kadoScale;
+	mainScene.material.uniforms.kadoScale2.value = config.kadoScale2;
 	mainScene.material.uniforms.time.value = config.time;
 
 	if (needsUpdate) {
