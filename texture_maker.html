@@ -91,15 +91,17 @@ http://opensource.org/licenses/mit-license.php
 
     void main(void) {
       vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
-      float s = 18.0;
+      float s = 10.0;
       float c = 2.0;
       p *= s;
       p = mod(p, c) - 0.5 * c;
-      vec3 color = vec3(0.5);
+
+      vec3 color = vec3(0.1);
       if (abs(p.x) + abs(p.y) < 1.0) {
-        color = vec3(0.8);
+        color = vec3(0.6);
       }
-      gl_FragColor = vec4(color, 0.5);
+
+      gl_FragColor = vec4(color, 1.0);
     }
     </script>
 
