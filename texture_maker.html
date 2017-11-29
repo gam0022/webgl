@@ -51,7 +51,7 @@ http://opensource.org/licenses/mit-license.php
       ));
     }
 
-    void main(void) {
+    void main_(void) {
       // fragment position
       vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
 
@@ -87,6 +87,21 @@ http://opensource.org/licenses/mit-license.php
         color = vec3(0.0);
       }
       gl_FragColor = vec4(color + 0.05 * depth, 1.0);
+    }
+
+    void main(void) {
+      vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+      float s = 10.0;
+      float c = 2.0;
+      p *= s;
+      p = mod(p, c) - 0.5 * c;
+
+      vec3 color = vec3(0.1);
+      if (abs(p.x) + abs(p.y) < 1.0) {
+        color = vec3(0.6);
+      }
+
+      gl_FragColor = vec4(color, 1.0);
     }
     </script>
 
@@ -139,8 +154,9 @@ http://opensource.org/licenses/mit-license.php
 		}
 
 		function saveImage() {
+      console.log("saveImage");
 		  renderer.render(scene, camera);
-		  window.open(canvas.toDataURL("image/png"));
+		  window.open(canvas.toDataURL());
 		}
 
 		function onMouseMove(e) {

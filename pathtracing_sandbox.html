@@ -522,7 +522,7 @@ void intersectAABB( inout Intersection intersection, Ray ray, AABB aabb ){
 
 	if( tmin <= tmax && 0.0 <= tmin && tmin < intersection.distance ) {
 		intersection.hit = true;
-		intersection.position = ray.origin + ray.direction * tmin;
+		intersection.position = ray.origin + ray.direction * (tmin > 0.0 ? tmin : tmax);
 		intersection.distance = tmin;
 		intersection.material = aabb.material;
 
@@ -724,7 +724,7 @@ var config = {
 
 	// Scene Edit
 	preset: "basic",
-	preset: "cornellBox",
+	//preset: "cornellBox",
 	//envmap: "castle",
 	envmap: "pisa",
 	transformMode: function() {
