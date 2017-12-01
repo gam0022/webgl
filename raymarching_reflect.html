@@ -58,7 +58,7 @@
 			const vec3 lightDir = vec3( -0.48666426339228763, 0.8111071056538127, -0.3244428422615251 );
 
 			// distance functions
-			vec3 onRep( vec3 p, float interval ) {
+			vec3 opRep( vec3 p, float interval ) {
 
 				vec2 q = mod( p.xz, interval ) - interval * 0.5;
 				return vec3( q.x, p.y, q.y );
@@ -67,7 +67,7 @@
 
 			float sphereDist( vec3 p, float r ) {
 
-				return length( onRep( p, 3.0 ) ) - r;
+				return length( opRep( p, 3.0 ) ) - r;
 
 			}
 
