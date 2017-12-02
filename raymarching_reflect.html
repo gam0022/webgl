@@ -296,8 +296,8 @@
 				material = new THREE.RawShaderMaterial( {
 					uniforms: {
 						resolution: { value: new THREE.Vector2( 512, 512 ) },
-						cameraWorldMatrix: { type: 'm4', value: camera.matrixWorld },
-						cameraProjectionMatrixInverse: { type: 'm4', value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) },
+						cameraWorldMatrix: { value: camera.matrixWorld },
+						cameraProjectionMatrixInverse: { value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) }
 					},
 					vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 					fragmentShader: document.getElementById( 'fragment_shader' ).textContent
