@@ -181,7 +181,7 @@
 
 				if ( abs(dist) < EPS ) {
 
-					normal = getNormal(pos);
+					normal = getNormal( pos );
 					float diffuse = clamp( dot( lightDir, normal ), 0.1, 1.0 );
 					float specular = pow( clamp( dot( reflect( lightDir, normal ), ray ), 0.0, 1.0 ), 10.0 );
 					float shadow = getShadow( pos + normal * OFFSET, lightDir );
@@ -201,7 +201,7 @@
 
 			void main(void) {
 
-				// fragment position
+				// screen position
 				vec2 screenPos = ( gl_FragCoord.xy * 2.0 - resolution ) / min( resolution.x, resolution.y );
 
 				// convert ray direction from screen coordinate to world coordinate
@@ -211,6 +211,7 @@
 				// camera position
 				vec3 cPos = cameraPosition;
 
+				// cast ray
 				vec3 color = vec3( 0.0 );
 				vec3 pos, normal;
 				bool hit;
@@ -245,7 +246,6 @@
 
 		</script>
 
-		<!--script src="../build/three.js"></script-->
 		<script src="js/three.min.js"></script>
 		<script src="js/controls/FlyControls.js"></script>
 
@@ -280,7 +280,7 @@
 
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( 512, 512 );
+				renderer.setSize( config.resolution, config.resolution );
 
 				canvas = renderer.domElement;
 				canvas.addEventListener( 'mousemove', onMouseMove );
@@ -290,12 +290,12 @@
 				// Scene
 				scene = new THREE.Scene();
 				camera = new THREE.PerspectiveCamera( 60, canvas.width / canvas.height, 1, 2000 );
-				camera.lookAt( new THREE.Vector3( 0.0, -0.3, 1.0 ) );
+				camera.lookAt( new THREE.Vector3( 0.0, - 0.3, 1.0 ) );
 
 				geometry = new THREE.PlaneBufferGeometry( 2.0, 2.0 );
 				material = new THREE.RawShaderMaterial( {
 					uniforms: {
-						resolution: { value: new THREE.Vector2( 512, 512 ) },
+						resolution: { value: new THREE.Vector2( canvas.width, canvas.height ) },
 						cameraWorldMatrix: { value: camera.matrixWorld },
 						cameraProjectionMatrixInverse: { value: new THREE.Matrix4().getInverse( camera.projectionMatrix ) }
 					},
@@ -330,7 +330,6 @@
 				} );
 
 				stats = new Stats();
-				//document.body.appendChild( stats.dom );
 				document.body.appendChild( stats.domElement );
 
 			}
@@ -354,10 +353,8 @@
 
 				if ( camera.position.y < 0 ) camera.position.y = 0;
 
-				material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
-
-				material.uniforms.cameraWorldMatrix.value = camera.matrixWorld;
-				material.uniforms.cameraProjectionMatrixInverse.value = new THREE.Matrix4().getInverse( camera.projectionMatrix );
+				material.uniforms.resolution.value.set( canvas.width, canvas.height );
+				material.uniforms.cameraProjectionMatrixInverse.value.getInverse( camera.projectionMatrix );
 
 				renderer.render( scene, camera );
 
