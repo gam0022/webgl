@@ -390,6 +390,7 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 
 	if ( refractDirection == vec3( 0.0 ) ) {
 		// 完全反射のケース
+		ray.origin = intersection.position + OFFSET * orientingNormal;
 		ray.direction = reflectDirection;
 	} else {
 		// フレネル反射率Rの計算
@@ -403,12 +404,13 @@ void sampleRefraction(vec2 Xi, inout Intersection intersection, inout Ray ray, v
 
 		if ( Xi.x <= R ) {
 			// 反射
+			ray.origin = intersection.position + OFFSET * orientingNormal;
 			ray.direction = reflectDirection;
 		} else {
 			// 屈折
 			// 物体内部にレイの原点を移動する
 			//intersection.material.color *= pow( nnt, 2.0 );// 立体角の変化に伴う放射輝度の補正を入れたら暗くなったのでコメントアウト
-			ray.origin = intersection.position - OFFSET * intersection.normal;
+			ray.origin = intersection.position - OFFSET * orientingNormal;
 			ray.direction = refractDirection;
 		}
 	}
