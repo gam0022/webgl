@@ -566,7 +566,14 @@ void main(void) {
 			var config = {
 				saveImage: function() {
 					render(true);
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raymarching_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 				},
 				soucePlain: function() {
 					outputShaderToTab( function(text){ return text; });

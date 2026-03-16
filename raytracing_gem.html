@@ -134,7 +134,7 @@ http://opensource.org/licenses/mit-license.php
 				nearest.material = DIAMOND_MATERIAL;
 				//nearest.color  = diamondDiffuseColor;
 				nearest.isFront  = invDenominator > 0.0;
-				
+
 			}
 
 			void rayIntersectPlane( vec3 origin, vec3 ray, Plane plane, inout Intersect nearest ) {
@@ -327,7 +327,14 @@ http://opensource.org/licenses/mit-license.php
 				saveImage: function() {
 
 					renderer.render( scene, dummyCamera );
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raytracing_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 
 				},
 

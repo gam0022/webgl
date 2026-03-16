@@ -198,7 +198,7 @@ vec2 circuitPattern( vec2 p ) {
 	float v = 0.0, g = 0.0;
 	r = fract(r * 9184.928);
 	float cp, d;
-	
+
 	d = p.x;
 	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
 	d = p.y;
@@ -207,7 +207,7 @@ vec2 circuitPattern( vec2 p ) {
 	g += pow(clamp(3.0 - abs(d), 0.0, 1.0), 1000.0);
 	d = p.y - 1.0;
 	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 10000.0);
-	
+
 	const int iter = 15;
 	for(int i = 0; i < iter; i ++)
 	{
@@ -312,13 +312,13 @@ float laserDist( vec3 p ) {
 // float sceneDist( vec3 p ) {
 // 	vec3 q = p;
 // 	q.xz *= rotate( -2.0 );
-// 
+//
 // 	vec3 p2 = p;
 // 	p2.xz = fold( p2.xz, 8.0 );
 // 	p2.z -= 20.0;
 // 	p2.yz *= rotate( -0.5 );
-// 
-// 	return 
+//
+// 	return
 // 		min(
 // 			min(
 // 				max(
@@ -335,33 +335,33 @@ float laserDist( vec3 p ) {
 // }
 
 // Intersect sceneIntersect( vec3 p ) {
-// 
+//
 // 	Intersect a, b, c, d;
-// 
+//
 // 	vec3 q = p;
 // 	q.xz *= rotate( -2.0 );
-// 
+//
 // 	vec3 p2 = p;
 // 	p2.xz = fold( p2.xz, 8.0 );
 // 	p2.z -= 20.0;
 // 	p2.yz *= rotate( -0.5 );
-// 
+//
 // 	a.distance = sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 15.0 );
 // 	a.material = MIRROR_MATERIAL;
-// 
+//
 // 	b.distance = udRoundBox( p + vec3( 0.0, 20.0, 0.0 ), vec3( 20.0, 20.0, 20.0 ), 0.1 );
 // 	b.material = FLOOR_MATERIAL;
-// 
+//
 // 	c.distance = sphereDist( onRep( q, 500.0), vec3( -150.0, 100.0, -150.0 ), 100.0 );
 // 	c.material = CIRCUIT_MATERIAL;
-// 
+//
 // 	d.distance = max(
 // 					sphereDist( p, vec3( 0.0, 10.0, 0.0 ), 24.0 ),
 // 					udRoundBox( p2, vec3( 1.0, 5.0, 10.0 ), 0.1 )
 // 				);
 // 	d.material = FLOOR_MATERIAL2;
 // 	d.position = p2;
-// 
+//
 // 	return minIntersect( minIntersect( maxIntersect( a, b ), d ), c);
 // }
 
@@ -369,7 +369,7 @@ float sceneDist( vec3 p ) {
 	vec3 q = p;
 	q.xz *= rotate( -2.0 );
 
-	return 
+	return
 		min(
 			max(
 				sphereDist( p, vec3( 0.0, 0.0, 0.0 ), 12.0 ),
@@ -411,7 +411,7 @@ Intersect sceneIntersect( vec3 p ) {
 vec3 getNormal( in vec3 pos ) {
 	vec2 e = vec2( 1.0, -1.0 ) * 0.001;
 	return normalize(
-		e.xyy * sceneDist( pos + e.xyy ) + e.yyx * sceneDist( pos + e.yyx ) + 
+		e.xyy * sceneDist( pos + e.xyy ) + e.yyx * sceneDist( pos + e.yyx ) +
 		e.yxy * sceneDist( pos + e.yxy ) + e.xxx * sceneDist( pos + e.xxx ) );
 }
 
@@ -598,7 +598,14 @@ void main(void) {
 						helper.render( scene, camera );
 					}
 
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raymarching_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 				},
 				camera: 'Auto',
 				resolution: '512',

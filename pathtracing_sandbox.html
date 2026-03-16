@@ -720,7 +720,14 @@ var textureChoices = {
 var config = {
 	saveImage: function() {
 		renderer.render( renderQuad.scene, camera );
-		window.open( canvas.toDataURL() );
+		canvas.toBlob(function(blob) {
+			var url = URL.createObjectURL(blob);
+			var link = document.createElement('a');
+			link.href = url;
+			link.download = 'pathtracing_' + Date.now() + '.png';
+			link.click();
+			URL.revokeObjectURL(url);
+		}, 'image/png');
 	},
 	resolution: '512',
 
