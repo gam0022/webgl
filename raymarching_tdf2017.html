@@ -450,7 +450,7 @@ float calcShadow(in vec3 p, in vec3 rd) {
 }
 
 
-// Just snow by baldand 
+// Just snow by baldand
 // https://www.shadertoy.com/view/ldsGDn
 #define LAYERS 50
 #define DEPTH .5
@@ -659,7 +659,14 @@ void main(void) {
 			var config = {
 				saveImage: function() {
 					render(true);
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raymarching_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 				},
 				soucePlain: function() {
 					outputShaderToTab( function(text){ return text; });

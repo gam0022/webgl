@@ -147,7 +147,7 @@ vec2 circuitPattern( vec2 p ) {
 	float v = 0.0, g = 0.0;
 	r = fract(r * 9184.928);
 	float cp, d;
-	
+
 	d = p.x;
 	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 1000.0);
 	d = p.y;
@@ -156,7 +156,7 @@ vec2 circuitPattern( vec2 p ) {
 	g += pow(clamp(3.0 - abs(d), 0.0, 1.0), 1000.0);
 	d = p.y - 1.0;
 	g += pow(clamp(1.0 - abs(d), 0.0, 1.0), 10000.0);
-	
+
 	const int iter = 15;
 	for(int i = 0; i < iter; i ++)
 	{
@@ -267,7 +267,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 			//float glow = max( sin( length( p ) - 1.8 * time ) * 2.5, 0.0 );
 			//float pattern = max( dg.x - 1.0, 0.0 );
 			nearest.color = vec3(1.0) * diffuse + specular /* * max( 0.5, shadow )*/;
-			
+
 		} else if ( nearest.material == MIRROR_MATERIAL ) {
 
 			nearest.color = ( vec3( 1.0 ) - illuminationColor ) * diffuse * 0.5 + specular/* * max( 0.5, shadow )*/;
@@ -375,7 +375,14 @@ void main(void) {
 				saveImage: function() {
 
 					renderer.render( scene, camera );
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raymarching_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 
 				},
 				camera: 'Orbit',

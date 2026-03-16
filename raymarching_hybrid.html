@@ -292,7 +292,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		if ( nearest.material == FLOOR_MATERIAL ) {
 
 			nearest.color = vec3( 0.9 ) * checkeredPattern( p ) * diffuse * shadow;
-			
+
 		} else if ( nearest.material == SPHERE_MATERIAL ) {
 
 			vec3 color = vec3( 1.0, 0.2, 0.2 );
@@ -308,7 +308,7 @@ Intersect getRayColor( vec3 origin, vec3 ray ) {
 		nearest.isHit = false;
 
 	}
- 	
+
 	//nearest.color += clamp( 0.002 * depth, 0.0, 0.9 );
 	nearest.position = p;
 	nearest.distance = depth;
@@ -416,7 +416,14 @@ void main(void) {
 						helper.render( scene, camera );
 					}
 
-					window.open( canvas.toDataURL() );
+					canvas.toBlob(function(blob) {
+						var url = URL.createObjectURL(blob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'raymarching_' + Date.now() + '.png';
+						link.click();
+						URL.revokeObjectURL(url);
+					}, 'image/png');
 				},
 				camera: 'Orbit',
 
@@ -642,7 +649,7 @@ void main(void) {
 				material.uniforms.shadowType.value = config.shadowType;
 				material.uniforms.shadowIntensity.value = config.shadowIntensity;
 				material.uniforms.shadowSharpness.value = config.shadowSharpness;
-				
+
 				renderer.render( scene, camera );
 
 				stats.end();
