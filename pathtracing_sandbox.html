@@ -925,7 +925,7 @@ function initTexture2D() {
 function initGUI() {
 	var gui = new dat.GUI();
 	gui.add( config, 'saveImage' ).name( 'Save Image' );
-	gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+	gui.add( config, 'resolution', [ '256', '512', '800', '1024', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 		onWindowResize();
 	} );
 
