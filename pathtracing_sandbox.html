@@ -682,8 +682,10 @@ void main( void ) {
 precision highp float;
 
 uniform int frame;
+uniform int lowSppSamples;
 uniform vec2 resolution;
 uniform sampler2D buffer;
+uniform bool lowSppMode;
 
 vec3 linearToGamma( in vec3 value, in float gammaFactor ) {
 	return pow( value, vec3( 1.0 / gammaFactor ) );
@@ -692,7 +694,8 @@ vec3 linearToGamma( in vec3 value, in float gammaFactor ) {
 void main(void) {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
 	vec4 accColor = texture2D( buffer, uv );
-	vec3 linearColor = accColor.rgb / float( frame + 1 );
+	float sppCount = lowSppMode ? min(float(frame + 1), float(lowSppSamples)) : float( frame + 1 );
+	vec3 linearColor = accColor.rgb / sppCount;
 	vec3 gammaColor = linearToGamma( linearColor, 2.2 );
 	gl_FragColor = vec4( gammaColor, 1.0 );
 }
@@ -757,6 +760,10 @@ var config = {
 	materialRoughnessTexture: 0,
 	materialRefractiveIndex: 1.6,
 
+	// Debug
+	lowSppMode: false,
+	lowSppSamples: 4,
+
 	fitToGround: function() {
 		editor.fitToGroundSelectedObject();
 	},
@@ -774,6 +781,8 @@ var orbitControls, prevCameraMatrixWorld;
 var textureCubes, texture2Ds;
 var renderQuad, floatQuad, initTexture, readBuffer, writeBuffer;
 var frame = 0;
+var lowSppMode = false;
+var lowSppSamples = 4;
 var editor;
 
 init();
@@ -864,6 +873,8 @@ function createDynamicObjects() {
 			cameraWorldProjectionInverseMaxtirx: { type: 'm4', value: cameraWorldProjectionInverseMaxtirx },
 			cameraNear: { type: 'f', value: camera.near },
 			cameraFar:  { type: 'f', value: camera.far },
+			lowSppMode: { type: 'b', value: lowSppMode },
+			lowSppSamples: { type: 'i', value: lowSppSamples },
 		},
 		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 		fragmentShader: editor.createFragmentShader(),
@@ -914,7 +925,7 @@ function initTexture2D() {
 function initGUI() {
 	var gui = new dat.GUI();
 	gui.add( config, 'saveImage' ).name( 'Save Image' );
-	gui.add( config, 'resolution', [ '256', '512', '800', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
+	gui.add( config, 'resolution', [ '256', '512', '800', '1024', 'full' ] ).name( 'Resolution' ).onChange( function( value ) {
 		onWindowResize();
 	} );
 
@@ -988,6 +999,17 @@ function initGUI() {
 	selectedObjectFolder.add( config, "fitToGround" ).name( "Fit To Ground" );
 	selectedObjectFolder.add( config, "remove" ).name( "Remove" );
 	selectedObjectFolder.open();
+
+	// Debug
+	var debugFolder = gui.addFolder( "Debug" );
+	debugFolder.add( config, 'lowSppMode' ).name( 'Low SPP Mode' ).onChange( function( value ) {
+		lowSppMode = value;
+		frame = 0;
+	} );
+	debugFolder.add( config, 'lowSppSamples', 1, 16, 1 ).name( 'Samples' ).onChange( function( value ) {
+		lowSppSamples = value;
+		frame = 0;
+	} );
 }
 
 function init() {
@@ -1047,6 +1069,8 @@ function init() {
 			resolution: { type: 'v2', value: new THREE.Vector2( canvas.width, canvas.height ) },
 			frame: { type: 'i', value: frame },
 			buffer: { type: 't', value: null },
+			lowSppMode: { type: 'b', value: lowSppMode },
+			lowSppSamples: { type: 'i', value: lowSppSamples },
 		},
 		vertexShader: document.getElementById( 'vertex_shader' ).textContent,
 		fragmentShader: document.getElementById( 'render_fragment_shader' ).textContent,
@@ -1092,13 +1116,18 @@ function render( timestamp ) {
 	}
 	prevCameraMatrixWorld = camera.matrixWorld.clone();
 
+	// lowSppMode: 指定のサンプリング数だけアキュミュレーション
+	// サンプリング数に達したら、それ以上更新しない
+	var shouldRender = !lowSppMode || frame < lowSppSamples;
+
 	// float quad
-	{
+	if ( shouldRender ) {
 		// set uniforms
 		floatQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 		floatQuad.material.uniforms.time.value = timestamp * 0.001;
 		floatQuad.material.uniforms.frame.value = frame;
 		floatQuad.material.uniforms.buffer.value = frame === 0 ? initTexture : readBuffer.texture;
+		floatQuad.material.uniforms.lowSppMode.value = lowSppMode;
 
 		// set camera uniforms
 		{
@@ -1121,17 +1150,19 @@ function render( timestamp ) {
 		renderQuad.material.uniforms.resolution.value = new THREE.Vector2( canvas.width, canvas.height );
 		renderQuad.material.uniforms.frame.value = frame;
 		renderQuad.material.uniforms.buffer.value = writeBuffer.texture;
+		renderQuad.material.uniforms.lowSppMode.value = lowSppMode;
+		renderQuad.material.uniforms.lowSppSamples.value = lowSppSamples;
 
 		renderer.render( renderQuad.scene, camera );
 	}
 
 	// swap buffers
-	var tmpBuffer = writeBuffer;
-	writeBuffer = readBuffer;
-	readBuffer = tmpBuffer;
-
-	stats.end();
-	frame++;
+	if ( shouldRender ) {
+		var tmpBuffer = writeBuffer;
+		writeBuffer = readBuffer;
+		readBuffer = tmpBuffer;
+		frame++;
+	}
 }
 </script>
 	</body>
